@@ -1410,5 +1410,12 @@
             }
         ],
         "full_text": "AMERIC 250 W VSVN VSVN mm..."
+    },
+    {
+        "filename": "WIN_20261016_21_52_16_Pro.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\WIN_20261016_21_52_16_Pro.jpg",
+        "extracted_text": [],
+        "full_text": "",
+        "error": "cannot unpack non-iterable RapidOCROutput object"
     }
 ]

@@ -2,6 +2,14 @@
  * ZERO-TEXT: MAIN FRONTEND APPLICATION CONTROLLER
  * Coordinates 3D Galaxy, 2D Map, Gallery Grid, Multi-modal Search,
  * Ingestion Pipeline, and Image Inspector.
+ *
+ * FIX v2.1:
+ *  - Added startup loading banner that polls /api/status until model_ready
+ *  - Added Search button click handler (not just Enter key)
+ *  - Debounced search input (300ms) to reduce lag during typing
+ *  - After search, sync galaxy selection to top result
+ *  - Tooltip hidden correctly when hovering empty space (null item)
+ *  - updateAllViews() passes current selectedItem into galaxies
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,12 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     activeView: 'galaxy3d', // 'galaxy3d' | 'galaxy2d' | 'grid'
     activeClusterFilter: null,
     weights: {
-      clip: 0.55,
-      ocr: 0.30,
-      colour: 0.15,
+      clip: 0.65,
+      ocr: 0.25,
+      colour: 0.10,
     },
     isIndexing: false,
     pollTimer: null,
+    modelReady: false,
+    modelPollTimer: null,
+    searchDebounceTimer: null,
   };
 
   // UI Elements
@@ -27,6 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
     statTotal: document.getElementById('stat-total'),
     statClusters: document.getElementById('stat-clusters'),
     statText: document.getElementById('stat-text'),
+
+    // Loading banner
+    loadingBanner: document.getElementById('loading-banner'),
+    loadingBannerMsg: document.getElementById('loading-banner-msg'),
 
     // View tabs
     tabGalaxy3d: document.getElementById('tab-galaxy3d'),
@@ -38,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Search
     searchInput: document.getElementById('search-input'),
+    searchBtn: document.getElementById('search-btn'),
     searchClearBtn: document.getElementById('search-clear-btn'),
     weightsToggleBtn: document.getElementById('weights-toggle-btn'),
     weightsDrawer: document.getElementById('weights-drawer'),
@@ -148,6 +164,43 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------------------------
+  // LOADING BANNER — Shown until CLIP model is ready
+  // -------------------------------------------------------------
+  function showLoadingBanner(msg) {
+    if (!el.loadingBanner) return;
+    if (el.loadingBannerMsg) el.loadingBannerMsg.textContent = msg || 'Loading CLIP model…';
+    el.loadingBanner.style.display = 'flex';
+  }
+
+  function hideLoadingBanner() {
+    if (!el.loadingBanner) return;
+    el.loadingBanner.style.display = 'none';
+  }
+
+  function pollModelReady() {
+    state.modelPollTimer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.model_ready) {
+          state.modelReady = true;
+          clearInterval(state.modelPollTimer);
+          state.modelPollTimer = null;
+          hideLoadingBanner();
+          showToast('🚀 CLIP model ready — search is fully enabled!', 4000);
+          // Enable search input
+          if (el.searchInput) el.searchInput.disabled = false;
+          if (el.searchBtn) el.searchBtn.disabled = false;
+        } else {
+          showLoadingBanner('Loading CLIP AI model… searches will be ready shortly.');
+        }
+      } catch (e) {
+        // Server not up yet, keep polling
+      }
+    }, 2000);
+  }
+
+  // -------------------------------------------------------------
   // DATA FETCHING & SYNCHRONIZATION
   // -------------------------------------------------------------
   async function loadInitialData() {
@@ -161,11 +214,21 @@ document.addEventListener('DOMContentLoaded', () => {
       state.allImages = imagesRes;
       state.displayedImages = [...imagesRes];
 
+      // Check if model is already ready (may have pre-warmed)
+      if (statusRes.model_ready) {
+        state.modelReady = true;
+        hideLoadingBanner();
+      } else {
+        showLoadingBanner('Loading CLIP AI model… searches will be ready shortly.');
+        if (el.searchInput) el.searchInput.disabled = false; // Allow typing, not searching
+        pollModelReady();
+      }
+
       buildClusterPills();
       updateAllViews();
     } catch (err) {
       console.error('Failed to load initial data:', err);
-      showToast('Could not load data from ZERO-TEXT server.');
+      showToast('Could not load data from ZERO-TEXT server. Is the server running?');
     }
   }
 
@@ -176,6 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateAllViews() {
+    // Sync selected item into galaxy engines so they highlight correctly
+    if (state.selectedItem) {
+      galaxy3d.selectedItem = state.selectedItem;
+      galaxy2d.selectedItem = state.selectedItem;
+    }
     galaxy3d.setItems(state.displayedImages);
     galaxy2d.setItems(state.displayedImages);
     renderGrid(state.displayedImages);
@@ -278,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const clusterLabel = item.cluster === -1 ? 'Noise' : `C${item.cluster}`;
       const clusterColor = item.cluster_color || '#4cc9f0';
-      const scorePct = item.final !== undefined ? Math.round(item.final * 100) : null;
+      const scorePct = item.final !== undefined && item.final > 0 ? Math.round(item.final * 100) : null;
 
       // Palette slices
       let paletteHtml = '';
@@ -325,15 +393,23 @@ document.addEventListener('DOMContentLoaded', () => {
     el.tooltipCluster.textContent = clusterLabel;
     el.tooltipCluster.style.color = item.cluster_color || '#4cc9f0';
 
-    if (item.final !== undefined) {
+    if (item.final !== undefined && item.final > 0) {
       el.tooltipScore.textContent = `${Math.round(item.final * 100)}% match`;
       el.tooltipScore.style.display = 'inline-block';
     } else {
       el.tooltipScore.style.display = 'none';
     }
 
-    el.tooltip.style.left = `${mouseX}px`;
-    el.tooltip.style.top = `${mouseY}px`;
+    // Position tooltip — keep it within viewport bounds
+    const TW = 180, TH = 140;
+    let tx = mouseX + 14;
+    let ty = mouseY - TH / 2;
+    if (tx + TW > window.innerWidth) tx = mouseX - TW - 14;
+    if (ty < 0) ty = 8;
+    if (ty + TH > window.innerHeight) ty = window.innerHeight - TH - 8;
+
+    el.tooltip.style.left = `${tx}px`;
+    el.tooltip.style.top = `${ty}px`;
     el.tooltip.style.display = 'block';
   }
 
@@ -342,8 +418,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   function selectItem(item) {
     state.selectedItem = item;
-    galaxy3d.selectItem(item);
-    galaxy2d.selectItem(item);
+
+    // Sync selection into galaxy canvases
+    galaxy3d.selectedItem = item;
+    galaxy2d.selectedItem = item;
+    // Redraw galaxies to show highlight (without full data rebuild)
+    if (galaxy2d.render) galaxy2d.render();
+    if (galaxy3d.useThree) galaxy3d.buildThreeScene();
 
     // Update grid selection highlights
     document.querySelectorAll('.image-card').forEach(c => {
@@ -436,6 +517,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // HYBRID SEARCH
   // -------------------------------------------------------------
+
+  // Debounced wrapper — fires 300ms after user stops typing
+  function scheduleSearch() {
+    clearTimeout(state.searchDebounceTimer);
+    state.searchDebounceTimer = setTimeout(() => performHybridSearch(), 300);
+  }
+
   async function performHybridSearch() {
     const query = el.searchInput.value.trim();
     if (!query) {
@@ -443,7 +531,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (!state.modelReady) {
+      showToast('⏳ CLIP model is still loading. Please wait a moment…');
+      return;
+    }
+
     el.searchClearBtn.style.display = 'flex';
+
+    // Visual feedback on search button
+    if (el.searchBtn) {
+      el.searchBtn.textContent = '…';
+      el.searchBtn.disabled = true;
+    }
 
     try {
       const res = await fetch('/api/search/hybrid', {
@@ -457,6 +556,13 @@ document.addEventListener('DOMContentLoaded', () => {
           cluster_filter: state.activeClusterFilter,
         }),
       });
+
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(`Search error: ${err.detail || res.statusText}`);
+        return;
+      }
+
       const data = await res.json();
 
       state.displayedImages = data.results;
@@ -465,6 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update Query Insights
       renderQueryInsights(data.detected_words, data.detected_colours);
 
+      // Auto-select top result and highlight in galaxy
       if (data.results.length > 0) {
         selectItem(data.results[0]);
       }
@@ -472,6 +579,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error('Search failed:', err);
       showToast('Search error. See console for details.');
+    } finally {
+      if (el.searchBtn) {
+        el.searchBtn.textContent = '🔍';
+        el.searchBtn.disabled = false;
+      }
     }
   }
 
@@ -510,15 +622,30 @@ document.addEventListener('DOMContentLoaded', () => {
     filterByCluster(state.activeClusterFilter);
   }
 
+  // Search input: Enter triggers immediate search, typing uses debounce
   el.searchInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') performHybridSearch();
+    if (e.key === 'Enter') {
+      clearTimeout(state.searchDebounceTimer);
+      performHybridSearch();
+    }
   });
+
+  // Search button click
+  if (el.searchBtn) {
+    el.searchBtn.addEventListener('click', () => {
+      clearTimeout(state.searchDebounceTimer);
+      performHybridSearch();
+    });
+  }
+
   el.searchClearBtn.addEventListener('click', clearSearch);
 
   // Weights Slider Handling
-  el.weightsToggleBtn.addEventListener('click', () => {
-    el.weightsDrawer.classList.toggle('open');
-  });
+  if (el.weightsToggleBtn) {
+    el.weightsToggleBtn.addEventListener('click', () => {
+      el.weightsDrawer.classList.toggle('open');
+    });
+  }
 
   function updateWeights() {
     state.weights.clip = parseFloat(el.weightClipSlider.value) / 100;
@@ -530,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.weightColourVal.textContent = `${Math.round(state.weights.colour * 100)}%`;
 
     if (el.searchInput.value.trim()) {
-      performHybridSearch();
+      scheduleSearch();
     }
   }
 
@@ -559,6 +686,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchSimilar(filename) {
+    if (!state.modelReady) {
+      showToast('⏳ CLIP model is still loading…');
+      return;
+    }
     try {
       const res = await fetch('/api/search/similar', {
         method: 'POST',
@@ -611,8 +742,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   el.btnSearchSketch.addEventListener('click', async () => {
+    if (!state.modelReady) {
+      showToast('⏳ CLIP model is still loading…');
+      return;
+    }
     const dataUrl = sketchStudio.toDataURL();
-    el.btnSearchSketch.textContent = 'Analyzing sketch...';
+    el.btnSearchSketch.textContent = 'Analyzing sketch…';
     try {
       const res = await fetch('/api/search/sketch', {
         method: 'POST',
@@ -751,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (s.status === 'idle' && s.progress === 100) {
           clearInterval(state.pollTimer);
           state.pollTimer = null;
-          showToast('Indexing completed! Reloading galaxy...');
+          showToast('Indexing completed! Reloading galaxy…');
           setTimeout(() => {
             loadInitialData();
             el.modalAdd.classList.remove('open');
@@ -768,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // RECLUSTER BUTTON
   // -------------------------------------------------------------
   el.btnRecluster.addEventListener('click', async () => {
-    el.btnRecluster.textContent = 'Re-clustering...';
+    el.btnRecluster.textContent = 'Re-clustering…';
     try {
       const res = await fetch('/api/recluster', { method: 'POST' });
       const data = await res.json();
@@ -808,6 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initial load
+  // Initial load — show loading banner immediately
+  showLoadingBanner('Connecting to ZERO-TEXT server…');
   loadInitialData();
 });

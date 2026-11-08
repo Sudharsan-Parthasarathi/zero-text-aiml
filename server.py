@@ -8,6 +8,7 @@ import io
 import mimetypes
 import os
 import shutil
+import threading
 from pathlib import Path
 from typing import List, Optional
 
@@ -37,34 +38,54 @@ app.add_middleware(
 
 engine = get_engine()
 
+
+# -----------------------------------------------------------------
+# STARTUP — Pre-warm CLIP in background (engine already does this,
+#   but we also expose model_ready in status)
+# -----------------------------------------------------------------
+@app.on_event("startup")
+async def startup_event():
+    """
+    Engine __init__ already kicks off a background thread to pre-warm CLIP.
+    This hook is kept for any future startup work.
+    """
+    pass
+
+
 # Request schemas
 class HybridSearchRequest(BaseModel):
     query: str
-    clip_weight: float = 0.55
-    ocr_weight: float = 0.30
-    colour_weight: float = 0.15
+    clip_weight: float = 0.65
+    ocr_weight: float = 0.25
+    colour_weight: float = 0.10
     cluster_filter: Optional[int] = None
     top_k: int = 40
+
 
 class SketchSearchRequest(BaseModel):
     sketch_data: str  # Base64 data URL e.g. "data:image/png;base64,..."
     top_k: int = 20
 
+
 class ColorSearchRequest(BaseModel):
     hex: str
     top_k: int = 20
+
 
 class SimilarSearchRequest(BaseModel):
     filename: str
     top_k: int = 10
 
+
 class DirectoryIndexRequest(BaseModel):
     directory_path: str
     recursive: bool = True
 
+
 class FileUploadItem(BaseModel):
     filename: str
     data: str  # Base64 data URL
+
 
 class UploadPayload(BaseModel):
     files: List[FileUploadItem]
@@ -76,7 +97,10 @@ class UploadPayload(BaseModel):
 
 @app.get("/api/status")
 def get_status():
-    return engine.get_system_status()
+    status = engine.get_system_status()
+    # Flatten model_ready to top level for easy frontend polling
+    status["model_ready"] = engine.model_ready
+    return status
 
 
 @app.get("/api/images")
@@ -108,6 +132,11 @@ def get_image(filename: str):
 
 @app.post("/api/search/hybrid")
 def search_hybrid(req: HybridSearchRequest):
+    if not engine.model_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="CLIP model is still loading. Please wait a moment and try again."
+        )
     results = engine.hybrid_search(
         query=req.query,
         clip_weight=req.clip_weight,
@@ -128,6 +157,11 @@ def search_hybrid(req: HybridSearchRequest):
 
 @app.post("/api/search/sketch")
 def search_sketch(req: SketchSearchRequest):
+    if not engine.model_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="CLIP model is still loading. Please wait a moment and try again."
+        )
     try:
         data_str = req.sketch_data
         if "," in data_str:
@@ -156,6 +190,11 @@ def search_color(req: ColorSearchRequest):
 
 @app.post("/api/search/similar")
 def search_similar(req: SimilarSearchRequest):
+    if not engine.model_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="CLIP model is still loading. Please wait a moment and try again."
+        )
     results = engine.similar_images(req.filename, top_k=req.top_k)
     return {
         "target": req.filename,

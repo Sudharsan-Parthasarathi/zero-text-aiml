@@ -508,5 +508,56 @@
                 "percentage": 12.33
             }
         ]
+    },
+    {
+        "filename": "WIN_20261016_21_52_16_Pro.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\WIN_20261016_21_52_16_Pro.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#DCDACE",
+                "rgb": [
+                    220,
+                    218,
+                    206
+                ],
+                "percentage": 28.44
+            },
+            {
+                "hex": "#292D25",
+                "rgb": [
+                    41,
+                    45,
+                    37
+                ],
+                "percentage": 25.73
+            },
+            {
+                "hex": "#ABA087",
+                "rgb": [
+                    171,
+                    160,
+                    135
+                ],
+                "percentage": 17.93
+            },
+            {
+                "hex": "#F7FBF5",
+                "rgb": [
+                    247,
+                    251,
+                    245
+                ],
+                "percentage": 15.8
+            },
+            {
+                "hex": "#EBEDE6",
+                "rgb": [
+                    235,
+                    237,
+                    230
+                ],
+                "percentage": 12.1
+            }
+        ]
     }
 ]

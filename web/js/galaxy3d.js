@@ -3,6 +3,12 @@
  * Renders semantic embeddings in 3D cosmic space.
  * Supports Three.js WebGL with orbital camera, starfield, glowing constellation webs,
  * and built-in Canvas 3D perspective projection fallback.
+ *
+ * FIX v2.1:
+ *  - Drag vs click discrimination: clicks only fire if mouse moved < 5px
+ *  - Increased Three.js raycaster threshold to reliably hit small spheres
+ *  - Fallback click radius enlarged to 32px for better usability
+ *  - selectItem() rebuilds scene for highlight update (Three.js mode)
  */
 
 class Galaxy3D {
@@ -25,6 +31,8 @@ class Galaxy3D {
     this.rotY = 0.4;
     this.zoom = 1.0;
     this.isDragging = false;
+    this.mouseDownX = 0;   // track drag distance for click vs drag
+    this.mouseDownY = 0;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
     this.hoveredItem = null;
@@ -35,7 +43,6 @@ class Galaxy3D {
     this.threeCamera = null;
     this.threeRenderer = null;
     this.threeNodes = [];
-    this.threeLinesGroup = null;
     this.raycaster = null;
     this.mouseVec = null;
 
@@ -70,6 +77,11 @@ class Galaxy3D {
 
   setItems(items) {
     this.items = items || [];
+    // Clear selected if it's no longer in the new item set
+    if (this.selectedItem) {
+      const still = this.items.find(it => it.filename === this.selectedItem.filename);
+      if (!still) this.selectedItem = null;
+    }
     this.normalizeCoordinates();
     if (this.useThree) {
       this.buildThreeScene();
@@ -77,7 +89,10 @@ class Galaxy3D {
   }
 
   normalizeCoordinates() {
-    if (!this.items.length) return;
+    if (!this.items.length) {
+      this.normalizedItems = [];
+      return;
+    }
     const xs = this.items.map(it => it.x3d ?? it.x ?? 0);
     const ys = this.items.map(it => it.y3d ?? it.y ?? 0);
     const zs = this.items.map(it => it.z3d ?? it.z ?? 0);
@@ -123,7 +138,9 @@ class Galaxy3D {
     this.threeRenderer.setPixelRatio(window.devicePixelRatio);
     this.threeRenderer.setSize(this.width, this.height);
 
+    // Raycaster with generous threshold for small nodes
     this.raycaster = new THREE.Raycaster();
+    this.raycaster.params.Points = { threshold: 10 };
     this.mouseVec = new THREE.Vector2();
 
     // Cosmic Lighting
@@ -201,6 +218,12 @@ class Galaxy3D {
     this.galaxyGroup = new THREE.Group();
     this.threeNodes = [];
 
+    if (!this.normalizedItems || !this.normalizedItems.length) {
+      this.threeScene.add(this.galaxyGroup);
+      return;
+    }
+
+    // Shared sphere geometry — scaled per node
     const sphereGeo = new THREE.SphereGeometry(1, 16, 16);
 
     // Nodes
@@ -209,12 +232,12 @@ class Galaxy3D {
       const colorHex = parseInt(clusterColor.replace('#', '0x'));
 
       const isSelected = this.selectedItem && this.selectedItem.filename === item.filename;
-      const baseRadius = isSelected ? 12 : 7;
+      const baseRadius = isSelected ? 14 : 7;
 
       const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
         emissive: colorHex,
-        emissiveIntensity: isSelected ? 0.9 : 0.4,
+        emissiveIntensity: isSelected ? 0.95 : 0.4,
         roughness: 0.2,
         metalness: 0.8,
       });
@@ -224,17 +247,31 @@ class Galaxy3D {
       mesh.position.set(item.nx, item.ny, item.nz);
       mesh.userData = { item };
 
-      // Glowing Halo
-      const haloGeo = new THREE.RingGeometry(baseRadius * 1.3, baseRadius * 1.8, 24);
-      const haloMat = new THREE.MeshBasicMaterial({
+      // Glowing Halo for selected
+      if (isSelected) {
+        const haloGeo = new THREE.RingGeometry(baseRadius * 1.3, baseRadius * 2.2, 32);
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: 0x70e1d1,
+          transparent: true,
+          opacity: 0.65,
+          side: THREE.DoubleSide,
+        });
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.lookAt(this.threeCamera.position);
+        mesh.add(halo);
+      }
+
+      // Outer glow always present (subtle)
+      const glowGeo = new THREE.RingGeometry(baseRadius * 1.1, baseRadius * 1.5, 24);
+      const glowMat = new THREE.MeshBasicMaterial({
         color: colorHex,
         transparent: true,
-        opacity: isSelected ? 0.8 : 0.25,
+        opacity: isSelected ? 0.5 : 0.18,
         side: THREE.DoubleSide,
       });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      halo.lookAt(this.threeCamera.position);
-      mesh.add(halo);
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.lookAt(this.threeCamera.position);
+      mesh.add(glow);
 
       this.galaxyGroup.add(mesh);
       this.threeNodes.push(mesh);
@@ -264,7 +301,7 @@ class Galaxy3D {
       const lineMat = new THREE.LineBasicMaterial({
         color: colorHex,
         transparent: true,
-        opacity: 0.25,
+        opacity: 0.22,
       });
 
       const lineGeo = new THREE.BufferGeometry();
@@ -314,10 +351,8 @@ class Galaxy3D {
 
     // Project points
     const projected = (this.normalizedItems || []).map(item => {
-      // Rotate Y
       let x1 = item.nx * cosY - item.nz * sinY;
       let z1 = item.nx * sinY + item.nz * cosY;
-      // Rotate X
       let y2 = item.ny * cosX - z1 * sinX;
       let z2 = item.ny * sinX + z1 * cosX + 600 / this.zoom;
 
@@ -361,25 +396,27 @@ class Galaxy3D {
     // Draw Nodes
     projected.forEach(p => {
       const isSelected = this.selectedItem && this.selectedItem.filename === p.filename;
-      const radius = Math.max(4, (isSelected ? 14 : 7) * p.scale * this.starSize);
+      const radius = Math.max(5, (isSelected ? 15 : 7) * p.scale * this.starSize);
 
+      // Glow
       ctx.beginPath();
-      ctx.arc(p.px, p.py, radius * 1.8, 0, Math.PI * 2);
-      ctx.fillStyle = (p.cluster_color || '#4cc9f0') + (isSelected ? '55' : '22');
+      ctx.arc(p.px, p.py, radius * 2.0, 0, Math.PI * 2);
+      ctx.fillStyle = (p.cluster_color || '#4cc9f0') + (isSelected ? '66' : '22');
       ctx.fill();
 
+      // Core
       ctx.beginPath();
       ctx.arc(p.px, p.py, radius, 0, Math.PI * 2);
       ctx.fillStyle = p.cluster_color || '#4cc9f0';
       ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.strokeStyle = isSelected ? '#70e1d1' : 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = isSelected ? 2.5 : 1;
       ctx.stroke();
 
       // Label
       if (p.scale > 0.4 || isSelected) {
         ctx.fillStyle = isSelected ? '#70e1d1' : '#e0e8f5';
-        ctx.font = `${Math.round(11 * p.scale)}px Segoe UI, sans-serif`;
+        ctx.font = `${Math.round(isSelected ? 12 : 10 * p.scale)}px Segoe UI, sans-serif`;
         ctx.fillText(p.filename.split('.')[0], p.px + radius + 4, p.py + 4);
       }
     });
@@ -394,6 +431,8 @@ class Galaxy3D {
   bindEvents() {
     this.canvas.addEventListener('mousedown', e => {
       this.isDragging = true;
+      this.mouseDownX = e.clientX;
+      this.mouseDownY = e.clientY;
       this.lastMouseX = e.clientX;
       this.lastMouseY = e.clientY;
     });
@@ -425,14 +464,25 @@ class Galaxy3D {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       if (this.useThree && this.threeCamera) {
-        this.threeCamera.position.z = Math.max(120, Math.min(1600, this.threeCamera.position.z / delta));
+        this.threeCamera.position.z = Math.max(80, Math.min(1600, this.threeCamera.position.z / delta));
       } else {
         this.zoom = Math.max(0.4, Math.min(3.0, this.zoom * delta));
       }
-    });
+    }, { passive: false });
 
     this.canvas.addEventListener('click', e => {
+      // Only treat as click if the mouse didn't move much (drag detection)
+      const dx = Math.abs(e.clientX - this.mouseDownX);
+      const dy = Math.abs(e.clientY - this.mouseDownY);
+      if (dx > 5 || dy > 5) return; // was a drag, not a click
       this.handleClick(e);
+    });
+
+    // Hide tooltip when mouse leaves canvas
+    this.canvas.addEventListener('mouseleave', () => {
+      if (this.options.onHover) {
+        this.options.onHover(null, 0, 0);
+      }
     });
   }
 
@@ -447,17 +497,20 @@ class Galaxy3D {
       this.mouseVec.x = (mouseX / this.width) * 2 - 1;
       this.mouseVec.y = -(mouseY / this.height) * 2 + 1;
       this.raycaster.setFromCamera(this.mouseVec, this.threeCamera);
-      const intersects = this.raycaster.intersectObjects(this.threeNodes);
+      const intersects = this.raycaster.intersectObjects(this.threeNodes, true);
       if (intersects.length > 0) {
-        hitItem = intersects[0].object.userData.item;
+        // Walk up to find the mesh with userData.item
+        let obj = intersects[0].object;
+        while (obj && !obj.userData.item) obj = obj.parent;
+        if (obj && obj.userData.item) hitItem = obj.userData.item;
       }
     } else if (this.fallbackProjected) {
       const centerX = this.width / 2;
       const centerY = this.height / 2;
       for (const p of this.fallbackProjected) {
-        const dx = p.px + centerX - mouseX;
-        const dy = p.py + centerY - mouseY;
-        if (dx * dx + dy * dy < 20 * 20) {
+        const ddx = p.px + centerX - mouseX;
+        const ddy = p.py + centerY - mouseY;
+        if (ddx * ddx + ddy * ddy < 28 * 28) {
           hitItem = p;
           break;
         }
@@ -480,17 +533,20 @@ class Galaxy3D {
       this.mouseVec.x = (mouseX / this.width) * 2 - 1;
       this.mouseVec.y = -(mouseY / this.height) * 2 + 1;
       this.raycaster.setFromCamera(this.mouseVec, this.threeCamera);
-      const intersects = this.raycaster.intersectObjects(this.threeNodes);
+      // intersectObjects with recursive=true to also hit child halos
+      const intersects = this.raycaster.intersectObjects(this.threeNodes, true);
       if (intersects.length > 0) {
-        hitItem = intersects[0].object.userData.item;
+        let obj = intersects[0].object;
+        while (obj && !obj.userData.item) obj = obj.parent;
+        if (obj && obj.userData.item) hitItem = obj.userData.item;
       }
     } else if (this.fallbackProjected) {
       const centerX = this.width / 2;
       const centerY = this.height / 2;
       for (const p of this.fallbackProjected) {
-        const dx = p.px + centerX - mouseX;
-        const dy = p.py + centerY - mouseY;
-        if (dx * dx + dy * dy < 24 * 24) {
+        const ddx = p.px + centerX - mouseX;
+        const ddy = p.py + centerY - mouseY;
+        if (ddx * ddx + ddy * ddy < 32 * 32) {
           hitItem = p;
           break;
         }
@@ -505,7 +561,7 @@ class Galaxy3D {
   selectItem(item) {
     this.selectedItem = item;
     if (this.useThree) {
-      this.buildThreeScene();
+      this.buildThreeScene(); // Rebuild to show selection highlight
     }
     if (this.options.onSelect) {
       this.options.onSelect(item);

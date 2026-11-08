@@ -2,7 +2,7 @@
 ZERO-TEXT CORE PIPELINE & AI ENGINE
 Integrates:
 - CLIP (ViT-B-32) Multimodal Embeddings (Text, Image, Sketch)
-- RapidOCR In-Image Text Extraction
+- RapidOCR In-Image Text Extraction (confidence-filtered)
 - Dominant Colour Extraction (Pillow Median Cut)
 - FAISS Vector Index (512-dim Cosine Similarity)
 - UMAP 2D & 3D Dimensionality Reduction
@@ -50,6 +50,9 @@ DEVICE = "cpu"
 DIMENSIONS = 512
 COLOUR_COUNT = 5
 
+# Minimum OCR confidence to include a detected text token
+OCR_CONFIDENCE_THRESHOLD = 0.60
+
 COLOURS = {
     "red": (220, 40, 40),
     "green": (40, 160, 70),
@@ -71,12 +74,21 @@ COLOURS = {
     "olive": (128, 128, 0),
     "violet": (138, 43, 226),
     "gold": (255, 215, 0),
+    "silver": (192, 192, 192),
+    "coral": (255, 127, 80),
+    "indigo": (75, 0, 130),
+    "turquoise": (64, 224, 208),
+    "beige": (245, 245, 220),
+    "lime": (50, 205, 50),
+    "crimson": (220, 20, 60),
+    "khaki": (189, 183, 107),
 }
 
 STOP_WORDS = {
     "the", "a", "an", "is", "are", "of", "in", "on", "with", "find", "show",
     "me", "image", "picture", "containing", "that", "has", "having", "and",
     "for", "to", "at", "from", "by", "about", "all", "some", "any", "photo",
+    "photos", "images", "pictures", "look", "like", "search", "get", "give",
 }
 
 CLUSTER_PALETTE = [
@@ -90,6 +102,8 @@ CLUSTER_PALETTE = [
     "#b5179e",  # Deep Magenta
     "#06d6a0",  # Emerald Green
     "#e76f51",  # Terracotta
+    "#118ab2",  # Ocean Blue
+    "#ef476f",  # Rose Red
 ]
 
 
@@ -104,6 +118,18 @@ def rgb_to_hex(r: int, g: int, b: int) -> str:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
+def softmax_normalize(scores: np.ndarray, temperature: float = 0.5) -> np.ndarray:
+    """
+    Applies softmax with temperature to amplify score differences.
+    Lower temperature → sharper ranking separation.
+    """
+    if scores.max() - scores.min() < 1e-8:
+        return np.ones_like(scores) / len(scores)
+    scaled = scores / temperature
+    exp_s = np.exp(scaled - scaled.max())
+    return exp_s / exp_s.sum()
+
+
 class ZeroTextEngine:
     """
     Unified ZeroText Engine handling multi-modal indexing, searching,
@@ -116,6 +142,7 @@ class ZeroTextEngine:
         self.preprocess = None
         self.tokenizer = None
         self.ocr = None
+        self.model_ready = False  # True once CLIP has loaded
 
         self.index: Optional[faiss.Index] = None
         self.metadata: List[Dict] = []
@@ -130,10 +157,21 @@ class ZeroTextEngine:
             "total": 0,
             "current": 0,
             "logs": [],
+            "model_ready": False,
         }
 
         self._ensure_directories()
         self._load_data()
+
+        # Pre-warm CLIP model in background thread so the first search is fast
+        threading.Thread(target=self._prewarm_clip, daemon=True).start()
+
+    def _prewarm_clip(self):
+        """Loads CLIP at startup in background so first query has no latency spike."""
+        try:
+            self.load_clip()
+        except Exception as e:
+            self._log(f"CLIP pre-warm failed: {e}")
 
     def _ensure_directories(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -150,7 +188,7 @@ class ZeroTextEngine:
                 self.indexing_state["logs"].pop(0)
 
     # -------------------------------------------------------------
-    # MODEL INITIALIZATION (LAZY LOADED)
+    # MODEL INITIALIZATION
     # -------------------------------------------------------------
 
     def load_clip(self):
@@ -168,7 +206,10 @@ class ZeroTextEngine:
             self.model = model
             self.preprocess = preprocess
             self.tokenizer = open_clip.get_tokenizer(MODEL_NAME)
-            self._log(f"CLIP loaded in {time.time() - start:.2f}s")
+            self.model_ready = True
+            self.indexing_state["model_ready"] = True
+            elapsed = time.time() - start
+            self._log(f"CLIP loaded in {elapsed:.2f}s — ready for search!")
 
     def load_ocr(self):
         if self.ocr is not None:
@@ -336,6 +377,11 @@ class ZeroTextEngine:
             return []
 
     def extract_ocr(self, image_path: Path) -> Dict:
+        """
+        Extracts text from an image using RapidOCR.
+        Only tokens above OCR_CONFIDENCE_THRESHOLD are kept, reducing noise from
+        false positives and misrecognised characters.
+        """
         self.load_ocr()
         try:
             result, elapsed = self.ocr(str(image_path))
@@ -344,8 +390,12 @@ class ZeroTextEngine:
                 for item in result:
                     text = str(item[1]).strip()
                     conf = float(item[2])
-                    if text:
-                        extracted_items.append({"text": text, "confidence": round(conf, 4)})
+                    # Filter low-confidence detections
+                    if text and conf >= OCR_CONFIDENCE_THRESHOLD:
+                        extracted_items.append({
+                            "text": text,
+                            "confidence": round(conf, 4),
+                        })
 
             full_text = " ".join(item["text"] for item in extracted_items)
             return {
@@ -394,7 +444,6 @@ class ZeroTextEngine:
             n_items = len(self.metadata)
             if n_items < 2:
                 self._log("Not enough images to cluster (minimum 2 needed).")
-                # Default coordinates for 1 image
                 clusters = []
                 for item in self.metadata:
                     record = {
@@ -418,7 +467,7 @@ class ZeroTextEngine:
             embeddings = np.asarray(embeddings, dtype=np.float32)
 
             # HDBSCAN
-            min_cluster = 2 if n_items >= 3 else 2
+            min_cluster = max(2, min(3, n_items // 3))
             clusterer = hdbscan.HDBSCAN(
                 min_cluster_size=min_cluster,
                 min_samples=1,
@@ -438,7 +487,7 @@ class ZeroTextEngine:
             )
             coords_2d = reducer_2d.fit_transform(embeddings)
 
-            # UMAP 3D (if enough items, else project)
+            # UMAP 3D
             if n_items >= 4:
                 reducer_3d = umap.UMAP(
                     n_components=3,
@@ -449,7 +498,6 @@ class ZeroTextEngine:
                 )
                 coords_3d = reducer_3d.fit_transform(embeddings)
             else:
-                # Synthetic z coordinate based on embedding norm / cluster
                 coords_3d = np.zeros((n_items, 3), dtype=np.float32)
                 coords_3d[:, 0] = coords_2d[:, 0]
                 coords_3d[:, 1] = coords_2d[:, 1]
@@ -491,15 +539,28 @@ class ZeroTextEngine:
         return text_words, detected_colours
 
     def get_ocr_score(self, filename: str, query_words: List[str]) -> float:
+        """
+        Fuzzy/substring OCR matching: each query word scores if it appears
+        as a substring of any OCR token (not just exact word match).
+        This catches partial matches like 'intel' matching 'intelligence'.
+        """
         if not query_words:
             return 0.0
         ocr_item = self.ocr_lookup.get(filename, {})
         full_text = ocr_item.get("full_text", "").lower()
         if not full_text:
             return 0.0
-        image_words = set(re.findall(r"[a-z0-9]+", full_text))
-        matched = sum(1 for w in set(query_words) if w in image_words)
-        return matched / len(set(query_words))
+
+        # Score = fraction of unique query words that appear (as substring) in OCR text
+        matched = 0
+        unique_qwords = list(set(query_words))
+        for w in unique_qwords:
+            # Exact word match (bonus ×1.0) OR substring match (partial ×0.5)
+            if re.search(r'\b' + re.escape(w) + r'\b', full_text):
+                matched += 1.0
+            elif w in full_text:
+                matched += 0.5
+        return min(1.0, matched / len(unique_qwords))
 
     def get_colour_score(self, filename: str, query_colours: List[str]) -> float:
         if not query_colours:
@@ -528,15 +589,18 @@ class ZeroTextEngine:
     def hybrid_search(
         self,
         query: str,
-        clip_weight: float = 0.55,
-        ocr_weight: float = 0.30,
-        colour_weight: float = 0.15,
+        clip_weight: float = 0.65,
+        ocr_weight: float = 0.25,
+        colour_weight: float = 0.10,
         top_k: int = 50,
         cluster_filter: Optional[int] = None,
     ) -> List[Dict]:
         """
-        Performs hybrid multi-modal search combining CLIP semantic vector similarity,
-        OCR extracted word matching, and dominant color similarity.
+        Improved hybrid multi-modal search:
+        - CLIP scores softmax-normalised across all candidates (sharpens ranking)
+        - OCR uses fuzzy/substring matching instead of exact word equality
+        - Colour uses weighted distance to dominant palette colours
+        - Final score = weighted combination, re-ranked by final desc.
         """
         if not self.metadata or self.index.ntotal == 0:
             return []
@@ -544,44 +608,71 @@ class ZeroTextEngine:
         query = query.strip()
         query_words, query_colours = self.analyse_query(query)
 
-        # 1. CLIP Search
+        # 1. CLIP Search — get raw cosine similarities for every image
         text_vec = self.compute_text_embedding(query)
-        scores, indices = self.index.search(text_vec, self.index.ntotal)
-        clip_scores = np.zeros(self.index.ntotal, dtype=np.float32)
+        n_total = self.index.ntotal
+        scores, indices = self.index.search(text_vec, n_total)
+
+        # Map index → raw cosine score (in [-1, 1])
+        raw_clip = np.zeros(n_total, dtype=np.float32)
         for s, idx in zip(scores[0], indices[0]):
             if idx >= 0:
-                clip_scores[idx] = max(0.0, min(1.0, (float(s) + 1.0) / 2.0))
+                raw_clip[idx] = float(s)
+
+        # Softmax-normalize CLIP scores to amplify ranking differences
+        # Only use images that will be returned (after cluster filter)
+        active_indices = [
+            i for i, item in enumerate(self.metadata)
+            if cluster_filter is None
+            or self.cluster_lookup.get(item["filename"], {}).get("cluster", -1) == cluster_filter
+        ]
+        if not active_indices:
+            return []
+
+        active_raw = raw_clip[active_indices]
+        active_normalized = softmax_normalize(active_raw, temperature=0.3)
+        # Remap back to dict for quick lookup
+        clip_normalized_map = {
+            active_indices[k]: float(active_normalized[k])
+            for k in range(len(active_indices))
+        }
 
         results = []
-        for i, item in enumerate(self.metadata):
+        for i in active_indices:
+            item = self.metadata[i]
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
 
-            if cluster_filter is not None and c_id != cluster_filter:
-                continue
-
-            clip_s = float(clip_scores[i])
+            clip_s = clip_normalized_map.get(i, 0.0)
             ocr_s = self.get_ocr_score(filename, query_words)
             col_s = self.get_colour_score(filename, query_colours)
 
-            # Active components weighting
-            active = [(clip_weight, clip_s)]
+            # Dynamic weighting: only include non-zero components
+            active_components = [(clip_weight, clip_s)]
             if query_words:
-                active.append((ocr_weight, ocr_s))
+                active_components.append((ocr_weight, ocr_s))
             if query_colours:
-                active.append((colour_weight, col_s))
+                active_components.append((colour_weight, col_s))
 
-            tot_w = sum(w for w, _ in active) or 1.0
-            final_s = sum(w * s for w, s in active) / tot_w
+            tot_w = sum(w for w, _ in active_components) or 1.0
+            final_s = sum(w * s for w, s in active_components) / tot_w
 
             ocr_item = self.ocr_lookup.get(filename, {})
             colours = self.colour_lookup.get(filename, [])
+
+            # Also keep raw cosine for display purposes
+            raw_clip_display = max(0.0, min(1.0, (raw_clip[i] + 1.0) / 2.0))
 
             results.append({
                 "filename": filename,
                 "path": item["path"],
                 "cluster": c_id,
+                "cluster_color": (
+                    "#8b96a8"
+                    if c_id == -1
+                    else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
+                ),
                 "x": cluster_info.get("x", 0.0),
                 "y": cluster_info.get("y", 0.0),
                 "z": cluster_info.get("z", 0.0),
@@ -589,12 +680,13 @@ class ZeroTextEngine:
                 "y3d": cluster_info.get("y3d", 0.0),
                 "z3d": cluster_info.get("z3d", 0.0),
                 "membership_probability": cluster_info.get("membership_probability", 0.0),
-                "clip": round(clip_s, 4),
+                "clip": round(raw_clip_display, 4),
                 "ocr": round(ocr_s, 4),
                 "colour": round(col_s, 4),
                 "final": round(final_s, 4),
                 "dominant_colours": colours,
                 "full_text": ocr_item.get("full_text", ""),
+                "has_text": bool(ocr_item.get("full_text", "").strip()),
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
@@ -619,6 +711,7 @@ class ZeroTextEngine:
             item = self.metadata[idx]
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
+            c_id = cluster_info.get("cluster", -1)
             norm_score = max(0.0, min(1.0, (float(score) + 1.0) / 2.0))
 
             results.append({
@@ -627,7 +720,15 @@ class ZeroTextEngine:
                 "path": item["path"],
                 "similarity": round(float(score), 4),
                 "final": round(norm_score, 4),
-                "cluster": cluster_info.get("cluster", -1),
+                "clip": round(norm_score, 4),
+                "ocr": 0.0,
+                "colour": 0.0,
+                "cluster": c_id,
+                "cluster_color": (
+                    "#8b96a8"
+                    if c_id == -1
+                    else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
+                ),
                 "x": cluster_info.get("x", 0.0),
                 "y": cluster_info.get("y", 0.0),
                 "z": cluster_info.get("z", 0.0),
@@ -637,6 +738,7 @@ class ZeroTextEngine:
                 "membership_probability": cluster_info.get("membership_probability", 0.0),
                 "dominant_colours": self.colour_lookup.get(filename, []),
                 "full_text": self.ocr_lookup.get(filename, {}).get("full_text", ""),
+                "has_text": bool(self.ocr_lookup.get(filename, {}).get("full_text", "").strip()),
             })
 
         return results
@@ -667,6 +769,7 @@ class ZeroTextEngine:
                     sim += (1.0 - dist / max_dist) * w
 
             cluster_info = self.cluster_lookup.get(filename, {})
+            c_id = cluster_info.get("cluster", -1)
             results.append({
                 "filename": filename,
                 "path": item["path"],
@@ -674,7 +777,12 @@ class ZeroTextEngine:
                 "colour": round(sim, 4),
                 "clip": 0.0,
                 "ocr": 0.0,
-                "cluster": cluster_info.get("cluster", -1),
+                "cluster": c_id,
+                "cluster_color": (
+                    "#8b96a8"
+                    if c_id == -1
+                    else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
+                ),
                 "x": cluster_info.get("x", 0.0),
                 "y": cluster_info.get("y", 0.0),
                 "z": cluster_info.get("z", 0.0),
@@ -684,6 +792,7 @@ class ZeroTextEngine:
                 "membership_probability": cluster_info.get("membership_probability", 0.0),
                 "dominant_colours": dominant,
                 "full_text": self.ocr_lookup.get(filename, {}).get("full_text", ""),
+                "has_text": bool(self.ocr_lookup.get(filename, {}).get("full_text", "").strip()),
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
@@ -693,7 +802,6 @@ class ZeroTextEngine:
         """
         Finds images closest in visual semantic space to a given indexed image.
         """
-        # Find index
         idx = -1
         for i, item in enumerate(self.metadata):
             if item["filename"] == filename:
@@ -713,18 +821,32 @@ class ZeroTextEngine:
             item = self.metadata[neighbor_idx]
             fn = item["filename"]
             c_info = self.cluster_lookup.get(fn, {})
+            c_id = c_info.get("cluster", -1)
             norm_s = max(0.0, min(1.0, (float(s) + 1.0) / 2.0))
             results.append({
                 "filename": fn,
                 "path": item["path"],
                 "final": round(norm_s, 4),
+                "clip": round(norm_s, 4),
+                "ocr": 0.0,
+                "colour": 0.0,
                 "similarity": round(float(s), 4),
-                "cluster": c_info.get("cluster", -1),
+                "cluster": c_id,
+                "cluster_color": (
+                    "#8b96a8"
+                    if c_id == -1
+                    else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
+                ),
                 "x": c_info.get("x", 0.0),
                 "y": c_info.get("y", 0.0),
                 "z": c_info.get("z", 0.0),
+                "x3d": c_info.get("x3d", 0.0),
+                "y3d": c_info.get("y3d", 0.0),
+                "z3d": c_info.get("z3d", 0.0),
+                "membership_probability": c_info.get("membership_probability", 0.0),
                 "dominant_colours": self.colour_lookup.get(fn, []),
                 "full_text": self.ocr_lookup.get(fn, {}).get("full_text", ""),
+                "has_text": bool(self.ocr_lookup.get(fn, {}).get("full_text", "").strip()),
             })
         return results
 
@@ -760,7 +882,7 @@ class ZeroTextEngine:
 
         self._log(f"Starting ingestion pipeline for {len(file_paths)} files...")
 
-        # Filter out existing by filename or exact path
+        # Filter out existing by filename
         existing_filenames = {item["filename"] for item in self.metadata}
         to_process = []
         for p in file_paths:
@@ -829,13 +951,10 @@ class ZeroTextEngine:
                 self.index.add(stacked_emb)
                 self.metadata.extend(new_metadata)
 
-            # Re-run clustering with all data
             with self._lock:
                 self.indexing_state["message"] = "Running UMAP 2D/3D & HDBSCAN clustering..."
             self._log("Updating 2D/3D UMAP galaxy coordinates and HDBSCAN clusters...")
             self.run_clustering()
-
-            # Save state
             self._save_data()
 
         with self._lock:
@@ -859,7 +978,7 @@ class ZeroTextEngine:
         if not dir_p.exists() or not dir_p.is_dir():
             raise FileNotFoundError(f"Directory not found: {directory_path}")
 
-        extensions = ["*.jpg", "*.jpeg", "*.png", "*.webp"]
+        extensions = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif"]
         files = []
         for ext in extensions:
             if recursive:
@@ -868,7 +987,7 @@ class ZeroTextEngine:
                 files.extend(dir_p.glob(ext))
 
         # Filter out hidden or cache files
-        valid_files = [f for f in files if not f.name.startswith(".") and not ".venv" in str(f)]
+        valid_files = [f for f in files if not f.name.startswith(".") and ".venv" not in str(f)]
         valid_files.sort()
 
         if valid_files:
@@ -882,7 +1001,7 @@ class ZeroTextEngine:
 
     def get_all_images(self) -> List[Dict]:
         """
-        Returns rich metadata for every indexed image.
+        Returns rich metadata for every indexed image, including cluster colours.
         """
         with self._lock:
             result = []
@@ -912,6 +1031,10 @@ class ZeroTextEngine:
                     "dominant_colours": colours,
                     "full_text": ocr_item.get("full_text", ""),
                     "has_text": bool(ocr_item.get("full_text", "").strip()),
+                    "clip": 0.0,
+                    "ocr": 0.0,
+                    "colour": 0.0,
+                    "final": 0.0,
                 })
             return result
 
@@ -939,6 +1062,7 @@ class ZeroTextEngine:
                 "text_bearing_images": text_images,
                 "model_name": MODEL_NAME,
                 "device": DEVICE,
+                "model_ready": self.model_ready,
                 "indexing_state": self.indexing_state,
             }
 

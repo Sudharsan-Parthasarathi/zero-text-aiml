@@ -2,6 +2,12 @@
  * ZERO-TEXT: 2D VISUAL STAR MAP EXPLORER
  * Interactive high-DPI HTML5 canvas displaying UMAP 2D coordinates,
  * cluster groups, density centroids, and pan-zoom navigation.
+ *
+ * FIX v2.1:
+ *  - Drag vs click discrimination: clicks only fire if mouse moved < 5px
+ *  - Enlarged click hit radius to 32px for easier node selection
+ *  - Tooltip hidden on canvas mouseleave
+ *  - Rerender on selectItem() to show highlight immediately
  */
 
 class Galaxy2D {
@@ -22,6 +28,8 @@ class Galaxy2D {
     this.offsetY = 0;
     this.scale = 1.0;
     this.isDragging = false;
+    this.mouseDownX = 0;
+    this.mouseDownY = 0;
     this.lastX = 0;
     this.lastY = 0;
 
@@ -49,6 +57,11 @@ class Galaxy2D {
 
   setItems(items) {
     this.items = items || [];
+    // Clear selected if no longer in set
+    if (this.selectedItem) {
+      const still = this.items.find(it => it.filename === this.selectedItem.filename);
+      if (!still) this.selectedItem = null;
+    }
     this.fitView();
     this.render();
   }
@@ -69,10 +82,10 @@ class Galaxy2D {
     const spanX = maxX - minX || 1;
     const spanY = maxY - minY || 1;
 
-    const margin = 80;
+    const margin = 90;
     const scaleX = (this.width - margin * 2) / spanX;
     const scaleY = (this.height - margin * 2) / spanY;
-    this.scale = Math.min(scaleX, scaleY, 60);
+    this.scale = Math.min(scaleX, scaleY, 70);
 
     const midX = (minX + maxX) / 2;
     const midY = (minY + maxY) / 2;
@@ -151,7 +164,7 @@ class Galaxy2D {
       // Cluster centroid aura
       const avgX = group.reduce((acc, p) => acc + p.px, 0) / group.length;
       const avgY = group.reduce((acc, p) => acc + p.py, 0) / group.length;
-      const radius = 60;
+      const radius = 70;
       const grad = ctx.createRadialGradient(avgX, avgY, 5, avgX, avgY, radius);
       grad.addColorStop(0, color + '22');
       grad.addColorStop(1, 'transparent');
@@ -161,11 +174,19 @@ class Galaxy2D {
       ctx.fill();
     });
 
-    // Draw Image Nodes
+    // Draw Image Nodes (back to front by y so overlaps look natural)
     this.points.forEach(p => {
       const isSelected = this.selectedItem && this.selectedItem.filename === p.filename;
       const color = p.cluster_color || '#4cc9f0';
-      const radius = isSelected ? 12 : 7;
+      const radius = isSelected ? 13 : 7;
+
+      // Score-based opacity ring (shows search relevance)
+      if (p.final > 0) {
+        ctx.beginPath();
+        ctx.arc(p.px, p.py, radius * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = color + Math.round(p.final * 40).toString(16).padStart(2, '0');
+        ctx.fill();
+      }
 
       // Outer glow
       ctx.beginPath();
@@ -178,7 +199,7 @@ class Galaxy2D {
       ctx.arc(p.px, p.py, radius, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.7)';
+      ctx.strokeStyle = isSelected ? '#70e1d1' : 'rgba(255, 255, 255, 0.7)';
       ctx.lineWidth = isSelected ? 2.5 : 1;
       ctx.stroke();
 
@@ -193,6 +214,8 @@ class Galaxy2D {
   bindEvents() {
     this.canvas.addEventListener('mousedown', e => {
       this.isDragging = true;
+      this.mouseDownX = e.clientX;
+      this.mouseDownY = e.clientY;
       this.lastX = e.clientX;
       this.lastY = e.clientY;
     });
@@ -222,27 +245,45 @@ class Galaxy2D {
       const mouseY = e.clientY - rect.top;
 
       const factor = e.deltaY < 0 ? 1.15 : 0.85;
-      const newScale = Math.max(5, Math.min(200, this.scale * factor));
+      const newScale = Math.max(5, Math.min(300, this.scale * factor));
 
       // Zoom towards mouse pointer
       this.offsetX = mouseX - (mouseX - this.offsetX) * (newScale / this.scale);
       this.offsetY = mouseY - (mouseY - this.offsetY) * (newScale / this.scale);
       this.scale = newScale;
       this.render();
-    });
+    }, { passive: false });
 
     this.canvas.addEventListener('click', e => {
+      // Only treat as click if the mouse didn't move much (drag discrimination)
+      const dx = Math.abs(e.clientX - this.mouseDownX);
+      const dy = Math.abs(e.clientY - this.mouseDownY);
+      if (dx > 5 || dy > 5) return;
+
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
+      // Find closest node within click radius
+      let closest = null;
+      let closestDist = 32 * 32; // px²
       for (const p of this.points) {
-        const dx = p.px - mouseX;
-        const dy = p.py - mouseY;
-        if (dx * dx + dy * dy < 22 * 22) {
-          this.selectItem(p);
-          return;
+        const ddx = p.px - mouseX;
+        const ddy = p.py - mouseY;
+        const dist2 = ddx * ddx + ddy * ddy;
+        if (dist2 < closestDist) {
+          closestDist = dist2;
+          closest = p;
         }
+      }
+      if (closest) {
+        this.selectItem(closest);
+      }
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      if (this.options.onHover) {
+        this.options.onHover(null, 0, 0);
       }
     });
   }
@@ -253,12 +294,14 @@ class Galaxy2D {
     const mouseY = e.clientY - rect.top;
 
     let hit = null;
+    let closestDist = 24 * 24;
     for (const p of this.points) {
       const dx = p.px - mouseX;
       const dy = p.py - mouseY;
-      if (dx * dx + dy * dy < 18 * 18) {
+      const dist2 = dx * dx + dy * dy;
+      if (dist2 < closestDist) {
+        closestDist = dist2;
         hit = p;
-        break;
       }
     }
 
@@ -269,7 +312,7 @@ class Galaxy2D {
 
   selectItem(item) {
     this.selectedItem = item;
-    this.render();
+    this.render(); // Redraw to show selection highlight
     if (this.options.onSelect) {
       this.options.onSelect(item);
     }
