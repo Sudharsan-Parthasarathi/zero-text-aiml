@@ -1,0 +1,42 @@
+[
+    {
+        "filename": "aiml.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg"
+    },
+    {
+        "filename": "art.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg"
+    },
+    {
+        "filename": "bio notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg"
+    },
+    {
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg"
+    },
+    {
+        "filename": "code.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg"
+    },
+    {
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg"
+    },
+    {
+        "filename": "football.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\football.jpg"
+    },
+    {
+        "filename": "math_notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg"
+    },
+    {
+        "filename": "mountain.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\mountain.jpg"
+    },
+    {
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg"
+    }
+]

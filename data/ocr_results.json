@@ -1,0 +1,1414 @@
+[
+    {
+        "filename": "aiml.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
+        "extracted_text": [
+            {
+                "text": "品",
+                "confidence": 0.6659437417984009
+            },
+            {
+                "text": "训",
+                "confidence": 0.6018199920654297
+            }
+        ],
+        "full_text": "品 训"
+    },
+    {
+        "filename": "art.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
+        "extracted_text": [],
+        "full_text": ""
+    },
+    {
+        "filename": "bio notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
+        "extracted_text": [
+            {
+                "text": "Ce",
+                "confidence": 0.6927755177021027
+            },
+            {
+                "text": "10",
+                "confidence": 0.7668842375278473
+            },
+            {
+                "text": "neromer",
+                "confidence": 0.9307595576558795
+            },
+            {
+                "text": "membran",
+                "confidence": 0.9670835137367249
+            },
+            {
+                "text": "nukious",
+                "confidence": 0.8954545259475708
+            },
+            {
+                "text": "sen",
+                "confidence": 0.989324152469635
+            },
+            {
+                "text": "Kromati",
+                "confidence": 0.9703628591128758
+            },
+            {
+                "text": "aan",
+                "confidence": 0.9762536485989889
+            },
+            {
+                "text": "gentian",
+                "confidence": 0.9869512319564819
+            },
+            {
+                "text": "padat",
+                "confidence": 0.8412899434566498
+            },
+            {
+                "text": "dua",
+                "confidence": 0.9806783000628153
+            },
+            {
+                "text": "meiaiui",
+                "confidence": 0.9452413405690875
+            },
+            {
+                "text": "arp",
+                "confidence": 0.8616930047671
+            },
+            {
+                "text": "MITOSIS",
+                "confidence": 0.937647785459246
+            },
+            {
+                "text": "saK",
+                "confidence": 0.760031263033549
+            },
+            {
+                "text": "YOS",
+                "confidence": 0.674860934416453
+            },
+            {
+                "text": "terairi",
+                "confidence": 0.9314651574407306
+            },
+            {
+                "text": "isebut",
+                "confidence": 0.9267979860305786
+            },
+            {
+                "text": "00",
+                "confidence": 0.653078705072403
+            },
+            {
+                "text": "oien",
+                "confidence": 0.8234410434961319
+            },
+            {
+                "text": "anak",
+                "confidence": 0.9374573677778244
+            },
+            {
+                "text": "Kromosom",
+                "confidence": 0.9643140435218811
+            },
+            {
+                "text": "3",
+                "confidence": 0.6402826905250549
+            },
+            {
+                "text": "ninung los",
+                "confidence": 0.5350461900234222
+            },
+            {
+                "text": "eu",
+                "confidence": 0.6957164704799652
+            },
+            {
+                "text": "me",
+                "confidence": 0.8186528980731964
+            },
+            {
+                "text": "sel",
+                "confidence": 0.8291681210199991
+            },
+            {
+                "text": "berpiiin",
+                "confidence": 0.8162423968315125
+            },
+            {
+                "text": "np",
+                "confidence": 0.6879863440990448
+            },
+            {
+                "text": "sei",
+                "confidence": 0.9534502029418945
+            },
+            {
+                "text": "ercant",
+                "confidence": 0.964005579551061
+            },
+            {
+                "text": "e",
+                "confidence": 0.8047121167182922
+            },
+            {
+                "text": "nemoai",
+                "confidence": 0.8542280743519465
+            },
+            {
+                "text": "meiibaikan",
+                "confidence": 0.8758768558502197
+            },
+            {
+                "text": "m",
+                "confidence": 0.7771782875061035
+            },
+            {
+                "text": "sma",
+                "confidence": 0.9260997374852499
+            },
+            {
+                "text": "teruvai",
+                "confidence": 0.9296206065586635
+            },
+            {
+                "text": "0m",
+                "confidence": 0.5944401770830154
+            },
+            {
+                "text": "arni",
+                "confidence": 0.9004745632410049
+            },
+            {
+                "text": "107",
+                "confidence": 0.7281336983044943
+            },
+            {
+                "text": "0",
+                "confidence": 0.6864905953407288
+            },
+            {
+                "text": "D1",
+                "confidence": 0.6196483671665192
+            },
+            {
+                "text": "Ber",
+                "confidence": 0.9829386274019877
+            },
+            {
+                "text": "pemban",
+                "confidence": 0.9415946304798126
+            },
+            {
+                "text": "。",
+                "confidence": 0.684736967086792
+            },
+            {
+                "text": "dan",
+                "confidence": 0.9971024990081787
+            },
+            {
+                "text": "yang",
+                "confidence": 0.9955318123102188
+            },
+            {
+                "text": "dan",
+                "confidence": 0.9941758116086324
+            },
+            {
+                "text": "som",
+                "confidence": 0.868343730767568
+            },
+            {
+                "text": "Metafasa",
+                "confidence": 0.9840973615646362
+            },
+            {
+                "text": "2",
+                "confidence": 0.6350575089454651
+            },
+            {
+                "text": "Fasa",
+                "confidence": 0.9901257455348969
+            },
+            {
+                "text": "口",
+                "confidence": 0.9166854619979858
+            },
+            {
+                "text": "S",
+                "confidence": 0.8741794228553772
+            },
+            {
+                "text": "seir",
+                "confidence": 0.9891342520713806
+            },
+            {
+                "text": "aan",
+                "confidence": 0.8332276344299316
+            },
+            {
+                "text": "C",
+                "confidence": 0.5524559617042542
+            },
+            {
+                "text": "Kromosor",
+                "confidence": 0.8342648148536682
+            },
+            {
+                "text": "ger",
+                "confidence": 0.7997303108374277
+            },
+            {
+                "text": "aua",
+                "confidence": 0.9811601837476095
+            },
+            {
+                "text": "rus",
+                "confidence": 0.7267151772975922
+            },
+            {
+                "text": "个",
+                "confidence": 0.9966860413551331
+            },
+            {
+                "text": "tor",
+                "confidence": 0.8260254661242167
+            },
+            {
+                "text": "dan",
+                "confidence": 0.9955479105313619
+            },
+            {
+                "text": "Sel",
+                "confidence": 0.7839364409446716
+            },
+            {
+                "text": "ug",
+                "confidence": 0.7584129273891449
+            },
+            {
+                "text": "secava",
+                "confidence": 0.9901332159837087
+            },
+            {
+                "text": "sel",
+                "confidence": 0.6662664413452148
+            },
+            {
+                "text": "DNA",
+                "confidence": 0.8876170913378397
+            },
+            {
+                "text": "sel",
+                "confidence": 0.9009202917416891
+            },
+            {
+                "text": "dengan",
+                "confidence": 0.9961098829905192
+            },
+            {
+                "text": "Kitar",
+                "confidence": 0.9368010878562927
+            },
+            {
+                "text": "SPT",
+                "confidence": 0.6215151051680247
+            },
+            {
+                "text": "0m",
+                "confidence": 0.6799862682819366
+            },
+            {
+                "text": "muia",
+                "confidence": 0.9570372253656387
+            },
+            {
+                "text": "6",
+                "confidence": 0.9586981534957886
+            },
+            {
+                "text": "aba",
+                "confidence": 0.5415667494138082
+            },
+            {
+                "text": "Fasa",
+                "confidence": 0.9749300330877304
+            },
+            {
+                "text": "3",
+                "confidence": 0.9613377451896667
+            },
+            {
+                "text": "antara",
+                "confidence": 0.9930281241734823
+            },
+            {
+                "text": "6",
+                "confidence": 0.6455367207527161
+            },
+            {
+                "text": "G2",
+                "confidence": 0.8291716575622559
+            },
+            {
+                "text": "口",
+                "confidence": 0.8250921368598938
+            },
+            {
+                "text": "Fasa",
+                "confidence": 0.8784514516592026
+            },
+            {
+                "text": "iter",
+                "confidence": 0.7040503546595573
+            },
+            {
+                "text": "aat",
+                "confidence": 0.7651331424713135
+            },
+            {
+                "text": "sitbkinesis",
+                "confidence": 0.9408391334793784
+            },
+            {
+                "text": "em",
+                "confidence": 0.9223291277885437
+            },
+            {
+                "text": "bu",
+                "confidence": 0.8858100771903992
+            },
+            {
+                "text": "GI",
+                "confidence": 0.8278627693653107
+            },
+            {
+                "text": "sel",
+                "confidence": 0.8193684120972952
+            },
+            {
+                "text": "muia",
+                "confidence": 0.8957818001508713
+            },
+            {
+                "text": "SiS0",
+                "confidence": 0.504640594124794
+            },
+            {
+                "text": "3",
+                "confidence": 0.9553267955780029
+            },
+            {
+                "text": "set",
+                "confidence": 0.5342180927594503
+            },
+            {
+                "text": "tdk",
+                "confidence": 0.6715723872184753
+            },
+            {
+                "text": "dan",
+                "confidence": 0.9895065426826477
+            },
+            {
+                "text": "gian",
+                "confidence": 0.8531840220093727
+            },
+            {
+                "text": "Ka",
+                "confidence": 0.8665988743305206
+            },
+            {
+                "text": "se1",
+                "confidence": 0.8155274589856466
+            },
+            {
+                "text": "moso",
+                "confidence": 0.8471742868423462
+            },
+            {
+                "text": "teraknir",
+                "confidence": 0.9707084521651268
+            },
+            {
+                "text": "Kron",
+                "confidence": 0.9667181968688965
+            },
+            {
+                "text": "Fasa",
+                "confidence": 0.9941140413284302
+            },
+            {
+                "text": "M",
+                "confidence": 0.5898208022117615
+            },
+            {
+                "text": "tiap",
+                "confidence": 0.9651902467012405
+            },
+            {
+                "text": "Mitosis",
+                "confidence": 0.9696206961359296
+            },
+            {
+                "text": "Fasa",
+                "confidence": 0.9900435954332352
+            },
+            {
+                "text": "MI",
+                "confidence": 0.7367228269577026
+            },
+            {
+                "text": "070",
+                "confidence": 0.8054357171058655
+            },
+            {
+                "text": "D",
+                "confidence": 0.7863298058509827
+            },
+            {
+                "text": "Mitosis",
+                "confidence": 0.892111565385546
+            },
+            {
+                "text": "mems",
+                "confidence": 0.7839966602623463
+            },
+            {
+                "text": "20",
+                "confidence": 0.6341309547424316
+            }
+        ],
+        "full_text": "Ce 10 neromer membran nukious sen Kromati aan gentian padat dua meiaiui arp MITOSIS saK YOS terairi isebut 00 oien anak Kromosom 3 ninung los eu me sel berpiiin np sei ercant e nemoai meiibaikan m sma teruvai 0m arni 107 0 D1 Ber pemban 。 dan yang dan som Metafasa 2 Fasa 口 S seir aan C Kromosor ger aua rus 个 tor dan Sel ug secava sel DNA sel dengan Kitar SPT 0m muia 6 aba Fasa 3 antara 6 G2 口 Fasa iter aat sitbkinesis em bu GI sel muia SiS0 3 set tdk dan gian Ka se1 moso teraknir Kron Fasa M tiap Mitosis Fasa MI 070 D Mitosis mems 20"
+    },
+    {
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "extracted_text": [
+            {
+                "text": "HIGH FIVE!",
+                "confidence": 0.9949747204780579
+            },
+            {
+                "text": "imgflip.com",
+                "confidence": 0.9892214265736666
+            }
+        ],
+        "full_text": "HIGH FIVE! imgflip.com"
+    },
+    {
+        "filename": "code.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg",
+        "extracted_text": [
+            {
+                "text": "Welcome",
+                "confidence": 0.9901819484574454
+            },
+            {
+                "text": "main.py",
+                "confidence": 0.9931195633752006
+            },
+            {
+                "text": "calculator.py",
+                "confidence": 0.995829531779656
+            },
+            {
+                "text": "calculator.py>",
+                "confidence": 0.9825356262070792
+            },
+            {
+                "text": "1",
+                "confidence": 0.995119571685791
+            },
+            {
+                "text": "# Simple Calculator in Python",
+                "confidence": 0.952354083801138
+            },
+            {
+                "text": "2",
+                "confidence": 0.99784255027771
+            },
+            {
+                "text": "3",
+                "confidence": 0.9907478094100952
+            },
+            {
+                "text": "print(\"Welcome to the Simple Calculator!\")",
+                "confidence": 0.9518744704269227
+            },
+            {
+                "text": "4",
+                "confidence": 0.9997386336326599
+            },
+            {
+                "text": "5",
+                "confidence": 0.9947324991226196
+            },
+            {
+                "text": "def add(x,y):",
+                "confidence": 0.8540048461693984
+            },
+            {
+                "text": "6",
+                "confidence": 0.9973012804985046
+            },
+            {
+                "text": "return x+y",
+                "confidence": 0.9502504169940948
+            },
+            {
+                "text": "7",
+                "confidence": 0.9988659620285034
+            },
+            {
+                "text": "8",
+                "confidence": 0.9993464350700378
+            },
+            {
+                "text": "def subtract(x,y):",
+                "confidence": 0.9185038937462701
+            },
+            {
+                "text": "9",
+                "confidence": 0.9947547912597656
+            },
+            {
+                "text": "return x-y",
+                "confidence": 0.943721604347229
+            },
+            {
+                "text": "10",
+                "confidence": 0.9987082183361053
+            },
+            {
+                "text": "11",
+                "confidence": 0.9972722828388214
+            },
+            {
+                "text": "def multiply(x,y):",
+                "confidence": 0.9140449464321136
+            },
+            {
+                "text": "12",
+                "confidence": 0.9980555772781372
+            },
+            {
+                "text": "returnx*y",
+                "confidence": 0.9855251577165391
+            },
+            {
+                "text": "13",
+                "confidence": 0.9989928901195526
+            },
+            {
+                "text": "14",
+                "confidence": 0.987596333026886
+            },
+            {
+                "text": "def divide(x,y):",
+                "confidence": 0.8836494125425816
+            },
+            {
+                "text": "15",
+                "confidence": 0.9992488026618958
+            },
+            {
+                "text": "return x/y if y!=O else \"Cannot divide by zero\"",
+                "confidence": 0.8894720457969828
+            },
+            {
+                "text": "16",
+                "confidence": 0.9982964396476746
+            },
+            {
+                "text": "17",
+                "confidence": 0.9985960721969604
+            },
+            {
+                "text": "print(Select operation:1.Add 2.Subtract 3.Multiply 4.Divide)",
+                "confidence": 0.9587888846794764
+            },
+            {
+                "text": "18",
+                "confidence": 0.9991260766983032
+            },
+            {
+                "text": "19",
+                "confidence": 0.9983331859111786
+            },
+            {
+                "text": "# Take input from the user and perform the operation(s) selected byt he user in the above print statement",
+                "confidence": 0.9682646121297563
+            },
+            {
+                "text": "20",
+                "confidence": 0.9993544518947601
+            },
+            {
+                "text": "choice =input(\"Enter choice(1/2/3/4):\")",
+                "confidence": 0.9172150477384909
+            },
+            {
+                "text": "21",
+                "confidence": 0.9983420073986053
+            },
+            {
+                "text": "22",
+                "confidence": 0.9990299642086029
+            },
+            {
+                "text": "numl = float（input(\"Enter first number:\")）",
+                "confidence": 0.9023206759066809
+            },
+            {
+                "text": "23",
+                "confidence": 0.9993740022182465
+            },
+            {
+                "text": "num2 = float（input(\"Enter second number:\"))",
+                "confidence": 0.9093070002489312
+            },
+            {
+                "text": "24",
+                "confidence": 0.9993779361248016
+            },
+            {
+                "text": "25",
+                "confidence": 0.9994678497314453
+            },
+            {
+                "text": "# Perform the operation(s) selected by the user",
+                "confidence": 0.9547412978841904
+            },
+            {
+                "text": "26",
+                "confidence": 0.9991664290428162
+            },
+            {
+                "text": "27",
+                "confidence": 0.9989635348320007
+            },
+            {
+                "text": "if choice=='1",
+                "confidence": 0.926641005736131
+            },
+            {
+                "text": "28",
+                "confidence": 0.9993145167827606
+            },
+            {
+                "text": "add_result = add(num1, num2)",
+                "confidence": 0.9212956641401563
+            },
+            {
+                "text": "29",
+                "confidence": 0.9987195432186127
+            },
+            {
+                "text": "print(f\"The sum of {numl} and {num2} is {add_result}\")",
+                "confidence": 0.9044767557470886
+            },
+            {
+                "text": "30",
+                "confidence": 0.9989848434925079
+            },
+            {
+                "text": "ifchoice=='2':",
+                "confidence": 0.8932369840996606
+            },
+            {
+                "text": "31",
+                "confidence": 0.9978678524494171
+            },
+            {
+                "text": "subtract_result = subtract(num1,num2)",
+                "confidence": 0.9566315509177543
+            },
+            {
+                "text": "32",
+                "confidence": 0.9981951713562012
+            },
+            {
+                "text": "print(f\"The difference of {numi} and {num2} is {subtract_result}\")",
+                "confidence": 0.9399627158136079
+            },
+            {
+                "text": "33",
+                "confidence": 0.9851372539997101
+            },
+            {
+                "text": "if choice =='3':",
+                "confidence": 0.8640512637794018
+            },
+            {
+                "text": "34",
+                "confidence": 0.9987869560718536
+            },
+            {
+                "text": "multiply_result = multiply(numl,num2)",
+                "confidence": 0.9360194858667013
+            },
+            {
+                "text": "35",
+                "confidence": 0.9991019368171692
+            },
+            {
+                "text": "print(f\"The product of {num1} and {num2} is {multiply_result}\")",
+                "confidence": 0.9267015703140743
+            },
+            {
+                "text": "36",
+                "confidence": 0.9976931810379028
+            },
+            {
+                "text": "if choice ==",
+                "confidence": 0.9541415472825369
+            },
+            {
+                "text": "4",
+                "confidence": 0.9938410520553589
+            },
+            {
+                "text": "37",
+                "confidence": 0.99813511967659
+            }
+        ],
+        "full_text": "Welcome main.py calculator.py calculator.py> 1 # Simple Calculator in Python 2 3 print(\"Welcome to the Simple Calculator!\") 4 5 def add(x,y): 6 return x+y 7 8 def subtract(x,y): 9 return x-y 10 11 def multiply(x,y): 12 returnx*y 13 14 def divide(x,y): 15 return x/y if y!=O else \"Cannot divide by zero\" 16 17 print(Select operation:1.Add 2.Subtract 3.Multiply 4.Divide) 18 19 # Take input from the user and perform the operation(s) selected byt he user in the above print statement 20 choice =input(\"Enter choice(1/2/3/4):\") 21 22 numl = float（input(\"Enter first number:\")） 23 num2 = float（input(\"Enter second number:\")) 24 25 # Perform the operation(s) selected by the user 26 27 if choice=='1 28 add_result = add(num1, num2) 29 print(f\"The sum of {numl} and {num2} is {add_result}\") 30 ifchoice=='2': 31 subtract_result = subtract(num1,num2) 32 print(f\"The difference of {numi} and {num2} is {subtract_result}\") 33 if choice =='3': 34 multiply_result = multiply(numl,num2) 35 print(f\"The product of {num1} and {num2} is {multiply_result}\") 36 if choice == 4 37"
+    },
+    {
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
+        "extracted_text": [
+            {
+                "text": "D",
+                "confidence": 0.5586316585540771
+            }
+        ],
+        "full_text": "D"
+    },
+    {
+        "filename": "football.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\football.jpg",
+        "extracted_text": [
+            {
+                "text": "utilita",
+                "confidence": 0.9697022778647286
+            },
+            {
+                "text": "cinch",
+                "confidence": 0.9545193791389466
+            },
+            {
+                "text": "lfewithpower",
+                "confidence": 0.8899800727764765
+            },
+            {
+                "text": "IEST",
+                "confidence": 0.8417733386158943
+            }
+        ],
+        "full_text": "utilita cinch lfewithpower IEST"
+    },
+    {
+        "filename": "math_notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg",
+        "extracted_text": [
+            {
+                "text": "RCL",
+                "confidence": 0.9661325216293335
+            },
+            {
+                "text": "9",
+                "confidence": 0.9968845248222351
+            },
+            {
+                "text": "8",
+                "confidence": 0.986809492111206
+            },
+            {
+                "text": "JuNE 2013-CORE3.",
+                "confidence": 0.8815115503966808
+            },
+            {
+                "text": "6",
+                "confidence": 0.995290994644165
+            },
+            {
+                "text": "5",
+                "confidence": 0.8692679405212402
+            },
+            {
+                "text": "Given that",
+                "confidence": 0.9312541544437408
+            },
+            {
+                "text": "2sinxsinso°+sinxcos40+sin40cosx=2cesxcosSo°",
+                "confidence": 0.84178498318029
+            },
+            {
+                "text": "3",
+                "confidence": 0.9976771473884583
+            },
+            {
+                "text": "cos So°=sin40°",
+                "confidence": 0.8626754241330283
+            },
+            {
+                "text": "3x4-2x²-5x2-44",
+                "confidence": 0.8573044197899955
+            },
+            {
+                "text": "2",
+                "confidence": 0.9980869293212891
+            },
+            {
+                "text": "Ans",
+                "confidence": 0.9854218165079752
+            },
+            {
+                "text": "2tanxsinso°+tanxcas4o+sin4o°#2cosSo",
+                "confidence": 0.8494480379990169
+            },
+            {
+                "text": "ax²+bx+c+dx+c",
+                "confidence": 0.927981055699862
+            },
+            {
+                "text": "x10",
+                "confidence": 0.8522939483324686
+            },
+            {
+                "text": "sinSo°=cos 40°",
+                "confidence": 0.8552575622286115
+            },
+            {
+                "text": "x-4",
+                "confidence": 0.8803347746531168
+            },
+            {
+                "text": "x2-4",
+                "confidence": 0.8140997439622879
+            },
+            {
+                "text": "simx（2sinso°+cos4o）=cosx(2cosSo°-Sin4o°)",
+                "confidence": 0.8274556815624237
+            },
+            {
+                "text": "3x²+10x",
+                "confidence": 0.9465907386371067
+            },
+            {
+                "text": "h-xs-exz-x（-x",
+                "confidence": 0.7602208371345813
+            },
+            {
+                "text": "0",
+                "confidence": 0.9340667724609375
+            },
+            {
+                "text": "COSxC",
+                "confidence": 0.584225732088089
+            },
+            {
+                "text": "casx",
+                "confidence": 0.8808898329734802
+            },
+            {
+                "text": "—3x²-12x3",
+                "confidence": 0.8596472011672126
+            },
+            {
+                "text": "=tanx（2sinSo°+cas4o°)。2cosso°-sin4o°",
+                "confidence": 0.8445120139254464
+            },
+            {
+                "text": "0+10x²-5x²",
+                "confidence": 0.8468729525804519
+            },
+            {
+                "text": "2sinSo°tco340°",
+                "confidence": 0.8140302726200649
+            },
+            {
+                "text": "2sinSo°+cas40°",
+                "confidence": 0.9044455247265952
+            },
+            {
+                "text": "10x3",
+                "confidence": 0.965795487165451
+            },
+            {
+                "text": "a=3b=-2c=7d8e=2y",
+                "confidence": 0.8783133681863546
+            },
+            {
+                "text": "（x²-4）-（x+2）（x-2)",
+                "confidence": 0.8576794582254746
+            },
+            {
+                "text": "tanx2sinuo-sinyc",
+                "confidence": 0.8706232476979494
+            },
+            {
+                "text": "Hen soweor 0≤θ≤360,",
+                "confidence": 0.7216295850904364
+            },
+            {
+                "text": "..IHOE!",
+                "confidence": 0.7072322538920811
+            },
+            {
+                "text": "0n+0",
+                "confidence": 0.5212901309132576
+            },
+            {
+                "text": "h-xo+xx<h-x",
+                "confidence": 0.6921578022566709
+            },
+            {
+                "text": "2cos（2θ+50）°=sin（2θ+40）",
+                "confidence": 0.7746032916981241
+            },
+            {
+                "text": "sin400",
+                "confidence": 0.7914257645606995
+            },
+            {
+                "text": "3x²-2x++",
+                "confidence": 0.9520243108272552
+            },
+            {
+                "text": "to1d.p.",
+                "confidence": 0.7993950801236289
+            },
+            {
+                "text": "3cas40",
+                "confidence": 0.9458973705768585
+            },
+            {
+                "text": "CHANGE THE",
+                "confidence": 0.9720929026603699
+            },
+            {
+                "text": "h-xo-xs-ex2-hx2（h-x0+x",
+                "confidence": 0.746245651082559
+            },
+            {
+                "text": "②Given thatf（x）inx",
+                "confidence": 0.7824401044183307
+            },
+            {
+                "text": ",x>0",
+                "confidence": 0.7892751842737198
+            },
+            {
+                "text": "tan40°",
+                "confidence": 0.9104815125465393
+            },
+            {
+                "text": "RANGE!",
+                "confidence": 0.9676527678966522
+            },
+            {
+                "text": "-3x4+0x²-（2x²",
+                "confidence": 0.85727547453
+            },
+            {
+                "text": "sketh",
+                "confidence": 0.8307552218437195
+            },
+            {
+                "text": "tan4o",
+                "confidence": 0.8800653100013733
+            },
+            {
+                "text": "0-2x3+7x²-0x",
+                "confidence": 0.7790618042151133
+            },
+            {
+                "text": "-2x3-0x²-8x",
+                "confidence": 0.90607088804245
+            },
+            {
+                "text": "(x）h",
+                "confidence": 0.7003928124904633
+            },
+            {
+                "text": "?",
+                "confidence": 0.7195890545845032
+            },
+            {
+                "text": "arctan（tan2θ=tan40°)",
+                "confidence": 0.8479218006134033
+            },
+            {
+                "text": "0+72²+8x-4",
+                "confidence": 0.8530431747436523
+            },
+            {
+                "text": "S",
+                "confidence": 0.8409606218338013
+            },
+            {
+                "text": "11",
+                "confidence": 0.5808918923139572
+            },
+            {
+                "text": "2θ=15.63°",
+                "confidence": 0.9263091617160373
+            },
+            {
+                "text": "+x²+0x-28",
+                "confidence": 0.9495791726642184
+            },
+            {
+                "text": "y=-f（x-4)",
+                "confidence": 0.8679726786083646
+            },
+            {
+                "text": "①0=4.8°",
+                "confidence": 0.7363940307072231
+            },
+            {
+                "text": "08x+24",
+                "confidence": 0.9285728534062704
+            },
+            {
+                "text": "②180°+20=195.6°=97.8°",
+                "confidence": 0.8853141892523992
+            },
+            {
+                "text": "ITWAS",
+                "confidence": 0.9814939856529236
+            },
+            {
+                "text": "?",
+                "confidence": 0.5837541818618774
+            },
+            {
+                "text": "asymplote-）x=0",
+                "confidence": 0.7501915267535618
+            },
+            {
+                "text": "asymptote=>x=0.",
+                "confidence": 0.8521544973055521
+            },
+            {
+                "text": "③360°+2=375.6°=187.8°",
+                "confidence": 0.8545935494559151
+            },
+            {
+                "text": "2",
+                "confidence": 0.9911113381385803
+            },
+            {
+                "text": "C",
+                "confidence": 0.6293185949325562
+            },
+            {
+                "text": "(0t（1.0)",
+                "confidence": 0.6309070400893688
+            },
+            {
+                "text": "using cale,tind the cords ohe tumingpoint of",
+                "confidence": 0.8007267354564234
+            },
+            {
+                "text": "y>-",
+                "confidence": 0.6652410328388214
+            },
+            {
+                "text": "y=f（x)=>f（x）=25x²ex-16，x∈R",
+                "confidence": 0.7825240263572106
+            },
+            {
+                "text": "®",
+                "confidence": 0.582707941532135
+            },
+            {
+                "text": "asymptote",
+                "confidence": 0.8121201992034912
+            },
+            {
+                "text": "h+（=x.",
+                "confidence": 0.6825236777464548
+            },
+            {
+                "text": "C",
+                "confidence": 0.537173867225647
+            },
+            {
+                "text": ">x==4",
+                "confidence": 0.7881855607032776
+            },
+            {
+                "text": "?",
+                "confidence": 0.70042484998703
+            },
+            {
+                "text": "vu，+uv=（e²x)（sox）+（2sx²）)（2e²x)",
+                "confidence": 0.7359182642352197
+            },
+            {
+                "text": "y=-F(x)",
+                "confidence": 0.8102952029023852
+            },
+            {
+                "text": "(S10)",
+                "confidence": 0.7520028233528138
+            },
+            {
+                "text": "dx.",
+                "confidence": 0.8018419941266378
+            },
+            {
+                "text": "mansyou",
+                "confidence": 0.8149506449699402
+            },
+            {
+                "text": "u=25x²u’=50x",
+                "confidence": 0.8686251963178316
+            },
+            {
+                "text": "S0xe2x+50x²e2x",
+                "confidence": 0.8351464079959052
+            },
+            {
+                "text": "epic uin thex-axis!",
+                "confidence": 0.7112368925621635
+            },
+            {
+                "text": "(5,0)",
+                "confidence": 0.7179915189743042
+            },
+            {
+                "text": "(-510)",
+                "confidence": 0.8420770814021429
+            },
+            {
+                "text": "fou mad thuo mistake",
+                "confidence": 0.8013192996382713
+            },
+            {
+                "text": "v=e2x",
+                "confidence": 0.903413462638855
+            },
+            {
+                "text": "v=2ex",
+                "confidence": 0.8662489295005799
+            },
+            {
+                "text": "e²x（sox+sox²)",
+                "confidence": 0.7915149055994474
+            },
+            {
+                "text": "betne!",
+                "confidence": 0.6985902190208435
+            },
+            {
+                "text": "③Givens（x+so)=Sin（x+40）",
+                "confidence": 0.754262299641319
+            },
+            {
+                "text": "50x（e2x+xex)",
+                "confidence": 0.8644305070241293
+            },
+            {
+                "text": "Show,with using a calulator（who ewen does tmat)that",
+                "confidence": 0.8532675002135482
+            },
+            {
+                "text": "（x+1）xx0s=0",
+                "confidence": 0.8236159167506478
+            },
+            {
+                "text": "91-=os0=x",
+                "confidence": 0.7464122441079881
+            },
+            {
+                "text": "01-16",
+                "confidence": 0.9042639613151551
+            },
+            {
+                "text": "So,50xe²x≠0",
+                "confidence": 0.7601817846298218
+            },
+            {
+                "text": "tanx=tan40°",
+                "confidence": 0.8891537379134785
+            },
+            {
+                "text": "OY",
+                "confidence": 0.7889531552791595
+            },
+            {
+                "text": "1+x\"0",
+                "confidence": 0.7304338812828064
+            },
+            {
+                "text": "2cosfc8o",
+                "confidence": 0.7306048534810543
+            },
+            {
+                "text": "上",
+                "confidence": 0.8489742279052734
+            },
+            {
+                "text": "Coords（-1,25e--16)",
+                "confidence": 0.8362942321432961
+            },
+            {
+                "text": "tanu",
+                "confidence": 0.5610644295811653
+            },
+            {
+                "text": "arx\"",
+                "confidence": 0.5267915427684784
+            },
+            {
+                "text": "sinxainso",
+                "confidence": 0.7399187948968675
+            },
+            {
+                "text": "y25（-1)²e2（-0-16",
+                "confidence": 0.7236598003655672
+            },
+            {
+                "text": "上",
+                "confidence": 0.5263374447822571
+            },
+            {
+                "text": "So...",
+                "confidence": 0.7527273774147034
+            },
+            {
+                "text": "Shaw that f(x)o can be wniten a",
+                "confidence": 0.8181531448518077
+            },
+            {
+                "text": "=2Se-²-16",
+                "confidence": 0.8223081496026781
+            },
+            {
+                "text": "2（cosxcasSo-sinxsinsd)=sinxcasuo°+sinuocosx",
+                "confidence": 0.7813070513481317
+            },
+            {
+                "text": "lteraionfomula:",
+                "confidence": 0.7477667252222697
+            },
+            {
+                "text": "K",
+                "confidence": 0.7562861442565918
+            },
+            {
+                "text": "xn+1=ye-",
+                "confidence": 0.6364412009716034
+            },
+            {
+                "text": "x0=0.S",
+                "confidence": 0.6927108019590378
+            },
+            {
+                "text": "16=2Sx²e2x",
+                "confidence": 0.8266780257225037
+            },
+            {
+                "text": "25",
+                "confidence": 0.9525795578956604
+            },
+            {
+                "text": "25",
+                "confidence": 0.8149891197681427
+            },
+            {
+                "text": "x=0.48S)X2=0.492x3=0.489",
+                "confidence": 0.8780081570148468
+            },
+            {
+                "text": "=)tanx（2tan",
+                "confidence": 0.8041868778792295
+            },
+            {
+                "text": "cosx（20oS0-sin)",
+                "confidence": 0.5348994533220927
+            },
+            {
+                "text": "Estimateforatod.p.(fc）ahast",
+                "confidence": 0.7917670453036273
+            },
+            {
+                "text": "cosx（2cass0-sin0",
+                "confidence": 0.700193265452981
+            },
+            {
+                "text": "rootawhe",
+                "confidence": 0.7905218526721001
+            },
+            {
+                "text": "x=x",
+                "confidence": 0.8475702206293741
+            },
+            {
+                "text": "se",
+                "confidence": 0.8652054369449615
+            },
+            {
+                "text": "a3d.s).",
+                "confidence": 0.656847711120333
+            },
+            {
+                "text": "f（0.485）=-0.487f（049s）=0.4gs→5ignchang;5oa=0.49",
+                "confidence": 0.7887825642494445
+            },
+            {
+                "text": "mustJie",
+                "confidence": 0.8834899323327201
+            },
+            {
+                "text": "behuneun.",
+                "confidence": 0.7502651794089211
+            }
+        ],
+        "full_text": "RCL 9 8 JuNE 2013-CORE3. 6 5 Given that 2sinxsinso°+sinxcos40+sin40cosx=2cesxcosSo° 3 cos So°=sin40° 3x4-2x²-5x2-44 2 Ans 2tanxsinso°+tanxcas4o+sin4o°#2cosSo ax²+bx+c+dx+c x10 sinSo°=cos 40° x-4 x2-4 simx（2sinso°+cos4o）=cosx(2cosSo°-Sin4o°) 3x²+10x h-xs-exz-x（-x 0 COSxC casx —3x²-12x3 =tanx（2sinSo°+cas4o°)。2cosso°-sin4o° 0+10x²-5x² 2sinSo°tco340° 2sinSo°+cas40° 10x3 a=3b=-2c=7d8e=2y （x²-4）-（x+2）（x-2) tanx2sinuo-sinyc Hen soweor 0≤θ≤360, ..IHOE! 0n+0 h-xo+xx<h-x 2cos（2θ+50）°=sin（2θ+40） sin400 3x²-2x++ to1d.p. 3cas40 CHANGE THE h-xo-xs-ex2-hx2（h-x0+x ②Given thatf（x）inx ,x>0 tan40° RANGE! -3x4+0x²-（2x² sketh tan4o 0-2x3+7x²-0x -2x3-0x²-8x (x）h ? arctan（tan2θ=tan40°) 0+72²+8x-4 S 11 2θ=15.63° +x²+0x-28 y=-f（x-4) ①0=4.8° 08x+24 ②180°+20=195.6°=97.8° ITWAS ? asymplote-）x=0 asymptote=>x=0. ③360°+2=375.6°=187.8° 2 C (0t（1.0) using cale,tind the cords ohe tumingpoint of y>- y=f（x)=>f（x）=25x²ex-16，x∈R ® asymptote h+（=x. C >x==4 ? vu，+uv=（e²x)（sox）+（2sx²）)（2e²x) y=-F(x) (S10) dx. mansyou u=25x²u’=50x S0xe2x+50x²e2x epic uin thex-axis! (5,0) (-510) fou mad thuo mistake v=e2x v=2ex e²x（sox+sox²) betne! ③Givens（x+so)=Sin（x+40） 50x（e2x+xex) Show,with using a calulator（who ewen does tmat)that （x+1）xx0s=0 91-=os0=x 01-16 So,50xe²x≠0 tanx=tan40° OY 1+x\"0 2cosfc8o 上 Coords（-1,25e--16) tanu arx\" sinxainso y25（-1)²e2（-0-16 上 So... Shaw that f(x)o can be wniten a =2Se-²-16 2（cosxcasSo-sinxsinsd)=sinxcasuo°+sinuocosx lteraionfomula: K xn+1=ye- x0=0.S 16=2Sx²e2x 25 25 x=0.48S)X2=0.492x3=0.489 =)tanx（2tan cosx（20oS0-sin) Estimateforatod.p.(fc）ahast cosx（2cass0-sin0 rootawhe x=x se a3d.s). f（0.485）=-0.487f（049s）=0.4gs→5ignchang;5oa=0.49 mustJie behuneun."
+    },
+    {
+        "filename": "mountain.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\mountain.jpg",
+        "extracted_text": [],
+        "full_text": ""
+    },
+    {
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
+        "extracted_text": [
+            {
+                "text": "AMERIC",
+                "confidence": 0.8407946626345316
+            },
+            {
+                "text": "250",
+                "confidence": 0.9045892357826233
+            },
+            {
+                "text": "W",
+                "confidence": 0.5968535542488098
+            },
+            {
+                "text": "VSVN",
+                "confidence": 0.6401835158467293
+            },
+            {
+                "text": "VSVN",
+                "confidence": 0.7696661800146103
+            },
+            {
+                "text": "mm...",
+                "confidence": 0.6245998978614807
+            }
+        ],
+        "full_text": "AMERIC 250 W VSVN VSVN mm..."
+    }
+]

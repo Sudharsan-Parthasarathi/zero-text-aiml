@@ -1,0 +1,122 @@
+[
+    {
+        "filename": "aiml.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
+        "cluster": 0,
+        "x": 5.179276466369629,
+        "y": -4.31487512588501,
+        "z": 24.89493179321289,
+        "x3d": 12.830843925476074,
+        "y3d": 4.645757675170898,
+        "z3d": 24.89493179321289,
+        "membership_probability": 0.8676520323686179
+    },
+    {
+        "filename": "art.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
+        "cluster": 1,
+        "x": 5.595097064971924,
+        "y": -2.762394428253174,
+        "z": 24.10785484313965,
+        "x3d": 12.962944030761719,
+        "y3d": 3.4402782917022705,
+        "z3d": 24.10785484313965,
+        "membership_probability": 1.0
+    },
+    {
+        "filename": "bio notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
+        "cluster": 0,
+        "x": 5.157798767089844,
+        "y": -5.080516815185547,
+        "z": 24.983600616455078,
+        "x3d": 12.178291320800781,
+        "y3d": 5.227971076965332,
+        "z3d": 24.983600616455078,
+        "membership_probability": 1.0
+    },
+    {
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "cluster": -1,
+        "x": 6.875234127044678,
+        "y": -3.5912108421325684,
+        "z": 23.986787796020508,
+        "x3d": 11.580260276794434,
+        "y3d": 3.833308696746826,
+        "z3d": 23.986787796020508,
+        "membership_probability": 0.0
+    },
+    {
+        "filename": "code.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg",
+        "cluster": 0,
+        "x": 4.843996524810791,
+        "y": -3.721797466278076,
+        "z": 24.174211502075195,
+        "x3d": 13.060613632202148,
+        "y3d": 4.83254861831665,
+        "z3d": 24.174211502075195,
+        "membership_probability": 0.9313641076386752
+    },
+    {
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
+        "cluster": 0,
+        "x": 5.87838077545166,
+        "y": -3.740910053253174,
+        "z": 24.713176727294922,
+        "x3d": 12.239880561828613,
+        "y3d": 4.049843788146973,
+        "z3d": 24.713176727294922,
+        "membership_probability": 0.8607688145404893
+    },
+    {
+        "filename": "football.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\football.jpg",
+        "cluster": -1,
+        "x": 6.713268280029297,
+        "y": -4.509958267211914,
+        "z": 23.70476722717285,
+        "x3d": 11.72024917602539,
+        "y3d": 4.847575664520264,
+        "z3d": 23.70476722717285,
+        "membership_probability": 0.0
+    },
+    {
+        "filename": "math_notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg",
+        "cluster": 0,
+        "x": 5.972016334533691,
+        "y": -4.7911152839660645,
+        "z": 24.17633056640625,
+        "x3d": 12.221942901611328,
+        "y3d": 5.293938159942627,
+        "z3d": 24.17633056640625,
+        "membership_probability": 1.0
+    },
+    {
+        "filename": "mountain.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\mountain.jpg",
+        "cluster": 1,
+        "x": 6.173111915588379,
+        "y": -2.6074650287628174,
+        "z": 23.61945915222168,
+        "x3d": 12.44627571105957,
+        "y3d": 3.216998338699341,
+        "z3d": 23.61945915222168,
+        "membership_probability": 1.0
+    },
+    {
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
+        "cluster": 0,
+        "x": 6.989426612854004,
+        "y": -2.9986424446105957,
+        "z": 23.310272216796875,
+        "x3d": 12.057451248168945,
+        "y3d": 4.206452369689941,
+        "z3d": 23.310272216796875,
+        "membership_probability": 0.8119119492106723
+    }
+]

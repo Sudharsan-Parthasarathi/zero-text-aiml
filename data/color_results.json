@@ -1,0 +1,512 @@
+[
+    {
+        "filename": "aiml.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#0D2C48",
+                "rgb": [
+                    13,
+                    44,
+                    72
+                ],
+                "percentage": 62.34
+            },
+            {
+                "hex": "#144D70",
+                "rgb": [
+                    20,
+                    77,
+                    112
+                ],
+                "percentage": 20.7
+            },
+            {
+                "hex": "#0C2A45",
+                "rgb": [
+                    12,
+                    42,
+                    69
+                ],
+                "percentage": 8.88
+            },
+            {
+                "hex": "#0C2C48",
+                "rgb": [
+                    12,
+                    44,
+                    72
+                ],
+                "percentage": 4.27
+            },
+            {
+                "hex": "#0D2C47",
+                "rgb": [
+                    13,
+                    44,
+                    71
+                ],
+                "percentage": 3.8
+            }
+        ]
+    },
+    {
+        "filename": "art.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#FEB045",
+                "rgb": [
+                    254,
+                    176,
+                    69
+                ],
+                "percentage": 23.85
+            },
+            {
+                "hex": "#C07682",
+                "rgb": [
+                    192,
+                    118,
+                    130
+                ],
+                "percentage": 22.57
+            },
+            {
+                "hex": "#F69443",
+                "rgb": [
+                    246,
+                    148,
+                    67
+                ],
+                "percentage": 21.35
+            },
+            {
+                "hex": "#9F4D68",
+                "rgb": [
+                    159,
+                    77,
+                    104
+                ],
+                "percentage": 17.97
+            },
+            {
+                "hex": "#EB7B3C",
+                "rgb": [
+                    235,
+                    123,
+                    60
+                ],
+                "percentage": 14.26
+            }
+        ]
+    },
+    {
+        "filename": "bio notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#D9DDDD",
+                "rgb": [
+                    217,
+                    221,
+                    221
+                ],
+                "percentage": 25.49
+            },
+            {
+                "hex": "#C8CBC7",
+                "rgb": [
+                    200,
+                    203,
+                    199
+                ],
+                "percentage": 25.35
+            },
+            {
+                "hex": "#848681",
+                "rgb": [
+                    132,
+                    134,
+                    129
+                ],
+                "percentage": 18.27
+            },
+            {
+                "hex": "#E5E4E4",
+                "rgb": [
+                    229,
+                    228,
+                    228
+                ],
+                "percentage": 15.95
+            },
+            {
+                "hex": "#EAEBED",
+                "rgb": [
+                    234,
+                    235,
+                    237
+                ],
+                "percentage": 14.95
+            }
+        ]
+    },
+    {
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#66687E",
+                "rgb": [
+                    102,
+                    104,
+                    126
+                ],
+                "percentage": 35.41
+            },
+            {
+                "hex": "#523F42",
+                "rgb": [
+                    82,
+                    63,
+                    66
+                ],
+                "percentage": 18.45
+            },
+            {
+                "hex": "#D0BDB9",
+                "rgb": [
+                    208,
+                    189,
+                    185
+                ],
+                "percentage": 17.35
+            },
+            {
+                "hex": "#9F8C8D",
+                "rgb": [
+                    159,
+                    140,
+                    141
+                ],
+                "percentage": 16.82
+            },
+            {
+                "hex": "#EADCD4",
+                "rgb": [
+                    234,
+                    220,
+                    212
+                ],
+                "percentage": 11.97
+            }
+        ]
+    },
+    {
+        "filename": "code.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#1F1F1F",
+                "rgb": [
+                    31,
+                    31,
+                    31
+                ],
+                "percentage": 73.32
+            },
+            {
+                "hex": "#373736",
+                "rgb": [
+                    55,
+                    55,
+                    54
+                ],
+                "percentage": 10.07
+            },
+            {
+                "hex": "#1C1C1C",
+                "rgb": [
+                    28,
+                    28,
+                    28
+                ],
+                "percentage": 6.76
+            },
+            {
+                "hex": "#201F1F",
+                "rgb": [
+                    32,
+                    31,
+                    31
+                ],
+                "percentage": 6.28
+            },
+            {
+                "hex": "#1E1F1F",
+                "rgb": [
+                    30,
+                    31,
+                    31
+                ],
+                "percentage": 3.58
+            }
+        ]
+    },
+    {
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#BFA082",
+                "rgb": [
+                    191,
+                    160,
+                    130
+                ],
+                "percentage": 25.65
+            },
+            {
+                "hex": "#534337",
+                "rgb": [
+                    83,
+                    67,
+                    55
+                ],
+                "percentage": 23.45
+            },
+            {
+                "hex": "#F2F1F1",
+                "rgb": [
+                    242,
+                    241,
+                    241
+                ],
+                "percentage": 19.0
+            },
+            {
+                "hex": "#E1D9D3",
+                "rgb": [
+                    225,
+                    217,
+                    211
+                ],
+                "percentage": 17.76
+            },
+            {
+                "hex": "#F8F8F9",
+                "rgb": [
+                    248,
+                    248,
+                    249
+                ],
+                "percentage": 14.14
+            }
+        ]
+    },
+    {
+        "filename": "football.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\football.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#14181D",
+                "rgb": [
+                    20,
+                    24,
+                    29
+                ],
+                "percentage": 27.95
+            },
+            {
+                "hex": "#82B045",
+                "rgb": [
+                    130,
+                    176,
+                    69
+                ],
+                "percentage": 23.48
+            },
+            {
+                "hex": "#60453B",
+                "rgb": [
+                    96,
+                    69,
+                    59
+                ],
+                "percentage": 19.58
+            },
+            {
+                "hex": "#9A8865",
+                "rgb": [
+                    154,
+                    136,
+                    101
+                ],
+                "percentage": 18.93
+            },
+            {
+                "hex": "#B1C573",
+                "rgb": [
+                    177,
+                    197,
+                    115
+                ],
+                "percentage": 10.06
+            }
+        ]
+    },
+    {
+        "filename": "math_notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#C4B2A6",
+                "rgb": [
+                    196,
+                    178,
+                    166
+                ],
+                "percentage": 24.25
+            },
+            {
+                "hex": "#DCCFCD",
+                "rgb": [
+                    220,
+                    207,
+                    205
+                ],
+                "percentage": 24.19
+            },
+            {
+                "hex": "#8D735D",
+                "rgb": [
+                    141,
+                    115,
+                    93
+                ],
+                "percentage": 19.9
+            },
+            {
+                "hex": "#EADED9",
+                "rgb": [
+                    234,
+                    222,
+                    217
+                ],
+                "percentage": 16.71
+            },
+            {
+                "hex": "#E6D7D3",
+                "rgb": [
+                    230,
+                    215,
+                    211
+                ],
+                "percentage": 14.95
+            }
+        ]
+    },
+    {
+        "filename": "mountain.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\mountain.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#8E8B2C",
+                "rgb": [
+                    142,
+                    139,
+                    44
+                ],
+                "percentage": 32.22
+            },
+            {
+                "hex": "#DBD6AF",
+                "rgb": [
+                    219,
+                    214,
+                    175
+                ],
+                "percentage": 24.79
+            },
+            {
+                "hex": "#3E5234",
+                "rgb": [
+                    62,
+                    82,
+                    52
+                ],
+                "percentage": 18.84
+            },
+            {
+                "hex": "#89AC79",
+                "rgb": [
+                    137,
+                    172,
+                    121
+                ],
+                "percentage": 16.12
+            },
+            {
+                "hex": "#52875E",
+                "rgb": [
+                    82,
+                    135,
+                    94
+                ],
+                "percentage": 8.03
+            }
+        ]
+    },
+    {
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#839BAD",
+                "rgb": [
+                    131,
+                    155,
+                    173
+                ],
+                "percentage": 32.67
+            },
+            {
+                "hex": "#3E3B39",
+                "rgb": [
+                    62,
+                    59,
+                    57
+                ],
+                "percentage": 23.98
+            },
+            {
+                "hex": "#889EB0",
+                "rgb": [
+                    136,
+                    158,
+                    176
+                ],
+                "percentage": 18.37
+            },
+            {
+                "hex": "#858B8F",
+                "rgb": [
+                    133,
+                    139,
+                    143
+                ],
+                "percentage": 12.65
+            },
+            {
+                "hex": "#C3C1BA",
+                "rgb": [
+                    195,
+                    193,
+                    186
+                ],
+                "percentage": 12.33
+            }
+        ]
+    }
+]
