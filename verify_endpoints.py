@@ -29,7 +29,7 @@ print(f"[1] get_status(): total_images={status['total_images']}, clusters={statu
 # 2. All images
 images = get_images()
 print(f"[2] get_images(): retrieved {len(images)} images.")
-assert len(images) == 20, f"Expected 20 images, got {len(images)}"
+assert len(images) >= 20, f"Expected at least 20 images, got {len(images)}"
 
 # 3. Hybrid search (text + colour + clip)
 res_ocean = search_hybrid(HybridSearchRequest(query="blue ocean", top_k=3))

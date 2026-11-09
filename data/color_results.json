@@ -918,6 +918,57 @@
         ]
     },
     {
+        "filename": "spiderman-upside-down_3840x2160_xtrafondos.com (2).jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\spiderman-upside-down_3840x2160_xtrafondos.com (2).jpg",
+        "dominant_colours": [
+            {
+                "hex": "#38222D",
+                "rgb": [
+                    56,
+                    34,
+                    45
+                ],
+                "percentage": 27.16
+            },
+            {
+                "hex": "#9E5278",
+                "rgb": [
+                    158,
+                    82,
+                    120
+                ],
+                "percentage": 21.16
+            },
+            {
+                "hex": "#96578E",
+                "rgb": [
+                    150,
+                    87,
+                    142
+                ],
+                "percentage": 20.78
+            },
+            {
+                "hex": "#B75E8D",
+                "rgb": [
+                    183,
+                    94,
+                    141
+                ],
+                "percentage": 16.24
+            },
+            {
+                "hex": "#753F53",
+                "rgb": [
+                    117,
+                    63,
+                    83
+                ],
+                "percentage": 14.66
+            }
+        ]
+    },
+    {
         "filename": "vintage_camera.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\vintage_camera.jpg",
         "dominant_colours": [

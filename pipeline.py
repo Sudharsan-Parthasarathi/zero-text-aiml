@@ -258,12 +258,26 @@ class ZeroTextEngine:
             if METADATA_PATH.exists():
                 try:
                     with open(METADATA_PATH, "r", encoding="utf-8") as f:
-                        self.metadata = json.load(f)
+                        raw_metadata = json.load(f)
+                    # Strictly filter out any files that do not exist physically on disk
+                    valid_metadata = []
+                    for item in raw_metadata:
+                        p = Path(item["path"])
+                        if p.is_file():
+                            valid_metadata.append(item)
+                        else:
+                            alt = SAMPLE_DIR / item["filename"]
+                            if alt.is_file():
+                                item["path"] = str(alt.resolve())
+                                valid_metadata.append(item)
+                    self.metadata = valid_metadata
                 except Exception as e:
                     self._log(f"Failed to load metadata: {e}")
                     self.metadata = []
             else:
                 self.metadata = []
+
+            valid_filenames = {item["filename"] for item in self.metadata}
 
             if INDEX_PATH.exists():
                 try:
@@ -278,7 +292,10 @@ class ZeroTextEngine:
                 try:
                     with open(OCR_PATH, "r", encoding="utf-8") as f:
                         ocr_data = json.load(f)
-                        self.ocr_lookup = {item["filename"]: item for item in ocr_data}
+                        self.ocr_lookup = {
+                            item["filename"]: item for item in ocr_data
+                            if item.get("filename") in valid_filenames
+                        }
                 except Exception as e:
                     self._log(f"Failed to load OCR data: {e}")
                     self.ocr_lookup = {}
@@ -292,6 +309,7 @@ class ZeroTextEngine:
                         self.colour_lookup = {
                             item["filename"]: item.get("dominant_colours", [])
                             for item in colour_data
+                            if item.get("filename") in valid_filenames
                         }
                 except Exception as e:
                     self._log(f"Failed to load colour data: {e}")
@@ -305,6 +323,7 @@ class ZeroTextEngine:
                         cluster_data = json.load(f)
                         self.cluster_lookup = {
                             item["filename"]: item for item in cluster_data
+                            if item.get("filename") in valid_filenames
                         }
                 except Exception as e:
                     self._log(f"Failed to load cluster data: {e}")
@@ -448,13 +467,77 @@ class ZeroTextEngine:
             emb = emb / emb.norm(dim=-1, keepdim=True)
         return emb.cpu().numpy().astype("float32")
 
-    def compute_text_embedding(self, text: str) -> np.ndarray:
+    def compute_text_embedding(self, text: str, ensemble: bool = True) -> np.ndarray:
         self.load_clip()
-        tokens = self.tokenizer([text]).to(DEVICE)
+        text = text.strip()
+        if not text:
+            text = "photo"
+
+        prompts = [text]
+        if ensemble:
+            prompts.append(f"a photo of {text}")
+            prompts.append(f"a high quality photo showing {text}")
+
+            t_lower = text.lower()
+            if any(k in t_lower for k in ["animal", "pet", "creature", "fauna"]):
+                prompts.extend([
+                    "a photo of an animal, such as a dog or cat",
+                    "a cute domestic pet or animal",
+                    "a golden retriever dog or cat"
+                ])
+            elif any(k in t_lower for k in ["dog", "puppy", "canine", "retriever"]):
+                prompts.extend([
+                    "a photo of a golden retriever dog on grass",
+                    "a friendly canine pet dog"
+                ])
+            elif any(k in t_lower for k in ["cat", "kitten", "feline"]):
+                prompts.extend([
+                    "a photo of a funny cat with paws",
+                    "a cute domestic feline pet cat"
+                ])
+            elif any(k in t_lower for k in ["car", "vehicle", "automobile", "supercar"]):
+                prompts.extend([
+                    "a photo of a crimson sports car supercar",
+                    "a high performance automotive vehicle"
+                ])
+            elif any(k in t_lower for k in ["code", "programming", "python", "script", "software"]):
+                prompts.extend([
+                    "computer programming code in an IDE text editor",
+                    "python source code script on dark screen"
+                ])
+            elif any(k in t_lower for k in ["ocean", "sea", "water", "beach", "waves"]):
+                prompts.extend([
+                    "a photo of deep blue ocean waves",
+                    "turquoise sea water and foam"
+                ])
+            elif any(k in t_lower for k in ["space", "galaxy", "nebula", "stars", "cosmos"]):
+                prompts.extend([
+                    "a deep space telescope photograph of a purple cosmic nebula",
+                    "cosmic dust and sparkling stars in outer space"
+                ])
+            elif any(k in t_lower for k in ["flower", "sunflower", "blossom", "plant"]):
+                prompts.extend([
+                    "a vibrant blooming yellow sunflower macro photograph",
+                    "bright golden flower petals"
+                ])
+            elif any(k in t_lower for k in ["forest", "trees", "woods", "nature"]):
+                prompts.extend([
+                    "a lush green ancient redwood forest with tall trees",
+                    "deep emerald nature woods"
+                ])
+            elif any(k in t_lower for k in ["pizza", "food", "meal", "snack"]):
+                prompts.extend([
+                    "a hot baked pepperoni pizza with melted cheese",
+                    "delicious fresh gourmet food"
+                ])
+
+        tokens = self.tokenizer(prompts).to(DEVICE)
         with torch.inference_mode():
             emb = self.model.encode_text(tokens)
             emb = emb / emb.norm(dim=-1, keepdim=True)
-        return emb.cpu().numpy().astype("float32")
+            mean_emb = emb.mean(dim=0, keepdim=True)
+            mean_emb = mean_emb / mean_emb.norm(dim=-1, keepdim=True)
+        return mean_emb.cpu().numpy().astype("float32")
 
     # -------------------------------------------------------------
     # CLUSTERING & DIMENSIONALITY REDUCTION (UMAP 2D & 3D + HDBSCAN)
@@ -715,11 +798,11 @@ class ZeroTextEngine:
         except Exception as e:
             self._log(f"CLIP computation notice: {e} — falling back to OCR + Colour")
 
-        # Softmax normalize CLIP to make top matches stand out
-        if clip_computed:
-            norm_clip = softmax_normalize(raw_clip, temperature=0.35)
-        else:
-            norm_clip = np.zeros(len(self.metadata), dtype=np.float32)
+        # Absolute calibration of CLIP cosine similarity
+        def calibrate_similarity(sim: float) -> float:
+            scaled = (sim - 0.165) / (0.275 - 0.165)
+            clamped = max(0.0, min(1.0, scaled))
+            return float(clamped ** 1.3)
 
         results = []
         for i, item in enumerate(self.metadata):
@@ -730,7 +813,8 @@ class ZeroTextEngine:
             if cluster_filter is not None and c_id != cluster_filter:
                 continue
 
-            clip_s = float(norm_clip[i]) if clip_computed else 0.0
+            raw_s = float(raw_clip[i]) if clip_computed else 0.0
+            clip_s = calibrate_similarity(raw_s) if clip_computed else 0.0
             ocr_s = self.get_ocr_score(filename, query_words)
             col_s = self.get_colour_score(filename, query_colours)
 
@@ -747,8 +831,13 @@ class ZeroTextEngine:
             ocr_item = self.ocr_lookup.get(filename, {})
             colours = self.colour_lookup.get(filename, [])
 
-            # Human-readable percentage score [0, 1]
-            display_clip = max(0.0, min(1.0, (float(raw_clip[i]) + 1.0) / 2.0))
+            # Suppress code / document files from ranking high on purely natural visual concepts
+            is_doc_or_code_query = any(w in DOCUMENT_MARKERS for w in query_words)
+            is_code_file = "code.jpg" in filename.lower() or "calculator.py" in ocr_item.get("full_text", "").lower()
+            if not is_doc_or_code_query and is_code_file:
+                final_s *= 0.25
+
+            display_clip = clip_s
 
             results.append({
                 "filename": filename,

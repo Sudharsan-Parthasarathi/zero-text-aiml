@@ -246,9 +246,12 @@
     </div>
 
     <div class="inspector-body">
-      <!-- High-res preview -->
-      <div class="inspector-preview-wrap">
+      <!-- High-res preview (Clickable for full screen) -->
+      <div class="inspector-preview-wrap" id="drawer-preview-wrap" title="Click to view full screen">
         <img class="inspector-preview-img" id="drawer-preview" src="" alt="Selected Preview" />
+        <div class="fullscreen-hint">
+          <span>⛶</span> Full Screen
+        </div>
       </div>
 
       <!-- Match Scores -->
@@ -429,6 +432,37 @@
             <div>[00:00:00] Initializing ingestion pipeline...</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: FULL SCREEN IMAGE LIGHTBOX
+       ============================================================ -->
+  <div class="lightbox-overlay" id="modal-lightbox">
+    <div class="lightbox-header">
+      <div class="lightbox-title-wrap">
+        <span class="card-cluster-badge" id="lightbox-cluster-badge">Cluster</span>
+        <h2 class="lightbox-title" id="lightbox-title">Image Name</h2>
+        <span class="lightbox-score" id="lightbox-score">100% Match</span>
+      </div>
+      <div class="lightbox-controls">
+        <button class="btn btn-icon" id="lightbox-zoom-in" title="Zoom In">🔍+</button>
+        <button class="btn btn-icon" id="lightbox-zoom-out" title="Zoom Out">🔍−</button>
+        <button class="btn btn-icon" id="lightbox-zoom-reset" title="Reset Zoom">⟲</button>
+        <button class="close-btn" id="close-lightbox-btn" title="Close (ESC)">✕</button>
+      </div>
+    </div>
+    <div class="lightbox-viewport" id="lightbox-viewport">
+      <img class="lightbox-img" id="lightbox-img" src="" alt="Full Screen Preview" />
+    </div>
+    <div class="lightbox-footer">
+      <div id="lightbox-meta-info" style="display:flex;gap:18px;align-items:center;">
+        <span id="lightbox-dims" style="color:var(--text-muted)"></span>
+        <span id="lightbox-path" style="color:var(--text-dim);font-family:monospace"></span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-dim)">
+        Press <kbd style="background:var(--bg-card);padding:2px 6px;border-radius:4px;border:1px solid var(--border-subtle)">ESC</kbd> or click ✕ to close
       </div>
     </div>
   </div>

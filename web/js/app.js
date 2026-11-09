@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     currentMatchIndex: 0,
     searchDebounceTimer: null,
+    lightboxZoom: 1.0,
   };
 
   // UI Elements
@@ -98,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawerCloseBtn: document.getElementById('drawer-close-btn'),
     drawerTitle: document.getElementById('drawer-title'),
     drawerPreview: document.getElementById('drawer-preview'),
+    drawerPreviewWrap: document.getElementById('drawer-preview-wrap'),
     drawerScoreFinal: document.getElementById('score-final'),
     drawerScoreClip: document.getElementById('score-clip'),
     drawerScoreOcr: document.getElementById('score-ocr'),
@@ -111,6 +113,20 @@ document.addEventListener('DOMContentLoaded', () => {
     drawerCopyOcrBtn: document.getElementById('drawer-copy-ocr-btn'),
     drawerSimilarBtn: document.getElementById('drawer-similar-btn'),
     drawerCopyPathBtn: document.getElementById('drawer-copy-path-btn'),
+
+    // Lightbox Modal
+    modalLightbox: document.getElementById('modal-lightbox'),
+    lightboxImg: document.getElementById('lightbox-img'),
+    lightboxTitle: document.getElementById('lightbox-title'),
+    lightboxScore: document.getElementById('lightbox-score'),
+    lightboxClusterBadge: document.getElementById('lightbox-cluster-badge'),
+    lightboxDims: document.getElementById('lightbox-dims'),
+    lightboxPath: document.getElementById('lightbox-path'),
+    closeLightboxBtn: document.getElementById('close-lightbox-btn'),
+    lightboxZoomIn: document.getElementById('lightbox-zoom-in'),
+    lightboxZoomOut: document.getElementById('lightbox-zoom-out'),
+    lightboxZoomReset: document.getElementById('lightbox-zoom-reset'),
+    lightboxViewport: document.getElementById('lightbox-viewport'),
 
     // Sketch Modal
     btnOpenSketch: document.getElementById('btn-open-sketch'),
@@ -354,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       card.addEventListener('click', () => selectItem(item));
+      card.addEventListener('dblclick', () => openFullScreen(item));
       wrapper.appendChild(card);
     });
   }
@@ -484,6 +501,85 @@ document.addEventListener('DOMContentLoaded', () => {
   el.drawerCloseBtn.addEventListener('click', () => {
     el.drawer.classList.remove('open');
   });
+
+  // -------------------------------------------------------------
+  // FULL SCREEN LIGHTBOX (Clicking Preview in Drawer or Card)
+  // -------------------------------------------------------------
+  function openFullScreen(item) {
+    if (!item) return;
+    state.lightboxZoom = 1.0;
+    el.lightboxImg.style.transform = 'scale(1)';
+    el.lightboxImg.src = `/api/image/${encodeURIComponent(item.filename)}`;
+    el.lightboxTitle.textContent = item.filename;
+
+    const pct = Math.round((item.final ?? item.clip ?? 0) * 100);
+    el.lightboxScore.textContent = `${pct}% Match`;
+
+    const cId = item.cluster ?? -1;
+    el.lightboxClusterBadge.textContent = cId === -1 ? 'Noise' : `Cluster ${cId}`;
+    el.lightboxClusterBadge.style.background = item.cluster_color || '#4cc9f0';
+
+    el.lightboxPath.textContent = item.path || item.filename;
+    el.lightboxDims.textContent = 'Loading dimensions...';
+
+    el.lightboxImg.onload = () => {
+      el.lightboxDims.textContent = `${el.lightboxImg.naturalWidth} × ${el.lightboxImg.naturalHeight} px`;
+    };
+
+    el.modalLightbox.classList.add('open');
+  }
+
+  function closeFullScreen() {
+    el.modalLightbox.classList.remove('open');
+    state.lightboxZoom = 1.0;
+    if (el.lightboxImg) el.lightboxImg.style.transform = 'scale(1)';
+  }
+
+  function updateZoom(delta) {
+    state.lightboxZoom = Math.max(0.5, Math.min(4.0, state.lightboxZoom + delta));
+    if (el.lightboxImg) el.lightboxImg.style.transform = `scale(${state.lightboxZoom.toFixed(2)})`;
+  }
+
+  if (el.drawerPreviewWrap) {
+    el.drawerPreviewWrap.addEventListener('click', () => {
+      if (state.selectedItem) {
+        openFullScreen(state.selectedItem);
+      }
+    });
+  }
+
+  if (el.closeLightboxBtn) {
+    el.closeLightboxBtn.addEventListener('click', closeFullScreen);
+  }
+
+  if (el.lightboxZoomIn) {
+    el.lightboxZoomIn.addEventListener('click', () => updateZoom(0.25));
+  }
+  if (el.lightboxZoomOut) {
+    el.lightboxZoomOut.addEventListener('click', () => updateZoom(-0.25));
+  }
+  if (el.lightboxZoomReset) {
+    el.lightboxZoomReset.addEventListener('click', () => {
+      state.lightboxZoom = 1.0;
+      if (el.lightboxImg) el.lightboxImg.style.transform = 'scale(1)';
+    });
+  }
+
+  if (el.lightboxViewport) {
+    el.lightboxViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      updateZoom(delta);
+    }, { passive: false });
+  }
+
+  if (el.modalLightbox) {
+    el.modalLightbox.addEventListener('click', (e) => {
+      if (e.target === el.modalLightbox || e.target === el.lightboxViewport) {
+        closeFullScreen();
+      }
+    });
+  }
 
   // -------------------------------------------------------------
   // AI PRESET BUTTONS
@@ -1005,6 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      closeFullScreen();
       el.drawer.classList.remove('open');
       el.modalSketch.classList.remove('open');
       el.modalAdd.classList.remove('open');
