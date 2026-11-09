@@ -3,10 +3,16 @@ ZERO-TEXT API SERVER
 FastAPI backend powering the Interactive 2D/3D Visual Galaxy and Multi-modal Search System.
 """
 
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import base64
 import io
 import mimetypes
-import os
 import shutil
 from pathlib import Path
 from typing import List, Optional

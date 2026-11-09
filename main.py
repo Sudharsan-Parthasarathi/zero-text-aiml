@@ -10,7 +10,16 @@ Usage:
 """
 
 import argparse
+import os
 import sys
+
+# Critical Windows OpenMP and DLL protection
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import threading
 import time
 import webbrowser

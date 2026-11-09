@@ -2,6 +2,12 @@
 ZERO-TEXT INTEGRATION & ENDPOINT VERIFICATION TEST
 """
 
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import base64
 import sys
 from pathlib import Path

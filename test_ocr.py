@@ -1,8 +1,14 @@
 from pathlib import Path
+import os
+import sys
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from importlib import import_module
 import json
 import time
-import sys
 
 # Enable UTF-8 output in Windows terminal
 if hasattr(sys.stdout, "reconfigure"):
@@ -12,12 +18,15 @@ if hasattr(sys.stdout, "reconfigure"):
     )
 
 try:
-    RapidOCR = import_module("rapidocr_onnxruntime").RapidOCR
-except ImportError as error:
-    raise SystemExit(
-        "RapidOCR is not installed. Install it with: "
-        "python -m pip install rapidocr-onnxruntime"
-    ) from error
+    from rapidocr import RapidOCR
+except ImportError:
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+    except ImportError as error:
+        raise SystemExit(
+            "RapidOCR is not installed. Install it with: "
+            "python -m pip install rapidocr"
+        ) from error
 
 # ==========================================
 # ZERO-TEXT OCR ENGINE
@@ -64,19 +73,27 @@ for image_path in image_paths:
     print("\nProcessing:", image_path.name)
 
     try:
-        result, elapsed = ocr(str(image_path))
-
+        output = ocr(str(image_path))
         extracted_text = []
 
-        if result:
-            for item in result:
-                text = item[1]
-                confidence = float(item[2])
-
-                extracted_text.append({
-                    "text": text,
-                    "confidence": confidence
-                })
+        # Handle RapidOCR 3.x dataclass output
+        if hasattr(output, "txts") and output.txts:
+            txts = output.txts or ()
+            scores = getattr(output, "scores", None) or ()
+            for t, s in zip(txts, scores):
+                conf = float(s) if s is not None else 0.85
+                if conf >= 0.35 and t.strip():
+                    extracted_text.append({"text": t.strip(), "confidence": round(conf, 3)})
+        # Handle legacy tuple format (result_list, elapsed)
+        elif isinstance(output, (tuple, list)):
+            result = output[0] if (isinstance(output, tuple) and len(output) > 0) else output
+            if result and isinstance(result, list):
+                for item in result:
+                    if isinstance(item, (list, tuple)) and len(item) >= 3:
+                        text = item[1]
+                        confidence = float(item[2])
+                        if confidence >= 0.35 and text.strip():
+                            extracted_text.append({"text": text.strip(), "confidence": round(confidence, 3)})
 
         combined_text = " ".join(
             item["text"] for item in extracted_text
