@@ -382,6 +382,25 @@ class ZeroTextEngine:
 
         adapter.eval()
         self.sketch_adapter = adapter
+
+        # Validation & Retrieval Metrics Benchmark
+        with torch.inference_mode():
+            val_proj = adapter(X_sk)
+            val_sims = val_proj @ Y_all.T
+            top_k_val = min(3, Y_all.shape[0])
+            topk_indices = torch.topk(val_sims, k=top_k_val, dim=-1).indices
+            top1_correct = (topk_indices[:, 0] == targets).sum().item()
+            top3_correct = ((topk_indices == targets.unsqueeze(1)).any(dim=1)).sum().item()
+            ranks = []
+            for i, t in enumerate(targets):
+                order = torch.argsort(val_sims[i], descending=True)
+                rank = (order == t).nonzero(as_tuple=True)[0].item() + 1
+                ranks.append(1.0 / rank)
+            mrr = sum(ranks) / len(ranks)
+            top1_prec = (top1_correct / len(targets)) * 100
+            top3_rec = (top3_correct / len(targets)) * 100
+            self._log(f"SketchAdapter Evaluation: Precision@1: {top1_prec:.1f}%, Recall@3: {top3_rec:.1f}%, MRR: {mrr:.4f}")
+
         try:
             torch.save(adapter.state_dict(), SKETCH_ADAPTER_PATH)
             self._log(f"Fine-tuned SketchAdapter saved to {SKETCH_ADAPTER_PATH.name} (final loss: {loss.item():.4f})")
@@ -531,6 +550,78 @@ class ZeroTextEngine:
             return str(sample)
         return str(SAMPLE_DIR / filename)
 
+    def delete_image(self, filename: str) -> bool:
+        """
+        Permanently delete an image: removes the physical file from disk,
+        removes it from metadata, OCR, color, and cluster lookups,
+        rebuilds the FAISS index from remaining embeddings, and persists changes.
+        """
+        with self._lock:
+            # Find the image in metadata
+            idx = -1
+            item_to_remove = None
+            for i, item in enumerate(self.metadata):
+                if item["filename"] == filename:
+                    idx = i
+                    item_to_remove = item
+                    break
+
+            if idx == -1:
+                # Also check if it exists in SAMPLE_DIR even if missing in metadata
+                target_file = SAMPLE_DIR / filename
+                if target_file.is_file():
+                    try:
+                        target_file.unlink()
+                        return True
+                    except Exception:
+                        pass
+                return False
+
+            # 1. Remove physical file
+            try:
+                p = Path(item_to_remove["path"])
+                if p.is_file():
+                    p.unlink()
+            except Exception as e:
+                self._log(f"Notice deleting file from disk: {e}")
+
+            target_alt = SAMPLE_DIR / filename
+            if target_alt.is_file():
+                try:
+                    target_alt.unlink()
+                except Exception:
+                    pass
+
+            # 2. Rebuild FAISS index without the deleted item
+            if self.index is not None and self.index.ntotal > 0:
+                try:
+                    n_total = self.index.ntotal
+                    if n_total == len(self.metadata):
+                        all_vecs = np.array(self.index.reconstruct_n(0, n_total))
+                        keep_mask = [i != idx for i in range(len(self.metadata))]
+                        if any(keep_mask):
+                            remaining_vecs = all_vecs[keep_mask]
+                            new_index = faiss.IndexFlatIP(DIMENSIONS)
+                            new_index.add(remaining_vecs.astype("float32"))
+                            self.index = new_index
+                        else:
+                            self.index = faiss.IndexFlatIP(DIMENSIONS)
+                    else:
+                        self._log("Index size mismatch during delete; re-syncing index.")
+                except Exception as e:
+                    self._log(f"Error rebuilding index on delete: {e}")
+
+            # 3. Remove from metadata and lookups
+            self.metadata.pop(idx)
+            self.ocr_lookup.pop(filename, None)
+            self.colour_lookup.pop(filename, None)
+            self.cluster_lookup.pop(filename, None)
+
+            # 4. Save updated data
+            self._save_data()
+            self._log(f"Successfully deleted {filename}. Remaining images: {len(self.metadata)}")
+            return True
+
     # -------------------------------------------------------------
     # FEATURE EXTRACTION
     # -------------------------------------------------------------
@@ -657,6 +748,35 @@ class ZeroTextEngine:
         else:
             inv_np = gray_np.copy()
 
+        # --- Auto-center & scale-normalize stroke bounding box ---
+        # When users draw off-center or small sketches, this brings the stroke
+        # into central focus with 15% margin, matching CLIP's receptive field
+        stroke_mask = inv_np > 25
+        if np.any(stroke_mask):
+            ys, xs = np.nonzero(stroke_mask)
+            y_min, y_max = int(ys.min()), int(ys.max())
+            x_min, x_max = int(xs.min()), int(xs.max())
+            box_h = y_max - y_min + 1
+            box_w = x_max - x_min + 1
+            h, w = inv_np.shape[:2]
+
+            if box_h > 12 and box_w > 12 and (box_h < h * 0.90 or box_w < w * 0.90):
+                pad_y = int(box_h * 0.15)
+                pad_x = int(box_w * 0.15)
+                crop_y1 = max(0, y_min - pad_y)
+                crop_y2 = min(h, y_max + pad_y + 1)
+                crop_x1 = max(0, x_min - pad_x)
+                crop_x2 = min(w, x_max + pad_x + 1)
+                cropped = inv_np[crop_y1:crop_y2, crop_x1:crop_x2]
+
+                ch, cw = cropped.shape[:2]
+                square_size = max(ch, cw)
+                centered = np.zeros((square_size, square_size), dtype=np.uint8)
+                off_y = (square_size - ch) // 2
+                off_x = (square_size - cw) // 2
+                centered[off_y:off_y + ch, off_x:off_x + cw] = cropped
+                inv_np = cv2.resize(centered, (w, h), interpolation=cv2.INTER_LINEAR)
+
         views: List[Image.Image] = []
         weights: List[float] = []
 
@@ -735,13 +855,12 @@ class ZeroTextEngine:
         self.load_clip()
         views, weights = self._preprocess_sketch_views(sketch_img)
 
-        embeddings: List[torch.Tensor] = []
-        for view in views:
-            tensor = self.preprocess(view).unsqueeze(0).to(DEVICE)
-            with torch.inference_mode():
-                emb = self.model.encode_image(tensor)
-                emb = emb / emb.norm(dim=-1, keepdim=True)
-            embeddings.append(emb)
+        tensors = torch.stack([self.preprocess(view) for view in views]).to(DEVICE)
+        with torch.inference_mode():
+            batch_emb = self.model.encode_image(tensors)
+            batch_emb = batch_emb / batch_emb.norm(dim=-1, keepdim=True)
+
+        embeddings: List[torch.Tensor] = [batch_emb]
 
         if text_hint and text_hint.strip():
             hint = text_hint.strip()
@@ -750,13 +869,12 @@ class ZeroTextEngine:
                 f"a photograph of {hint}",
                 f"a real photo of {hint}",
             ]
-            for p in prompts:
-                tokens = self.tokenizer([p]).to(DEVICE)
-                with torch.inference_mode():
-                    t_emb = self.model.encode_text(tokens)
-                    t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
-                embeddings.append(t_emb)
-                weights.append(1.5)
+            tokens = self.tokenizer(prompts).to(DEVICE)
+            with torch.inference_mode():
+                t_emb = self.model.encode_text(tokens)
+                t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
+            embeddings.append(t_emb)
+            weights.extend([1.5] * len(prompts))
 
         stacked = torch.cat(embeddings, dim=0)
         weights_t = torch.tensor(weights, dtype=torch.float32, device=DEVICE).unsqueeze(1)

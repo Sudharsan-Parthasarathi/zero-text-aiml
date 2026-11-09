@@ -12,18 +12,6 @@
         "membership_probability": 1.0
     },
     {
-        "filename": "art.jpg",
-        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
-        "cluster": 1,
-        "x": 0.10908406972885132,
-        "y": 17.64805793762207,
-        "z": 6.65308141708374,
-        "x3d": 0.658553957939148,
-        "y3d": 7.012164115905762,
-        "z3d": 6.65308141708374,
-        "membership_probability": 1.0
-    },
-    {
         "filename": "bio notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
         "cluster": 0,

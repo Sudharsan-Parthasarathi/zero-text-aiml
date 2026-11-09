@@ -51,57 +51,6 @@
         ]
     },
     {
-        "filename": "art.jpg",
-        "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
-        "dominant_colours": [
-            {
-                "hex": "#FEB045",
-                "rgb": [
-                    254,
-                    176,
-                    69
-                ],
-                "percentage": 23.85
-            },
-            {
-                "hex": "#C07682",
-                "rgb": [
-                    192,
-                    118,
-                    130
-                ],
-                "percentage": 22.57
-            },
-            {
-                "hex": "#F69443",
-                "rgb": [
-                    246,
-                    148,
-                    67
-                ],
-                "percentage": 21.35
-            },
-            {
-                "hex": "#9F4D68",
-                "rgb": [
-                    159,
-                    77,
-                    104
-                ],
-                "percentage": 17.97
-            },
-            {
-                "hex": "#EB7B3C",
-                "rgb": [
-                    235,
-                    123,
-                    60
-                ],
-                "percentage": 14.26
-            }
-        ]
-    },
-    {
         "filename": "bio notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
         "dominant_colours": [

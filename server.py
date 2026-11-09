@@ -120,6 +120,14 @@ def get_image(filename: str):
     return FileResponse(path, media_type=mime_type or "image/jpeg")
 
 
+@app.delete("/api/image/{filename}")
+def delete_image(filename: str):
+    success = engine.delete_image(filename)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Image {filename} not found or could not be deleted.")
+    return {"status": "ok", "message": f"Image {filename} deleted successfully.", "filename": filename}
+
+
 @app.get("/api/search/recommend_weights")
 def get_recommended_weights(query: str):
     """

@@ -113,6 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
     drawerCopyOcrBtn: document.getElementById('drawer-copy-ocr-btn'),
     drawerSimilarBtn: document.getElementById('drawer-similar-btn'),
     drawerCopyPathBtn: document.getElementById('drawer-copy-path-btn'),
+    drawerDeleteBtn: document.getElementById('drawer-delete-btn'),
+
+    // Delete Confirmation Modal
+    modalDeleteConfirm: document.getElementById('modal-delete-confirm'),
+    deleteConfirmThumb: document.getElementById('delete-confirm-thumb'),
+    deleteConfirmFilename: document.getElementById('delete-confirm-filename'),
+    deleteCancelBtn: document.getElementById('delete-cancel-btn'),
+    deleteCancelX: document.getElementById('delete-cancel-x'),
+    deleteConfirmBtn: document.getElementById('delete-confirm-btn'),
 
     // Lightbox Modal
     modalLightbox: document.getElementById('modal-lightbox'),
@@ -562,6 +571,88 @@ document.addEventListener('DOMContentLoaded', () => {
     el.lightboxZoomReset.addEventListener('click', () => {
       state.lightboxZoom = 1.0;
       if (el.lightboxImg) el.lightboxImg.style.transform = 'scale(1)';
+    });
+  }
+
+  // -------------------------------------------------------------
+  // IMAGE DELETION WITH CONFIRMATION POP-UP
+  // -------------------------------------------------------------
+  state.itemToDelete = null;
+
+  function openDeleteModal(item) {
+    if (!item) return;
+    state.itemToDelete = item;
+    if (el.deleteConfirmThumb) {
+      el.deleteConfirmThumb.src = `/api/image/${encodeURIComponent(item.filename)}`;
+    }
+    if (el.deleteConfirmFilename) {
+      el.deleteConfirmFilename.textContent = item.filename;
+    }
+    if (el.modalDeleteConfirm) {
+      el.modalDeleteConfirm.classList.add('open');
+    }
+  }
+
+  function closeDeleteModal() {
+    state.itemToDelete = null;
+    if (el.modalDeleteConfirm) {
+      el.modalDeleteConfirm.classList.remove('open');
+    }
+  }
+
+  if (el.drawerDeleteBtn) {
+    el.drawerDeleteBtn.addEventListener('click', () => {
+      if (state.selectedItem) {
+        openDeleteModal(state.selectedItem);
+      }
+    });
+  }
+
+  if (el.deleteCancelBtn) el.deleteCancelBtn.addEventListener('click', closeDeleteModal);
+  if (el.deleteCancelX) el.deleteCancelX.addEventListener('click', closeDeleteModal);
+
+  if (el.deleteConfirmBtn) {
+    el.deleteConfirmBtn.addEventListener('click', async () => {
+      const item = state.itemToDelete;
+      if (!item) return;
+      el.deleteConfirmBtn.disabled = true;
+      el.deleteConfirmBtn.textContent = 'Deleting...';
+      try {
+        const resp = await fetch(`/api/image/${encodeURIComponent(item.filename)}`, {
+          method: 'DELETE',
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || 'Failed to delete image');
+        }
+
+        // Close modal and drawer
+        closeDeleteModal();
+        if (state.selectedItem && state.selectedItem.filename === item.filename) {
+          state.selectedItem = null;
+          el.drawer.classList.remove('open');
+        }
+
+        // Remove from local state
+        state.allImages = state.allImages.filter(x => x.filename !== item.filename);
+        state.displayedImages = state.displayedImages.filter(x => x.filename !== item.filename);
+
+        // Update stats
+        if (el.statTotal) el.statTotal.textContent = state.allImages.length;
+
+        // Re-render UI immediately
+        renderGrid(state.displayedImages);
+        galaxy2d.setData(state.displayedImages);
+        galaxy3d.setData(state.displayedImages);
+        if (galaxy2d.render) galaxy2d.render();
+
+        showToast(`Image "${item.filename}" permanently deleted.`);
+      } catch (err) {
+        alert(`Could not delete image: ${err.message}`);
+      } finally {
+        el.deleteConfirmBtn.disabled = false;
+        el.deleteConfirmBtn.textContent = 'Confirm Delete';
+      }
     });
   }
 
