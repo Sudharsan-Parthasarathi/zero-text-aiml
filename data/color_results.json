@@ -1069,5 +1069,56 @@
                 "percentage": 12.1
             }
         ]
+    },
+    {
+        "filename": "among-us-vicious-smile-512x512.png",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\among-us-vicious-smile-512x512.png",
+        "dominant_colours": [
+            {
+                "hex": "#EE100F",
+                "rgb": [
+                    238,
+                    16,
+                    15
+                ],
+                "percentage": 33.37
+            },
+            {
+                "hex": "#73022E",
+                "rgb": [
+                    115,
+                    2,
+                    46
+                ],
+                "percentage": 25.29
+            },
+            {
+                "hex": "#0A0001",
+                "rgb": [
+                    10,
+                    0,
+                    1
+                ],
+                "percentage": 20.72
+            },
+            {
+                "hex": "#D9D9DF",
+                "rgb": [
+                    217,
+                    217,
+                    223
+                ],
+                "percentage": 19.43
+            },
+            {
+                "hex": "#931010",
+                "rgb": [
+                    147,
+                    16,
+                    16
+                ],
+                "percentage": 1.19
+            }
+        ]
     }
 ]

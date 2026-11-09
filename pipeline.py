@@ -156,24 +156,28 @@ def softmax_normalize(scores: np.ndarray, temperature: float = 0.35) -> np.ndarr
 
 class SketchAdapter(torch.nn.Module):
     """
-    Fine-tuned feature projection adapter that maps sketch CLIP embeddings
+    Deep residual projection adapter that maps sketch CLIP embeddings
     directly into the manifold of natural photographs.
-    Trained on real and synthetic sketch-photo pairs with contrastive cosine loss.
+    Trained on real and multi-scale synthetic sketch-photo pairs with contrastive InfoNCE loss.
     """
-    def __init__(self, dim: int = 512):
+    def __init__(self, dim: int = 512, hidden_dim: int = 768):
         super().__init__()
-        self.fc1 = torch.nn.Linear(dim, dim)
-        self.norm = torch.nn.LayerNorm(dim)
-        self.act = torch.nn.GELU()
-        self.fc2 = torch.nn.Linear(dim, dim)
-        self.alpha = torch.nn.Parameter(torch.tensor(0.6, dtype=torch.float32))
+        # 3-layer deep MLP residual offset path
+        self.fc1 = torch.nn.Linear(dim, hidden_dim)
+        self.norm1 = torch.nn.LayerNorm(hidden_dim)
+        self.act1 = torch.nn.GELU()
+        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.norm2 = torch.nn.LayerNorm(hidden_dim)
+        self.act2 = torch.nn.GELU()
+        self.fc3 = torch.nn.Linear(hidden_dim, dim)
+        self.alpha = torch.nn.Parameter(torch.tensor(0.8, dtype=torch.float32))
 
-        # Initialize to near-identity residual
-        torch.nn.init.zeros_(self.fc2.weight)
-        torch.nn.init.zeros_(self.fc2.bias)
+        # Initialize fc3 to zero so initial forward is exact identity
+        torch.nn.init.zeros_(self.fc3.weight)
+        torch.nn.init.zeros_(self.fc3.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        delta = self.fc2(self.act(self.norm(self.fc1(x))))
+        delta = self.fc3(self.act2(self.norm2(self.fc2(self.act1(self.norm1(self.fc1(x)))))))
         out = x + self.alpha * delta
         return out / out.norm(dim=-1, keepdim=True)
 
@@ -284,10 +288,10 @@ class ZeroTextEngine:
         if self.index is not None and self.index.ntotal > 0:
             self.fine_tune_sketch_adapter()
 
-    def fine_tune_sketch_adapter(self, epochs: int = 120, lr: float = 1e-3):
+    def fine_tune_sketch_adapter(self, epochs: int = 180, lr: float = 1e-3):
         """
         Fine-tune CLIP feature projection for sketches paired with real images.
-        Pairs real hand-drawn sketches and synthetic Canny/Otsu edge maps with
+        Pairs real hand-drawn sketches and diverse multi-style synthetic edge maps with
         their real photos, then optimizes contrastive InfoNCE loss.
         """
         import cv2
@@ -299,16 +303,18 @@ class ZeroTextEngine:
             return
 
         pairs = []
-        # 1. Real hand-drawn sketches
+        # 1. Real hand-drawn sketches + horizontal flips
         for sk_name, target in [("cat.jpg", "cat.jpg"), ("mountain.jpg", "mountain.jpg"), ("rocket.jpg", "nasa_rocket.jpg")]:
             sp = SKETCHES_DIR / sk_name
             if sp.exists():
                 try:
-                    pairs.append((Image.open(sp), target))
+                    sk_img = Image.open(sp)
+                    pairs.append((sk_img, target, True))
+                    pairs.append((sk_img.transpose(Image.FLIP_LEFT_RIGHT), target, True))
                 except Exception:
                     pass
 
-        # 2. Synthetic Canny and adaptive edge sketches for sample images
+        # 2. Diverse multi-style synthetic sketches for sample images
         for item in self.metadata:
             fn = item["filename"]
             fp = Path(item["path"])
@@ -317,13 +323,24 @@ class ZeroTextEngine:
             try:
                 img = Image.open(fp)
                 gray = np.array(img.convert("L"))
-                # Canny edge sketch
-                edges = cv2.Canny(gray, 50, 150)
-                pairs.append((Image.fromarray(edges), fn))
-                # Adaptive threshold sketch
                 blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+                # Style A: Balanced Canny structural edge sketch
+                c1 = cv2.Canny(gray, 50, 150)
+                pairs.append((Image.fromarray(c1), fn, True))
+
+                # Style B: Adaptive threshold ink sketch
                 adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-                pairs.append((Image.fromarray(adapt), fn))
+                pairs.append((Image.fromarray(adapt), fn, True))
+
+                # Style C: Pencil sketch simulation
+                inv = 255 - gray
+                blur_inv = cv2.GaussianBlur(inv, (21, 21), 0)
+                denom = np.maximum(255 - blur_inv, 1)
+                dodge = cv2.divide(gray, denom, scale=256)
+                pencil = 255 - dodge
+                pairs.append((Image.fromarray(pencil), fn, True))
+
             except Exception:
                 continue
 
@@ -332,7 +349,7 @@ class ZeroTextEngine:
 
         sketch_vecs = []
         target_indices = []
-        for sk_img, fn in pairs:
+        for sk_img, fn, _ in pairs:
             if fn not in filename_to_idx:
                 continue
             try:
@@ -351,15 +368,17 @@ class ZeroTextEngine:
 
         adapter = SketchAdapter(DIMENSIONS)
         optimizer = torch.optim.AdamW(adapter.parameters(), lr=lr, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
         adapter.train()
         for ep in range(epochs):
             proj = adapter(X_sk)
-            sims = (proj @ Y_all.T) / 0.07  # InfoNCE temperature
+            sims = (proj @ Y_all.T) / 0.05  # InfoNCE temperature
             loss = F.cross_entropy(sims, targets)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
         adapter.eval()
         self.sketch_adapter = adapter
@@ -607,33 +626,31 @@ class ZeroTextEngine:
     #  SKETCH-SPECIFIC PREPROCESSING & EMBEDDING (High-Precision)
     # -----------------------------------------------------------------
 
-    def _preprocess_sketch_views(self, sketch_img: Image.Image) -> List[Image.Image]:
+    def _preprocess_sketch_views(self, sketch_img: Image.Image) -> Tuple[List[Image.Image], List[float]]:
         """
-        Generate multiple preprocessed views of a hand-drawn sketch,
-        each designed to bring out different features that help CLIP
-        match the sketch against real photographs.
+        Generate multiple preprocessed views and corresponding importance weights
+        of a hand-drawn sketch to maximize CLIP semantic feature matching against photographs.
 
         Views produced:
-          1. Cleaned binary (inverted, thresholded, dilated)
-          2. Softened / Gaussian-blurred (more photo-like)
-          3. Canny edge map (clean structural edges)
-          4. Morphologically closed (connected strokes)
-          5. Horizontal flip of cleaned binary
-          6. Slight rotation (+8°) for orientation robustness
-          7. Slight rotation (-8°) for orientation robustness
-          8. Original sketch (baseline)
+          1. Cleaned binary (inverted, thresholded, dilated) [w=1.5]
+          2. Softened / Gaussian-blurred (continuous gradient tones) [w=1.3]
+          3. Canny edge map (clean structural contours) [w=1.4]
+          4. Morphological gradient (stroke boundary contrast) [w=1.2]
+          5. Distance transform potential field (smooth spatial field) [w=1.3]
+          6. Morphologically closed (bridges hand-drawing stroke gaps) [w=1.1]
+          7. Thinned / eroded stroke (scale invariance for thick brushes) [w=1.0]
+          8. Horizontal flip (orientation robustness) [w=0.8]
+          9. Slight rotation (+8°) [w=0.7]
+          10. Slight rotation (-8°) [w=0.7]
+          11. Original sketch (baseline) [w=1.0]
         """
         import cv2
-        from PIL import ImageOps
 
         # --- Convert to grayscale numpy array ---
         gray = sketch_img.convert("L")
         gray_np = np.array(gray, dtype=np.uint8)
 
         # --- Detect white background (canvas default) and invert ---
-        # Sketches from the canvas are black strokes on white.
-        # CLIP works better with white features on dark background
-        # (inverted) because it aligns better with photographic subjects.
         is_white_bg = gray_np.mean() > 128
         if is_white_bg:
             inv_np = 255 - gray_np
@@ -641,36 +658,55 @@ class ZeroTextEngine:
             inv_np = gray_np.copy()
 
         views: List[Image.Image] = []
+        weights: List[float] = []
 
         # ---- View 1: Cleaned binary sketch (thresholded + dilated) ----
-        # Threshold to remove light noise / compression artifacts
         _, binary_np = cv2.threshold(inv_np, 25, 255, cv2.THRESH_BINARY)
-        # Dilate strokes so thin lines are visible at CLIP's 224×224 input
         kern_3 = np.ones((3, 3), np.uint8)
         dilated_np = cv2.dilate(binary_np, kern_3, iterations=1)
         views.append(Image.fromarray(dilated_np).convert("RGB"))
+        weights.append(1.5)
 
         # ---- View 2: Gaussian-blurred sketch (softer, more photo-like) ----
         blurred_np = cv2.GaussianBlur(dilated_np, (7, 7), sigmaX=2.0)
         views.append(Image.fromarray(blurred_np).convert("RGB"))
+        weights.append(1.3)
 
         # ---- View 3: Canny edge map (clean structural edges) ----
-        # Apply a small blur first to suppress sketch noise, then Canny
         pre_canny = cv2.GaussianBlur(inv_np, (5, 5), sigmaX=1.2)
         edges_np = cv2.Canny(pre_canny, 30, 120)
         edges_dilated_np = cv2.dilate(edges_np, kern_3, iterations=1)
         views.append(Image.fromarray(edges_dilated_np).convert("RGB"))
+        weights.append(1.4)
 
-        # ---- View 4: Morphologically closed (connect nearby strokes) ----
+        # ---- View 4: Morphological gradient (stroke boundary transitions) ----
+        grad_np = cv2.morphologyEx(dilated_np, cv2.MORPH_GRADIENT, kern_3)
+        views.append(Image.fromarray(grad_np).convert("RGB"))
+        weights.append(1.2)
+
+        # ---- View 5: Distance transform potential field ----
+        dist = cv2.distanceTransform(binary_np, cv2.DIST_L2, 5)
+        dist_norm = cv2.normalize(dist, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        views.append(Image.fromarray(dist_norm).convert("RGB"))
+        weights.append(1.3)
+
+        # ---- View 6: Morphologically closed (connect nearby strokes) ----
         kern_5 = np.ones((5, 5), np.uint8)
         closed_np = cv2.morphologyEx(dilated_np, cv2.MORPH_CLOSE, kern_5)
         views.append(Image.fromarray(closed_np).convert("RGB"))
+        weights.append(1.1)
 
-        # ---- View 5: Horizontal flip (orientation robustness) ----
+        # ---- View 7: Thinned stroke (scale invariance for thick strokes) ----
+        thinned_np = cv2.erode(dilated_np, kern_3, iterations=1)
+        views.append(Image.fromarray(thinned_np).convert("RGB"))
+        weights.append(1.0)
+
+        # ---- View 8: Horizontal flip (orientation robustness) ----
         flipped_np = cv2.flip(dilated_np, 1)
         views.append(Image.fromarray(flipped_np).convert("RGB"))
+        weights.append(0.8)
 
-        # ---- Views 6 & 7: Slight rotations (±8°) ----
+        # ---- Views 9 & 10: Slight rotations (±8°) ----
         h, w = dilated_np.shape[:2]
         center = (w // 2, h // 2)
         for angle in (8.0, -8.0):
@@ -679,11 +715,13 @@ class ZeroTextEngine:
                                      borderMode=cv2.BORDER_CONSTANT,
                                      borderValue=0)
             views.append(Image.fromarray(rotated).convert("RGB"))
+            weights.append(0.7)
 
-        # ---- View 8: Original sketch (baseline for CLIP) ----
+        # ---- View 11: Original sketch (baseline for CLIP) ----
         views.append(sketch_img.convert("RGB"))
+        weights.append(1.0)
 
-        return views
+        return views, weights
 
     def _compute_sketch_raw_ensemble(
         self,
@@ -691,10 +729,11 @@ class ZeroTextEngine:
         text_hint: Optional[str] = None,
     ) -> np.ndarray:
         """
-        Compute multi-view ensemble embedding for a sketch across 8 augmented views.
+        Compute weighted multi-view ensemble embedding for a sketch across 11 augmented views
+        plus optional text hint tokens.
         """
         self.load_clip()
-        views = self._preprocess_sketch_views(sketch_img)
+        views, weights = self._preprocess_sketch_views(sketch_img)
 
         embeddings: List[torch.Tensor] = []
         for view in views:
@@ -717,11 +756,13 @@ class ZeroTextEngine:
                     t_emb = self.model.encode_text(tokens)
                     t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
                 embeddings.append(t_emb)
+                weights.append(1.5)
 
         stacked = torch.cat(embeddings, dim=0)
-        mean_emb = stacked.mean(dim=0, keepdim=True)
-        mean_emb = mean_emb / mean_emb.norm(dim=-1, keepdim=True)
-        return mean_emb.cpu().numpy().astype("float32")
+        weights_t = torch.tensor(weights, dtype=torch.float32, device=DEVICE).unsqueeze(1)
+        weighted = (stacked * weights_t).sum(dim=0, keepdim=True) / weights_t.sum()
+        weighted = weighted / weighted.norm(dim=-1, keepdim=True)
+        return weighted.cpu().numpy().astype("float32")
 
     def _compute_sketch_ensemble_embedding(
         self,
@@ -1215,9 +1256,9 @@ class ZeroTextEngine:
         scores, indices = self.index.search(vec, k)
 
         # Step 4: Calibrated scoring specifically for sketch features
-        SKETCH_SIM_FLOOR = 0.20
-        SKETCH_SIM_CEIL  = 0.75
-        SKETCH_GAMMA     = 1.10
+        SKETCH_SIM_FLOOR = 0.18
+        SKETCH_SIM_CEIL  = 0.78
+        SKETCH_GAMMA     = 1.05
 
         def calibrate_sketch_score(raw_cos: float) -> float:
             scaled = (raw_cos - SKETCH_SIM_FLOOR) / (SKETCH_SIM_CEIL - SKETCH_SIM_FLOOR)

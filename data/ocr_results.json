@@ -1734,5 +1734,16 @@
         "path": "E:\\Zero text AIML\\data\\sample_images\\WIN_20261016_21_52_16_Pro.jpg",
         "extracted_text": [],
         "full_text": ""
+    },
+    {
+        "filename": "among-us-vicious-smile-512x512.png",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\among-us-vicious-smile-512x512.png",
+        "extracted_text": [
+            {
+                "text": "A",
+                "confidence": 0.8996
+            }
+        ],
+        "full_text": "A"
     }
 ]
