@@ -2,38 +2,38 @@
     {
         "filename": "aiml.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -7.670064926147461,
         "y": -1.69463312625885,
         "z": 4.711887836456299,
         "x3d": 16.59368896484375,
         "y3d": 12.141576766967773,
         "z3d": 4.711887836456299,
-        "membership_probability": 0.8676520323686179
+        "membership_probability": 0.0
     },
     {
         "filename": "art.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\art.jpg",
-        "cluster": 1,
+        "cluster": -1,
         "x": -8.00761890411377,
         "y": -3.240633964538574,
         "z": 3.6415233612060547,
         "x3d": 17.217164993286133,
         "y3d": 12.789676666259766,
         "z3d": 3.6415233612060547,
-        "membership_probability": 1.0
+        "membership_probability": 0.0
     },
     {
         "filename": "bio notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -8.423343658447266,
         "y": -1.4596706628799438,
         "z": 5.064043045043945,
         "x3d": 17.42841911315918,
         "y3d": 12.298626899719238,
         "z3d": 5.064043045043945,
-        "membership_probability": 1.0
+        "membership_probability": 0.0
     },
     {
         "filename": "cat.jpg",
@@ -50,26 +50,26 @@
     {
         "filename": "code.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -8.418861389160156,
         "y": -2.2615580558776855,
         "z": 4.214880466461182,
         "x3d": 17.164888381958008,
         "y3d": 11.98397445678711,
         "z3d": 4.214880466461182,
-        "membership_probability": 0.9313641076386752
+        "membership_probability": 0.0
     },
     {
         "filename": "coffee.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -7.648684501647949,
         "y": -2.364572763442993,
         "z": 4.5026469230651855,
         "x3d": 16.359731674194336,
         "y3d": 12.92167854309082,
         "z3d": 4.5026469230651855,
-        "membership_probability": 0.8607688145404893
+        "membership_probability": 0.0
     },
     {
         "filename": "football.jpg",
@@ -86,38 +86,38 @@
     {
         "filename": "math_notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -9.091938018798828,
         "y": -1.7089167833328247,
         "z": 5.181821346282959,
         "x3d": 17.677438735961914,
         "y3d": 13.059412002563477,
         "z3d": 5.181821346282959,
-        "membership_probability": 1.0
+        "membership_probability": 0.0
     },
     {
         "filename": "mountain.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\mountain.jpg",
-        "cluster": 1,
+        "cluster": -1,
         "x": -8.635337829589844,
         "y": -3.3932995796203613,
         "z": 3.5950634479522705,
         "x3d": 16.879844665527344,
         "y3d": 13.245803833007812,
         "z3d": 3.5950634479522705,
-        "membership_probability": 1.0
+        "membership_probability": 0.0
     },
     {
         "filename": "nasa_rocket.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
-        "cluster": 0,
+        "cluster": -1,
         "x": -9.217700958251953,
         "y": -2.773571729660034,
         "z": 4.512945175170898,
         "x3d": 16.60471534729004,
         "y3d": 13.887667655944824,
         "z3d": 4.512945175170898,
-        "membership_probability": 0.8119119492106723
+        "membership_probability": 0.0
     },
     {
         "filename": "WIN_20261016_21_52_16_Pro.jpg",
