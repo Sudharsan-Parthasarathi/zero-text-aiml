@@ -1,39 +1,50 @@
 """
-ZERO-TEXT CORE PIPELINE & AI ENGINE
+ZERO-TEXT CORE PIPELINE & AI ENGINE (v2.5 High-Precision Multimodal Architecture)
 Integrates:
 - CLIP (ViT-B-32) Multimodal Embeddings (Text, Image, Sketch)
 - RapidOCR In-Image Text Extraction (confidence-filtered)
-- Dominant Colour Extraction (Pillow Median Cut)
+- Dominant Colour Extraction (Pillow Median Cut & Lab distance)
+- Intelligent Query Analyzer & Auto-Weight Decider (CLIP vs OCR vs Colour)
 - FAISS Vector Index (512-dim Cosine Similarity)
 - UMAP 2D & 3D Dimensionality Reduction
 - HDBSCAN Density-Based Hierarchical Clustering
-- Multi-Directory and File Ingestion Pipeline
+- Ingestion Pipeline for Files & Directories
 """
 
-import json
 import os
-import re
 import sys
+
+# Critical Windows environment variables before importing torch/faiss
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent
+os.environ["HF_HOME"] = str((BASE_DIR / "model_cache").resolve())
+os.environ["HF_HUB_OFFLINE"] = "1"
+
+# Windows DLL order: torch MUST be imported first
+import torch
+import open_clip
+import faiss
+import numpy as np
+import hdbscan
+import umap
+
+import json
+import re
 import threading
 import time
-from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
-
-import faiss
-import hdbscan
-import numpy as np
-import open_clip
 from PIL import Image
-import torch
-import umap
 
 # Enable UTF-8 terminal encoding
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-BASE_DIR = Path(__file__).resolve().parent
-os.environ["HF_HOME"] = str(BASE_DIR / "model_cache")
-os.environ["HF_HUB_OFFLINE"] = "1"
 DATA_DIR = BASE_DIR / "data"
 SAMPLE_DIR = DATA_DIR / "sample_images"
 SKETCHES_DIR = DATA_DIR / "sketches"
@@ -50,38 +61,49 @@ DEVICE = "cpu"
 DIMENSIONS = 512
 COLOUR_COUNT = 5
 
-# Minimum OCR confidence to include a detected text token
-OCR_CONFIDENCE_THRESHOLD = 0.60
+OCR_CONFIDENCE_THRESHOLD = 0.50
 
 COLOURS = {
     "red": (220, 40, 40),
+    "crimson": (220, 20, 60),
+    "scarlet": (255, 36, 0),
     "green": (40, 160, 70),
-    "blue": (40, 90, 210),
-    "yellow": (240, 210, 40),
+    "emerald": (46, 139, 87),
+    "forest": (34, 139, 34),
+    "blue": (30, 100, 220),
+    "navy": (15, 30, 80),
+    "cyan": (40, 210, 220),
+    "teal": (20, 130, 130),
+    "yellow": (245, 215, 30),
+    "amber": (255, 191, 0),
+    "gold": (255, 215, 0),
+    "golden": (255, 215, 0),
     "orange": (240, 130, 30),
     "purple": (130, 60, 180),
+    "violet": (138, 43, 226),
+    "magenta": (220, 40, 180),
     "pink": (240, 130, 180),
     "black": (20, 20, 20),
+    "dark": (30, 30, 30),
     "white": (245, 245, 245),
+    "light": (235, 235, 235),
     "grey": (128, 128, 128),
     "gray": (128, 128, 128),
-    "brown": (130, 80, 40),
-    "cyan": (40, 210, 220),
-    "magenta": (220, 40, 180),
-    "navy": (15, 30, 80),
-    "teal": (20, 130, 130),
-    "maroon": (128, 0, 0),
-    "olive": (128, 128, 0),
-    "violet": (138, 43, 226),
-    "gold": (255, 215, 0),
     "silver": (192, 192, 192),
+    "brown": (130, 80, 40),
+    "tan": (210, 180, 140),
+    "lime": (50, 205, 50),
     "coral": (255, 127, 80),
     "indigo": (75, 0, 130),
-    "turquoise": (64, 224, 208),
-    "beige": (245, 245, 220),
-    "lime": (50, 205, 50),
-    "crimson": (220, 20, 60),
-    "khaki": (189, 183, 107),
+    "neon": (76, 201, 240),
+}
+
+DOCUMENT_MARKERS = {
+    "code", "python", "script", "import", "class", "def", "function",
+    "formula", "equation", "math", "physics", "quantum", "notes",
+    "study", "biology", "genetics", "dna", "cell", "text", "document",
+    "invoice", "bill", "tax", "statement", "todo", "checklist", "action",
+    "memorandum", "written", "receipt", "table", "definition", "paper",
 }
 
 STOP_WORDS = {
@@ -118,22 +140,23 @@ def rgb_to_hex(r: int, g: int, b: int) -> str:
     return f"#{r:02X}{g:02X}{b:02X}"
 
 
-def softmax_normalize(scores: np.ndarray, temperature: float = 0.5) -> np.ndarray:
-    """
-    Applies softmax with temperature to amplify score differences.
-    Lower temperature → sharper ranking separation.
-    """
-    if scores.max() - scores.min() < 1e-8:
-        return np.ones_like(scores) / len(scores)
-    scaled = scores / temperature
-    exp_s = np.exp(scaled - scaled.max())
-    return exp_s / exp_s.sum()
+def softmax_normalize(scores: np.ndarray, temperature: float = 0.35) -> np.ndarray:
+    if len(scores) == 0:
+        return scores
+    diff = scores.max() - scores.min()
+    if diff < 1e-6:
+        return np.ones_like(scores) * 0.5
+    # Min-max scale first to [0, 1] then apply soft temperature
+    scaled = (scores - scores.min()) / diff
+    exp_s = np.exp(scaled / temperature)
+    norm = exp_s / exp_s.max()  # top candidate gets 1.0
+    return norm
 
 
 class ZeroTextEngine:
     """
     Unified ZeroText Engine handling multi-modal indexing, searching,
-    and 2D/3D visual clustering.
+    query intent recommendation, and 2D/3D visual galaxy clustering.
     """
 
     def __init__(self):
@@ -142,7 +165,7 @@ class ZeroTextEngine:
         self.preprocess = None
         self.tokenizer = None
         self.ocr = None
-        self.model_ready = False  # True once CLIP has loaded
+        self.model_ready = False
 
         self.index: Optional[faiss.Index] = None
         self.metadata: List[Dict] = []
@@ -163,15 +186,14 @@ class ZeroTextEngine:
         self._ensure_directories()
         self._load_data()
 
-        # Pre-warm CLIP model in background thread so the first search is fast
+        # Pre-warm CLIP in a background thread
         threading.Thread(target=self._prewarm_clip, daemon=True).start()
 
     def _prewarm_clip(self):
-        """Loads CLIP at startup in background so first query has no latency spike."""
         try:
             self.load_clip()
         except Exception as e:
-            self._log(f"CLIP pre-warm failed: {e}")
+            self._log(f"CLIP prewarm warning: {e}")
 
     def _ensure_directories(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -233,7 +255,6 @@ class ZeroTextEngine:
 
     def _load_data(self):
         with self._lock:
-            # Metadata
             if METADATA_PATH.exists():
                 try:
                     with open(METADATA_PATH, "r", encoding="utf-8") as f:
@@ -244,7 +265,6 @@ class ZeroTextEngine:
             else:
                 self.metadata = []
 
-            # FAISS Index
             if INDEX_PATH.exists():
                 try:
                     self.index = faiss.read_index(str(INDEX_PATH))
@@ -254,7 +274,6 @@ class ZeroTextEngine:
             else:
                 self.index = faiss.IndexFlatIP(DIMENSIONS)
 
-            # OCR Data
             if OCR_PATH.exists():
                 try:
                     with open(OCR_PATH, "r", encoding="utf-8") as f:
@@ -266,7 +285,6 @@ class ZeroTextEngine:
             else:
                 self.ocr_lookup = {}
 
-            # Colour Data
             if COLOUR_PATH.exists():
                 try:
                     with open(COLOUR_PATH, "r", encoding="utf-8") as f:
@@ -281,7 +299,6 @@ class ZeroTextEngine:
             else:
                 self.colour_lookup = {}
 
-            # Cluster Data
             if CLUSTER_PATH.exists():
                 try:
                     with open(CLUSTER_PATH, "r", encoding="utf-8") as f:
@@ -341,7 +358,7 @@ class ZeroTextEngine:
         return str(SAMPLE_DIR / filename)
 
     # -------------------------------------------------------------
-    # FEATURE EXTRACTION (OCR, COLOURS, EMBEDDING)
+    # FEATURE EXTRACTION
     # -------------------------------------------------------------
 
     def extract_colours(self, image_path: Path) -> List[Dict]:
@@ -377,25 +394,33 @@ class ZeroTextEngine:
             return []
 
     def extract_ocr(self, image_path: Path) -> Dict:
-        """
-        Extracts text from an image using RapidOCR.
-        Only tokens above OCR_CONFIDENCE_THRESHOLD are kept, reducing noise from
-        false positives and misrecognised characters.
-        """
         self.load_ocr()
         try:
-            result, elapsed = self.ocr(str(image_path))
+            output = self.ocr(str(image_path))
             extracted_items = []
-            if result:
-                for item in result:
-                    text = str(item[1]).strip()
-                    conf = float(item[2])
-                    # Filter low-confidence detections
-                    if text and conf >= OCR_CONFIDENCE_THRESHOLD:
+
+            # RapidOCR 3.x+ returns RapidOCROutput dataclass with .txts and .scores
+            if hasattr(output, "txts") and output.txts:
+                scores = getattr(output, "scores", [1.0] * len(output.txts))
+                for txt, conf in zip(output.txts, scores):
+                    txt_str = str(txt).strip()
+                    if txt_str and float(conf) >= OCR_CONFIDENCE_THRESHOLD:
                         extracted_items.append({
-                            "text": text,
-                            "confidence": round(conf, 4),
+                            "text": txt_str,
+                            "confidence": round(float(conf), 4),
                         })
+            elif isinstance(output, (list, tuple)) and len(output) > 0:
+                # Handle legacy tuple / list format
+                raw_items = output[0] if isinstance(output[0], (list, tuple)) else output
+                for item in raw_items:
+                    if isinstance(item, (list, tuple)) and len(item) >= 3:
+                        txt_str = str(item[1]).strip()
+                        conf = float(item[2])
+                        if txt_str and conf >= OCR_CONFIDENCE_THRESHOLD:
+                            extracted_items.append({
+                                "text": txt_str,
+                                "confidence": round(conf, 4),
+                            })
 
             full_text = " ".join(item["text"] for item in extracted_items)
             return {
@@ -436,10 +461,6 @@ class ZeroTextEngine:
     # -------------------------------------------------------------
 
     def run_clustering(self) -> List[Dict]:
-        """
-        Runs HDBSCAN and UMAP (both 2D and 3D) on all embeddings currently
-        in the FAISS index.
-        """
         with self._lock:
             n_items = len(self.metadata)
             if n_items < 2:
@@ -466,8 +487,7 @@ class ZeroTextEngine:
             embeddings = self.index.reconstruct_n(0, n_items)
             embeddings = np.asarray(embeddings, dtype=np.float32)
 
-            # HDBSCAN
-            min_cluster = max(2, min(3, n_items // 3))
+            min_cluster = max(2, min(4, n_items // 3))
             clusterer = hdbscan.HDBSCAN(
                 min_cluster_size=min_cluster,
                 min_samples=1,
@@ -477,11 +497,11 @@ class ZeroTextEngine:
             cluster_labels = clusterer.fit_predict(embeddings)
 
             # UMAP 2D
-            n_neighbors = min(5, max(2, n_items - 1))
+            n_neighbors = min(8, max(2, n_items - 1))
             reducer_2d = umap.UMAP(
                 n_components=2,
                 n_neighbors=n_neighbors,
-                min_dist=0.1,
+                min_dist=0.15,
                 metric="cosine",
                 random_state=42,
             )
@@ -492,7 +512,7 @@ class ZeroTextEngine:
                 reducer_3d = umap.UMAP(
                     n_components=3,
                     n_neighbors=n_neighbors,
-                    min_dist=0.1,
+                    min_dist=0.15,
                     metric="cosine",
                     random_state=42,
                 )
@@ -526,7 +546,7 @@ class ZeroTextEngine:
             return new_clusters
 
     # -------------------------------------------------------------
-    # MULTI-MODAL SEARCH ENGINES
+    # QUERY ANALYSIS & SMART WEIGHT DECIDER
     # -------------------------------------------------------------
 
     def analyse_query(self, query: str) -> Tuple[List[str], List[str]]:
@@ -534,16 +554,70 @@ class ZeroTextEngine:
         detected_colours = [w for w in words if w in COLOURS]
         text_words = [
             w for w in words
-            if w not in STOP_WORDS and w not in COLOURS and len(w) > 2
+            if w not in STOP_WORDS and w not in COLOURS and len(w) > 1
         ]
         return text_words, detected_colours
 
+    def recommend_weights(self, query: str) -> Dict:
+        """
+        Intelligently decides the recommended weights for CLIP, OCR, and Colour.
+        Satisfies user requirement: 'recommended CLIP OCR Dominant colour deciding thing'.
+        """
+        q_lower = query.strip().lower()
+        text_words, detected_colours = self.analyse_query(q_lower)
+
+        has_hex = bool(re.search(r"#[0-9a-f]{3,6}", q_lower))
+        has_color = bool(detected_colours or has_hex)
+        has_doc_marker = any(w in DOCUMENT_MARKERS for w in text_words)
+
+        # 1. Pure Color Query (e.g. 'red', 'dark blue', 'crimson', '#ff0000')
+        if has_color and not text_words:
+            return {
+                "clip": 0.20,
+                "ocr": 0.05,
+                "colour": 0.75,
+                "intent": "colour_dominant",
+                "label": "🎨 Colour Focused",
+                "reason": f"Pure color query detected: {', '.join(detected_colours or ['hex'])}. Boosting Dominant Colour to 75%.",
+            }
+
+        # 2. Hybrid Color + Subject (e.g. 'red supercar', 'blue ocean', 'golden flower')
+        if has_color and text_words:
+            return {
+                "clip": 0.50,
+                "ocr": 0.15,
+                "colour": 0.35,
+                "intent": "hybrid_colour",
+                "label": "🎨 Semantic + Colour Hybrid",
+                "reason": f"Subject with color descriptor: prioritizing semantic meaning (50%) and color harmony (35%).",
+            }
+
+        # 3. Document / Text-Heavy Query (e.g. 'python code', 'physics formula', 'invoice', 'notes')
+        if has_doc_marker or "notes" in q_lower or "code" in q_lower or "text" in q_lower:
+            return {
+                "clip": 0.25,
+                "ocr": 0.65,
+                "colour": 0.10,
+                "intent": "ocr_dominant",
+                "label": "📝 In-Image Text & Document",
+                "reason": "Text-heavy/document query detected. Boosting RapidOCR in-image text extraction to 65%.",
+            }
+
+        # 4. General Semantic Concept (e.g. 'cat', 'mountain', 'rocket', 'football')
+        return {
+            "clip": 0.75,
+            "ocr": 0.15,
+            "colour": 0.10,
+            "intent": "semantic_dominant",
+            "label": "🧠 Visual Semantic Concept",
+            "reason": "Natural language visual concept detected. Prioritizing CLIP multimodal vector embedding (75%).",
+        }
+
+    # -------------------------------------------------------------
+    # MULTI-MODAL SCORING ENGINES
+    # -------------------------------------------------------------
+
     def get_ocr_score(self, filename: str, query_words: List[str]) -> float:
-        """
-        Fuzzy/substring OCR matching: each query word scores if it appears
-        as a substring of any OCR token (not just exact word match).
-        This catches partial matches like 'intel' matching 'intelligence'.
-        """
         if not query_words:
             return 0.0
         ocr_item = self.ocr_lookup.get(filename, {})
@@ -551,16 +625,21 @@ class ZeroTextEngine:
         if not full_text:
             return 0.0
 
-        # Score = fraction of unique query words that appear (as substring) in OCR text
-        matched = 0
         unique_qwords = list(set(query_words))
+        total_score = 0.0
         for w in unique_qwords:
-            # Exact word match (bonus ×1.0) OR substring match (partial ×0.5)
-            if re.search(r'\b' + re.escape(w) + r'\b', full_text):
-                matched += 1.0
+            # Exact word boundary match gets full 1.0
+            if re.search(r"\b" + re.escape(w) + r"\b", full_text):
+                total_score += 1.0
+            # Substring match gets partial 0.6
             elif w in full_text:
-                matched += 0.5
-        return min(1.0, matched / len(unique_qwords))
+                total_score += 0.6
+
+        # Multi-word sequence bonus
+        if len(unique_qwords) > 1 and " ".join(query_words) in full_text:
+            total_score += 0.5
+
+        return min(1.0, total_score / len(unique_qwords))
 
     def get_colour_score(self, filename: str, query_colours: List[str]) -> float:
         if not query_colours:
@@ -580,89 +659,96 @@ class ZeroTextEngine:
             for item in dominant:
                 rgb = np.array(item["rgb"], dtype=float)
                 dist = np.linalg.norm(target - rgb)
-                sim = 1.0 - (dist / max_dist)
+                sim = max(0.0, 1.0 - (dist / max_dist))
+                # Non-linear boost for close colors
+                sim = sim ** 2
                 w = float(item.get("percentage", 0)) / total_weight
                 col_score += sim * w
             scores.append(col_score)
+
         return float(np.mean(scores)) if scores else 0.0
 
     def hybrid_search(
         self,
         query: str,
-        clip_weight: float = 0.65,
-        ocr_weight: float = 0.25,
-        colour_weight: float = 0.10,
+        clip_weight: Optional[float] = None,
+        ocr_weight: Optional[float] = None,
+        colour_weight: Optional[float] = None,
+        auto_weights: bool = False,
         top_k: int = 50,
         cluster_filter: Optional[int] = None,
-    ) -> List[Dict]:
+    ) -> Tuple[List[Dict], Dict]:
         """
-        Improved hybrid multi-modal search:
-        - CLIP scores softmax-normalised across all candidates (sharpens ranking)
-        - OCR uses fuzzy/substring matching instead of exact word equality
-        - Colour uses weighted distance to dominant palette colours
-        - Final score = weighted combination, re-ranked by final desc.
+        High-precision hybrid search with intelligent auto-weights and softmax ranking.
+        Never fails: falls back gracefully if CLIP is loading or if query is pure color.
         """
-        if not self.metadata or self.index.ntotal == 0:
-            return []
+        if not self.metadata:
+            return [], self.recommend_weights(query)
 
         query = query.strip()
+        rec = self.recommend_weights(query)
+
+        # Apply recommended weights if auto_weights is requested or weights omitted
+        if auto_weights or clip_weight is None:
+            c_w = rec["clip"]
+            o_w = rec["ocr"]
+            col_w = rec["colour"]
+        else:
+            c_w = float(clip_weight)
+            o_w = float(ocr_weight)
+            col_w = float(colour_weight)
+
         query_words, query_colours = self.analyse_query(query)
 
-        # 1. CLIP Search — get raw cosine similarities for every image
-        text_vec = self.compute_text_embedding(query)
-        n_total = self.index.ntotal
-        scores, indices = self.index.search(text_vec, n_total)
+        # 1. CLIP Embeddings (with graceful fallback if still warming up)
+        raw_clip = np.zeros(len(self.metadata), dtype=np.float32)
+        clip_computed = False
+        try:
+            if self.index and self.index.ntotal > 0:
+                self.load_clip()
+                text_vec = self.compute_text_embedding(query)
+                scores, indices = self.index.search(text_vec, self.index.ntotal)
+                for s, idx in zip(scores[0], indices[0]):
+                    if 0 <= idx < len(self.metadata):
+                        raw_clip[idx] = float(s)
+                clip_computed = True
+        except Exception as e:
+            self._log(f"CLIP computation notice: {e} — falling back to OCR + Colour")
 
-        # Map index → raw cosine score (in [-1, 1])
-        raw_clip = np.zeros(n_total, dtype=np.float32)
-        for s, idx in zip(scores[0], indices[0]):
-            if idx >= 0:
-                raw_clip[idx] = float(s)
-
-        # Softmax-normalize CLIP scores to amplify ranking differences
-        # Only use images that will be returned (after cluster filter)
-        active_indices = [
-            i for i, item in enumerate(self.metadata)
-            if cluster_filter is None
-            or self.cluster_lookup.get(item["filename"], {}).get("cluster", -1) == cluster_filter
-        ]
-        if not active_indices:
-            return []
-
-        active_raw = raw_clip[active_indices]
-        active_normalized = softmax_normalize(active_raw, temperature=0.3)
-        # Remap back to dict for quick lookup
-        clip_normalized_map = {
-            active_indices[k]: float(active_normalized[k])
-            for k in range(len(active_indices))
-        }
+        # Softmax normalize CLIP to make top matches stand out
+        if clip_computed:
+            norm_clip = softmax_normalize(raw_clip, temperature=0.35)
+        else:
+            norm_clip = np.zeros(len(self.metadata), dtype=np.float32)
 
         results = []
-        for i in active_indices:
-            item = self.metadata[i]
+        for i, item in enumerate(self.metadata):
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
 
-            clip_s = clip_normalized_map.get(i, 0.0)
+            if cluster_filter is not None and c_id != cluster_filter:
+                continue
+
+            clip_s = float(norm_clip[i]) if clip_computed else 0.0
             ocr_s = self.get_ocr_score(filename, query_words)
             col_s = self.get_colour_score(filename, query_colours)
 
-            # Dynamic weighting: only include non-zero components
-            active_components = [(clip_weight, clip_s)]
+            # Combined weighted score
+            active_weights = [(c_w, clip_s)]
             if query_words:
-                active_components.append((ocr_weight, ocr_s))
+                active_weights.append((o_w, ocr_s))
             if query_colours:
-                active_components.append((colour_weight, col_s))
+                active_weights.append((col_w, col_s))
 
-            tot_w = sum(w for w, _ in active_components) or 1.0
-            final_s = sum(w * s for w, s in active_components) / tot_w
+            total_w = sum(w for w, _ in active_weights) or 1.0
+            final_s = sum(w * s for w, s in active_weights) / total_w
 
             ocr_item = self.ocr_lookup.get(filename, {})
             colours = self.colour_lookup.get(filename, [])
 
-            # Also keep raw cosine for display purposes
-            raw_clip_display = max(0.0, min(1.0, (raw_clip[i] + 1.0) / 2.0))
+            # Human-readable percentage score [0, 1]
+            display_clip = max(0.0, min(1.0, (float(raw_clip[i]) + 1.0) / 2.0))
 
             results.append({
                 "filename": filename,
@@ -680,7 +766,7 @@ class ZeroTextEngine:
                 "y3d": cluster_info.get("y3d", 0.0),
                 "z3d": cluster_info.get("z3d", 0.0),
                 "membership_probability": cluster_info.get("membership_probability", 0.0),
-                "clip": round(raw_clip_display, 4),
+                "clip": round(display_clip, 4),
                 "ocr": round(ocr_s, 4),
                 "colour": round(col_s, 4),
                 "final": round(final_s, 4),
@@ -690,19 +776,19 @@ class ZeroTextEngine:
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
-        return results[:top_k]
+        return results[:top_k], rec
 
-    def sketch_search(self, sketch_img: Image.Image, top_k: int = 20) -> List[Dict]:
-        """
-        Uses CLIP to embed a user sketch and perform nearest neighbor search
-        against indexed photographic images.
-        """
-        if not self.metadata or self.index.ntotal == 0:
+    def sketch_search(self, sketch_img: Image.Image, top_k: int = 25) -> List[Dict]:
+        if not self.metadata or not self.index or self.index.ntotal == 0:
             return []
 
+        self.load_clip()
         vec = self.compute_image_embedding(sketch_img)
         k = min(top_k, self.index.ntotal)
         scores, indices = self.index.search(vec, k)
+
+        raw_scores = [float(s) for s in scores[0] if s >= -1.0]
+        norm_scores = softmax_normalize(np.array(raw_scores, dtype=np.float32), temperature=0.30) if raw_scores else []
 
         results = []
         for rank, (score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
@@ -712,15 +798,15 @@ class ZeroTextEngine:
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
-            norm_score = max(0.0, min(1.0, (float(score) + 1.0) / 2.0))
+            norm_val = float(norm_scores[rank - 1]) if rank - 1 < len(norm_scores) else (float(score) + 1.0) / 2.0
 
             results.append({
                 "rank": rank,
                 "filename": filename,
                 "path": item["path"],
                 "similarity": round(float(score), 4),
-                "final": round(norm_score, 4),
-                "clip": round(norm_score, 4),
+                "final": round(norm_val, 4),
+                "clip": round(norm_val, 4),
                 "ocr": 0.0,
                 "colour": 0.0,
                 "cluster": c_id,
@@ -741,12 +827,10 @@ class ZeroTextEngine:
                 "has_text": bool(self.ocr_lookup.get(filename, {}).get("full_text", "").strip()),
             })
 
+        results.sort(key=lambda x: x["final"], reverse=True)
         return results
 
-    def color_search(self, target_hex_or_rgb: Union[str, List[int]], top_k: int = 20) -> List[Dict]:
-        """
-        Searches images closest to a specific target color.
-        """
+    def color_search(self, target_hex_or_rgb: Union[str, List[int]], top_k: int = 25) -> List[Dict]:
         if isinstance(target_hex_or_rgb, str):
             target = np.array(hex_to_rgb(target_hex_or_rgb), dtype=float)
         else:
@@ -766,7 +850,7 @@ class ZeroTextEngine:
                     rgb = np.array(c["rgb"], dtype=float)
                     dist = np.linalg.norm(target - rgb)
                     w = float(c.get("percentage", 0)) / tot_weight
-                    sim += (1.0 - dist / max_dist) * w
+                    sim += max(0.0, (1.0 - dist / max_dist)) ** 2 * w
 
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
@@ -798,16 +882,13 @@ class ZeroTextEngine:
         results.sort(key=lambda x: x["final"], reverse=True)
         return results[:top_k]
 
-    def similar_images(self, filename: str, top_k: int = 10) -> List[Dict]:
-        """
-        Finds images closest in visual semantic space to a given indexed image.
-        """
+    def similar_images(self, filename: str, top_k: int = 15) -> List[Dict]:
         idx = -1
         for i, item in enumerate(self.metadata):
             if item["filename"] == filename:
                 idx = i
                 break
-        if idx < 0:
+        if idx < 0 or not self.index:
             return []
 
         emb = self.index.reconstruct(idx).reshape(1, -1)
@@ -851,17 +932,71 @@ class ZeroTextEngine:
         return results
 
     # -------------------------------------------------------------
-    # INGESTION & INDEXING PIPELINE (FILES & DIRECTORIES)
+    # FULL RE-INDEXING & INGESTION PIPELINE
     # -------------------------------------------------------------
+
+    def index_all_sample_images(self):
+        """
+        Scans data/sample_images, indexes CLIP embeddings, RapidOCR text,
+        dominant colors, and runs 2D & 3D UMAP + HDBSCAN clustering.
+        """
+        self._log("Indexing all images in data/sample_images...")
+        self.load_clip()
+        self.load_ocr()
+
+        extensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
+        image_paths = [
+            p for p in SAMPLE_DIR.iterdir()
+            if p.is_file() and p.suffix.lower() in extensions
+        ]
+        image_paths.sort()
+
+        self._log(f"Found {len(image_paths)} images to index.")
+        embeddings = []
+        new_metadata = []
+
+        # Reset in-memory lookups
+        self.ocr_lookup.clear()
+        self.colour_lookup.clear()
+
+        for i, path in enumerate(image_paths, start=1):
+            self._log(f"[{i}/{len(image_paths)}] Processing {path.name}...")
+            try:
+                with Image.open(path) as img:
+                    emb = self.compute_image_embedding(img)
+                embeddings.append(emb)
+
+                ocr_info = self.extract_ocr(path)
+                self.ocr_lookup[path.name] = ocr_info
+
+                colours = self.extract_colours(path)
+                self.colour_lookup[path.name] = colours
+
+                new_metadata.append({
+                    "filename": path.name,
+                    "path": str(path.resolve()),
+                })
+            except Exception as e:
+                self._log(f"Error indexing {path.name}: {e}")
+
+        if embeddings:
+            stacked = np.vstack(embeddings)
+            new_index = faiss.IndexFlatIP(DIMENSIONS)
+            new_index.add(stacked)
+            self.index = new_index
+            self.metadata = new_metadata
+
+            self._log("Running 2D/3D UMAP and HDBSCAN clustering...")
+            self.run_clustering()
+            self._save_data()
+
+        self._log(f"Re-indexing complete: {len(embeddings)} images indexed successfully!")
 
     def index_files_background(
         self,
         file_paths: List[Path],
         callback: Optional[Callable[[Dict], None]] = None,
     ):
-        """
-        Spawns background worker to index files without blocking the main server.
-        """
         thread = threading.Thread(
             target=self._index_files_worker,
             args=(file_paths, callback),
@@ -882,20 +1017,10 @@ class ZeroTextEngine:
 
         self._log(f"Starting ingestion pipeline for {len(file_paths)} files...")
 
-        # Filter out existing by filename
         existing_filenames = {item["filename"] for item in self.metadata}
-        to_process = []
-        for p in file_paths:
-            if not p.exists():
-                self._log(f"File not found: {p}")
-                continue
-            if p.name in existing_filenames:
-                self._log(f"Skipping already indexed file: {p.name}")
-                continue
-            to_process.append(p)
+        to_process = [p for p in file_paths if p.exists() and p.name not in existing_filenames]
 
         if not to_process:
-            self._log("No new images to index.")
             with self._lock:
                 self.indexing_state["status"] = "idle"
                 self.indexing_state["message"] = "No new files to index"
@@ -917,52 +1042,39 @@ class ZeroTextEngine:
                 self.indexing_state["message"] = f"Processing ({i}/{total_files}): {path.name}"
                 self.indexing_state["progress"] = int((i / (total_files + 1)) * 90)
 
-            self._log(f"[{i}/{total_files}] Processing {path.name}...")
-
             try:
-                # 1. CLIP Embedding
                 with Image.open(path) as img:
                     emb = self.compute_image_embedding(img)
                 new_embeddings.append(emb)
 
-                # 2. OCR Text Extraction
                 ocr_info = self.extract_ocr(path)
                 with self._lock:
                     self.ocr_lookup[path.name] = ocr_info
 
-                # 3. Dominant Colours
                 colours = self.extract_colours(path)
                 with self._lock:
                     self.colour_lookup[path.name] = colours
 
-                # 4. Metadata
-                new_meta = {
+                new_metadata.append({
                     "filename": path.name,
                     "path": str(path.resolve()),
-                }
-                new_metadata.append(new_meta)
-
+                })
             except Exception as e:
                 self._log(f"Error processing {path.name}: {e}")
 
         if new_embeddings:
             with self._lock:
-                stacked_emb = np.vstack(new_embeddings)
-                self.index.add(stacked_emb)
+                stacked = np.vstack(new_embeddings)
+                self.index.add(stacked)
                 self.metadata.extend(new_metadata)
-
-            with self._lock:
-                self.indexing_state["message"] = "Running UMAP 2D/3D & HDBSCAN clustering..."
-            self._log("Updating 2D/3D UMAP galaxy coordinates and HDBSCAN clusters...")
-            self.run_clustering()
-            self._save_data()
+                self.run_clustering()
+                self._save_data()
 
         with self._lock:
             self.indexing_state["status"] = "idle"
             self.indexing_state["progress"] = 100
             self.indexing_state["message"] = f"Indexed {len(new_embeddings)} new images successfully."
 
-        self._log(f"Ingestion complete: {len(new_embeddings)} new images added.")
         if callback:
             callback(self.indexing_state)
 
@@ -971,14 +1083,11 @@ class ZeroTextEngine:
         directory_path: Union[str, Path],
         recursive: bool = True,
     ) -> int:
-        """
-        Discovers image files in directory and triggers background indexing.
-        """
         dir_p = Path(directory_path)
         if not dir_p.exists() or not dir_p.is_dir():
             raise FileNotFoundError(f"Directory not found: {directory_path}")
 
-        extensions = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif"]
+        extensions = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp"]
         files = []
         for ext in extensions:
             if recursive:
@@ -986,7 +1095,6 @@ class ZeroTextEngine:
             else:
                 files.extend(dir_p.glob(ext))
 
-        # Filter out hidden or cache files
         valid_files = [f for f in files if not f.name.startswith(".") and ".venv" not in str(f)]
         valid_files.sort()
 
@@ -1000,9 +1108,6 @@ class ZeroTextEngine:
     # -------------------------------------------------------------
 
     def get_all_images(self) -> List[Dict]:
-        """
-        Returns rich metadata for every indexed image, including cluster colours.
-        """
         with self._lock:
             result = []
             for item in self.metadata:

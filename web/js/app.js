@@ -1,15 +1,13 @@
 /**
- * ZERO-TEXT: MAIN FRONTEND APPLICATION CONTROLLER
- * Coordinates 3D Galaxy, 2D Map, Gallery Grid, Multi-modal Search,
- * Ingestion Pipeline, and Image Inspector.
- *
- * FIX v2.1:
- *  - Added startup loading banner that polls /api/status until model_ready
- *  - Added Search button click handler (not just Enter key)
- *  - Debounced search input (300ms) to reduce lag during typing
- *  - After search, sync galaxy selection to top result
- *  - Tooltip hidden correctly when hovering empty space (null item)
- *  - updateAllViews() passes current selectedItem into galaxies
+ * ZERO-TEXT: MAIN APPLICATION CONTROLLER (v2.5)
+ * Coordinates:
+ * - 3D Visual Galaxy with Camera Fly-To & Search Spotlight
+ * - 2D Semantic Star Map with Smooth Centering
+ * - Card Gallery Grid
+ * - Intelligent AI Weight Decider (CLIP vs OCR vs Dominant Colour)
+ * - 1-Click Scoring Presets
+ * - Full Galaxy / Search Bar Visibility Toggle
+ * - Rapid Ingestion & Directory Ingestion Pipeline
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,15 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedItem: null,
     activeView: 'galaxy3d', // 'galaxy3d' | 'galaxy2d' | 'grid'
     activeClusterFilter: null,
+    autoWeights: true,
     weights: {
-      clip: 0.65,
+      clip: 0.50,
       ocr: 0.25,
-      colour: 0.10,
+      colour: 0.25,
     },
-    isIndexing: false,
-    pollTimer: null,
-    modelReady: false,
-    modelPollTimer: null,
+    currentMatchIndex: 0,
     searchDebounceTimer: null,
   };
 
@@ -42,6 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Loading banner
     loadingBanner: document.getElementById('loading-banner'),
     loadingBannerMsg: document.getElementById('loading-banner-msg'),
+
+    // Full Galaxy toggle
+    btnToggleSearchBar: document.getElementById('btn-toggle-search-bar'),
+    searchHub: document.querySelector('.search-hub'),
 
     // View tabs
     tabGalaxy3d: document.getElementById('tab-galaxy3d'),
@@ -65,6 +65,23 @@ document.addEventListener('DOMContentLoaded', () => {
     weightColourVal: document.getElementById('val-colour'),
     clusterPillsContainer: document.getElementById('cluster-pills'),
     queryInsights: document.getElementById('query-insights'),
+
+    // AI Decider & Presets
+    deciderLabel: document.getElementById('decider-label'),
+    deciderReason: document.getElementById('decider-reason'),
+    presetPills: document.querySelectorAll('.preset-pill'),
+
+    // 3D & 2D Spotlight HUDs
+    spotlight3dHud: document.getElementById('spotlight-3d-hud'),
+    spotlight3dTitle: document.getElementById('spotlight-3d-title'),
+    spotlight3dScore: document.getElementById('spotlight-3d-score'),
+    spotlight3dPrev: document.getElementById('spotlight-3d-prev'),
+    spotlight3dNext: document.getElementById('spotlight-3d-next'),
+
+    spotlight2dHud: document.getElementById('spotlight-2d-hud'),
+    spotlight2dTitle: document.getElementById('spotlight-2d-title'),
+    spotlight2dScore: document.getElementById('spotlight-2d-score'),
+    spotlight2dNext: document.getElementById('spotlight-2d-next'),
 
     // Grid
     gridWrapper: document.getElementById('grid-wrapper'),
@@ -156,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // TOAST NOTIFICATIONS
   // -------------------------------------------------------------
   function showToast(message, duration = 3000) {
+    if (!el.toast) return;
     el.toast.textContent = message;
     el.toast.style.display = 'block';
     setTimeout(() => {
@@ -164,40 +182,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------------------------
-  // LOADING BANNER — Shown until CLIP model is ready
+  // FULL GALAXY VIEW TOGGLE
   // -------------------------------------------------------------
-  function showLoadingBanner(msg) {
-    if (!el.loadingBanner) return;
-    if (el.loadingBannerMsg) el.loadingBannerMsg.textContent = msg || 'Loading CLIP model…';
-    el.loadingBanner.style.display = 'flex';
-  }
-
-  function hideLoadingBanner() {
-    if (!el.loadingBanner) return;
-    el.loadingBanner.style.display = 'none';
-  }
-
-  function pollModelReady() {
-    state.modelPollTimer = setInterval(async () => {
-      try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        if (data.model_ready) {
-          state.modelReady = true;
-          clearInterval(state.modelPollTimer);
-          state.modelPollTimer = null;
-          hideLoadingBanner();
-          showToast('🚀 CLIP model ready — search is fully enabled!', 4000);
-          // Enable search input
-          if (el.searchInput) el.searchInput.disabled = false;
-          if (el.searchBtn) el.searchBtn.disabled = false;
-        } else {
-          showLoadingBanner('Loading CLIP AI model… searches will be ready shortly.');
-        }
-      } catch (e) {
-        // Server not up yet, keep polling
-      }
-    }, 2000);
+  if (el.btnToggleSearchBar && el.searchHub) {
+    let isSearchVisible = true;
+    el.btnToggleSearchBar.addEventListener('click', () => {
+      isSearchVisible = !isSearchVisible;
+      el.searchHub.style.display = isSearchVisible ? 'block' : 'none';
+      el.btnToggleSearchBar.innerHTML = isSearchVisible ? '<span>🌌</span> Full Galaxy Mode' : '<span>🔍</span> Show Search Bar';
+      galaxy3d.resize();
+      galaxy2d.resize();
+    });
   }
 
   // -------------------------------------------------------------
@@ -214,21 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
       state.allImages = imagesRes;
       state.displayedImages = [...imagesRes];
 
-      // Check if model is already ready (may have pre-warmed)
-      if (statusRes.model_ready) {
-        state.modelReady = true;
-        hideLoadingBanner();
-      } else {
-        showLoadingBanner('Loading CLIP AI model… searches will be ready shortly.');
-        if (el.searchInput) el.searchInput.disabled = false; // Allow typing, not searching
-        pollModelReady();
-      }
-
+      if (el.loadingBanner) el.loadingBanner.style.display = 'none';
       buildClusterPills();
       updateAllViews();
     } catch (err) {
       console.error('Failed to load initial data:', err);
-      showToast('Could not load data from ZERO-TEXT server. Is the server running?');
+      showToast('Could not connect to ZERO-TEXT backend.');
     }
   }
 
@@ -239,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateAllViews() {
-    // Sync selected item into galaxy engines so they highlight correctly
     if (state.selectedItem) {
       galaxy3d.selectedItem = state.selectedItem;
       galaxy2d.selectedItem = state.selectedItem;
@@ -257,14 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
     container.innerHTML = '';
 
-    // "All" Pill
     const allPill = document.createElement('span');
     allPill.className = `cluster-pill ${state.activeClusterFilter === null ? 'active' : ''}`;
     allPill.innerHTML = `All (${state.allImages.length})`;
     allPill.addEventListener('click', () => filterByCluster(null));
     container.appendChild(allPill);
 
-    // Discover unique clusters
     const clustersMap = {};
     state.allImages.forEach(it => {
       const c = it.cluster ?? -1;
@@ -273,9 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const sortedClusterIds = Object.keys(clustersMap).map(Number).sort((a, b) => a - b);
-
     sortedClusterIds.forEach(cId => {
-      if (cId === -1) return; // noise handled last
+      if (cId === -1) return;
       const count = clustersMap[cId].length;
       const pill = document.createElement('span');
       pill.className = `cluster-pill ${state.activeClusterFilter === cId ? 'active' : ''}`;
@@ -348,7 +330,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const clusterColor = item.cluster_color || '#4cc9f0';
       const scorePct = item.final !== undefined && item.final > 0 ? Math.round(item.final * 100) : null;
 
-      // Palette slices
       let paletteHtml = '';
       if (item.dominant_colours && item.dominant_colours.length) {
         paletteHtml = '<div class="card-palette">';
@@ -400,8 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.tooltipScore.style.display = 'none';
     }
 
-    // Position tooltip — keep it within viewport bounds
-    const TW = 180, TH = 140;
+    const TW = 190, TH = 145;
     let tx = mouseX + 14;
     let ty = mouseY - TH / 2;
     if (tx + TW > window.innerWidth) tx = mouseX - TW - 14;
@@ -417,16 +397,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // IMAGE INSPECTION DRAWER
   // -------------------------------------------------------------
   function selectItem(item) {
+    if (!item) return;
     state.selectedItem = item;
 
-    // Sync selection into galaxy canvases
     galaxy3d.selectedItem = item;
     galaxy2d.selectedItem = item;
-    // Redraw galaxies to show highlight (without full data rebuild)
     if (galaxy2d.render) galaxy2d.render();
     if (galaxy3d.useThree) galaxy3d.buildThreeScene();
 
-    // Update grid selection highlights
     document.querySelectorAll('.image-card').forEach(c => {
       const title = c.querySelector('.card-title');
       if (title && title.textContent === item.filename) {
@@ -441,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el.drawerTitle.textContent = item.filename;
     el.drawerPreview.src = `/api/image/${encodeURIComponent(item.filename)}`;
 
-    // Scores
     const finalPct = Math.round((item.final ?? 0) * 100);
     const clipPct = Math.round((item.clip ?? 0) * 100);
     const ocrPct = Math.round((item.ocr ?? 0) * 100);
@@ -452,13 +429,11 @@ document.addEventListener('DOMContentLoaded', () => {
     el.drawerScoreOcr.textContent = `${ocrPct}%`;
     el.drawerScoreColor.textContent = `${colPct}%`;
 
-    // Cluster info
     const cId = item.cluster ?? -1;
     el.drawerClusterTag.textContent = cId === -1 ? 'Noise' : `Cluster ${cId}`;
     el.drawerClusterTag.style.background = item.cluster_color || '#4cc9f0';
     el.drawerMembership.textContent = `${Math.round((item.membership_probability ?? 0) * 100)}%`;
 
-    // Coordinates
     const x2 = (item.x ?? 0).toFixed(2);
     const y2 = (item.y ?? 0).toFixed(2);
     el.drawerCoords2d.textContent = `(${x2}, ${y2})`;
@@ -468,7 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const z3 = (item.z3d ?? item.z ?? 0).toFixed(2);
     el.drawerCoords3d.textContent = `(${x3}, ${y3}, ${z3})`;
 
-    // Dominant Colours
     el.drawerPalette.innerHTML = '';
     const dominant = item.dominant_colours || [];
     if (dominant.length) {
@@ -487,11 +461,9 @@ document.addEventListener('DOMContentLoaded', () => {
       el.drawerPalette.innerHTML = '<span style="color:var(--text-dim);font-size:0.75rem">No palette extracted</span>';
     }
 
-    // OCR Text
     const ocrText = (item.full_text || '').trim();
     el.drawerOcrText.textContent = ocrText || '[No readable text detected in this image]';
 
-    // Actions
     el.drawerCopyOcrBtn.onclick = () => {
       navigator.clipboard.writeText(ocrText);
       showToast('OCR text copied to clipboard!');
@@ -506,7 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
       searchSimilar(item.filename);
     };
 
-    // Open Drawer
     el.drawer.classList.add('open');
   }
 
@@ -515,15 +486,57 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------------------------
-  // HYBRID SEARCH
+  // AI PRESET BUTTONS
   // -------------------------------------------------------------
+  function setPreset(preset) {
+    el.presetPills.forEach(p => p.classList.toggle('active', p.dataset.preset === preset));
 
-  // Debounced wrapper — fires 300ms after user stops typing
-  function scheduleSearch() {
-    clearTimeout(state.searchDebounceTimer);
-    state.searchDebounceTimer = setTimeout(() => performHybridSearch(), 300);
+    if (preset === 'auto') {
+      state.autoWeights = true;
+      el.deciderLabel.textContent = 'Auto Balancing';
+      el.deciderReason.textContent = '(Dynamic query-adaptive decider)';
+    } else {
+      state.autoWeights = false;
+      if (preset === 'semantic') {
+        applyWeightsUI(0.75, 0.15, 0.10, '🧠 Semantic Focus', 'CLIP visual semantic weighting');
+      } else if (preset === 'ocr') {
+        applyWeightsUI(0.25, 0.65, 0.10, '📝 Text & OCR Focus', 'RapidOCR in-image text weighting');
+      } else if (preset === 'colour') {
+        applyWeightsUI(0.20, 0.05, 0.75, '🎨 Colour Harmony', 'Dominant colour palette weighting');
+      } else if (preset === 'balanced') {
+        applyWeightsUI(0.50, 0.30, 0.20, '⚖️ Balanced Hybrid', 'Even split across all features');
+      }
+    }
+
+    if (el.searchInput.value.trim()) {
+      performHybridSearch();
+    }
   }
 
+  function applyWeightsUI(clip, ocr, col, label, reason) {
+    state.weights.clip = clip;
+    state.weights.ocr = ocr;
+    state.weights.colour = col;
+
+    el.weightClipSlider.value = Math.round(clip * 100);
+    el.weightOcrSlider.value = Math.round(ocr * 100);
+    el.weightColourSlider.value = Math.round(col * 100);
+
+    el.weightClipVal.textContent = `${Math.round(clip * 100)}%`;
+    el.weightOcrVal.textContent = `${Math.round(ocr * 100)}%`;
+    el.weightColourVal.textContent = `${Math.round(col * 100)}%`;
+
+    el.deciderLabel.textContent = label;
+    el.deciderReason.textContent = `(${reason})`;
+  }
+
+  el.presetPills.forEach(btn => {
+    btn.addEventListener('click', () => setPreset(btn.dataset.preset));
+  });
+
+  // -------------------------------------------------------------
+  // HYBRID SEARCH
+  // -------------------------------------------------------------
   async function performHybridSearch() {
     const query = el.searchInput.value.trim();
     if (!query) {
@@ -531,14 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!state.modelReady) {
-      showToast('⏳ CLIP model is still loading. Please wait a moment…');
-      return;
-    }
-
     el.searchClearBtn.style.display = 'flex';
-
-    // Visual feedback on search button
     if (el.searchBtn) {
       el.searchBtn.textContent = '…';
       el.searchBtn.disabled = true;
@@ -550,31 +556,48 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          clip_weight: state.weights.clip,
-          ocr_weight: state.weights.ocr,
-          colour_weight: state.weights.colour,
+          clip_weight: state.autoWeights ? null : state.weights.clip,
+          ocr_weight: state.autoWeights ? null : state.weights.ocr,
+          colour_weight: state.autoWeights ? null : state.weights.colour,
+          auto_weights: state.autoWeights,
           cluster_filter: state.activeClusterFilter,
+          top_k: 40,
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(`Search error: ${err.detail || res.statusText}`);
-        return;
+      const data = await res.json();
+      state.displayedImages = data.results;
+      state.currentMatchIndex = 0;
+
+      // Update AI Recommendation Display
+      if (data.recommendation) {
+        const rec = data.recommendation;
+        el.deciderLabel.textContent = rec.label || 'Active';
+        el.deciderReason.textContent = `(${rec.reason || 'Auto-balanced'})`;
+
+        if (state.autoWeights) {
+          applyWeightsUI(rec.clip, rec.ocr, rec.colour, rec.label, rec.reason);
+        }
       }
 
-      const data = await res.json();
-
-      state.displayedImages = data.results;
       updateAllViews();
-
-      // Update Query Insights
       renderQueryInsights(data.detected_words, data.detected_colours);
 
-      // Auto-select top result and highlight in galaxy
       if (data.results.length > 0) {
-        selectItem(data.results[0]);
+        const topItem = data.results[0];
+        selectItem(topItem);
+
+        // Update 3D spotlight HUD & fly camera
+        updateSpotlightHUD(topItem, data.results.length);
+        if (state.activeView === 'galaxy3d') {
+          galaxy3d.flyToItem(topItem);
+        } else if (state.activeView === 'galaxy2d') {
+          galaxy2d.focusItem(topItem);
+        }
+      } else {
+        hideSpotlightHUD();
       }
+
       showToast(`Found ${data.total_results} matching images.`);
     } catch (err) {
       console.error('Search failed:', err);
@@ -585,6 +608,58 @@ document.addEventListener('DOMContentLoaded', () => {
         el.searchBtn.disabled = false;
       }
     }
+  }
+
+  function updateSpotlightHUD(item, total) {
+    if (el.spotlight3dHud) {
+      el.spotlight3dTitle.textContent = item.filename;
+      el.spotlight3dScore.textContent = `${Math.round((item.final || 0) * 100)}% match`;
+      el.spotlight3dHud.style.display = 'flex';
+    }
+    if (el.spotlight2dHud) {
+      el.spotlight2dTitle.textContent = item.filename;
+      el.spotlight2dScore.textContent = `${Math.round((item.final || 0) * 100)}% match`;
+      el.spotlight2dHud.style.display = 'flex';
+    }
+  }
+
+  function hideSpotlightHUD() {
+    if (el.spotlight3dHud) el.spotlight3dHud.style.display = 'none';
+    if (el.spotlight2dHud) el.spotlight2dHud.style.display = 'none';
+  }
+
+  // 3D / 2D Spotlight Navigator Click Handlers
+  if (el.spotlight3dNext) {
+    el.spotlight3dNext.addEventListener('click', () => {
+      if (!state.displayedImages.length) return;
+      state.currentMatchIndex = (state.currentMatchIndex + 1) % state.displayedImages.length;
+      const target = state.displayedImages[state.currentMatchIndex];
+      selectItem(target);
+      updateSpotlightHUD(target, state.displayedImages.length);
+      galaxy3d.flyToItem(target);
+    });
+  }
+
+  if (el.spotlight3dPrev) {
+    el.spotlight3dPrev.addEventListener('click', () => {
+      if (!state.displayedImages.length) return;
+      state.currentMatchIndex = (state.currentMatchIndex - 1 + state.displayedImages.length) % state.displayedImages.length;
+      const target = state.displayedImages[state.currentMatchIndex];
+      selectItem(target);
+      updateSpotlightHUD(target, state.displayedImages.length);
+      galaxy3d.flyToItem(target);
+    });
+  }
+
+  if (el.spotlight2dNext) {
+    el.spotlight2dNext.addEventListener('click', () => {
+      if (!state.displayedImages.length) return;
+      state.currentMatchIndex = (state.currentMatchIndex + 1) % state.displayedImages.length;
+      const target = state.displayedImages[state.currentMatchIndex];
+      selectItem(target);
+      updateSpotlightHUD(target, state.displayedImages.length);
+      galaxy2d.focusItem(target);
+    });
   }
 
   function renderQueryInsights(words, colours) {
@@ -619,35 +694,27 @@ document.addEventListener('DOMContentLoaded', () => {
     el.searchInput.value = '';
     el.searchClearBtn.style.display = 'none';
     if (el.queryInsights) el.queryInsights.style.display = 'none';
+    hideSpotlightHUD();
     filterByCluster(state.activeClusterFilter);
   }
 
-  // Search input: Enter triggers immediate search, typing uses debounce
   el.searchInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      clearTimeout(state.searchDebounceTimer);
-      performHybridSearch();
-    }
+    if (e.key === 'Enter') performHybridSearch();
   });
-
-  // Search button click
-  if (el.searchBtn) {
-    el.searchBtn.addEventListener('click', () => {
-      clearTimeout(state.searchDebounceTimer);
-      performHybridSearch();
-    });
-  }
-
+  if (el.searchBtn) el.searchBtn.addEventListener('click', performHybridSearch);
   el.searchClearBtn.addEventListener('click', clearSearch);
 
-  // Weights Slider Handling
+  // Manual Slider Adjustments
   if (el.weightsToggleBtn) {
     el.weightsToggleBtn.addEventListener('click', () => {
       el.weightsDrawer.classList.toggle('open');
     });
   }
 
-  function updateWeights() {
+  function onSliderChange() {
+    state.autoWeights = false;
+    el.presetPills.forEach(p => p.classList.remove('active'));
+
     state.weights.clip = parseFloat(el.weightClipSlider.value) / 100;
     state.weights.ocr = parseFloat(el.weightOcrSlider.value) / 100;
     state.weights.colour = parseFloat(el.weightColourSlider.value) / 100;
@@ -656,14 +723,18 @@ document.addEventListener('DOMContentLoaded', () => {
     el.weightOcrVal.textContent = `${Math.round(state.weights.ocr * 100)}%`;
     el.weightColourVal.textContent = `${Math.round(state.weights.colour * 100)}%`;
 
+    el.deciderLabel.textContent = 'Custom Manual';
+    el.deciderReason.textContent = '(Adjusted via sliders)';
+
     if (el.searchInput.value.trim()) {
-      scheduleSearch();
+      clearTimeout(state.searchDebounceTimer);
+      state.searchDebounceTimer = setTimeout(performHybridSearch, 300);
     }
   }
 
-  el.weightClipSlider.addEventListener('input', updateWeights);
-  el.weightOcrSlider.addEventListener('input', updateWeights);
-  el.weightColourSlider.addEventListener('input', updateWeights);
+  el.weightClipSlider.addEventListener('input', onSliderChange);
+  el.weightOcrSlider.addEventListener('input', onSliderChange);
+  el.weightColourSlider.addEventListener('input', onSliderChange);
 
   // -------------------------------------------------------------
   // COLOR & SIMILARITY SEARCH
@@ -678,7 +749,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       state.displayedImages = data.results;
       updateAllViews();
-      if (data.results.length > 0) selectItem(data.results[0]);
+      if (data.results.length > 0) {
+        selectItem(data.results[0]);
+        updateSpotlightHUD(data.results[0], data.results.length);
+        if (state.activeView === 'galaxy3d') galaxy3d.flyToItem(data.results[0]);
+        if (state.activeView === 'galaxy2d') galaxy2d.focusItem(data.results[0]);
+      }
       showToast(`Showing images matching color ${hexCode}`);
     } catch (err) {
       console.error('Color search failed:', err);
@@ -686,10 +762,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchSimilar(filename) {
-    if (!state.modelReady) {
-      showToast('⏳ CLIP model is still loading…');
-      return;
-    }
     try {
       const res = await fetch('/api/search/similar', {
         method: 'POST',
@@ -742,10 +814,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   el.btnSearchSketch.addEventListener('click', async () => {
-    if (!state.modelReady) {
-      showToast('⏳ CLIP model is still loading…');
-      return;
-    }
     const dataUrl = sketchStudio.toDataURL();
     el.btnSearchSketch.textContent = 'Analyzing sketch…';
     try {
@@ -759,7 +827,12 @@ document.addEventListener('DOMContentLoaded', () => {
       el.modalSketch.classList.remove('open');
       state.displayedImages = data.results;
       updateAllViews();
-      if (data.results.length > 0) selectItem(data.results[0]);
+      if (data.results.length > 0) {
+        selectItem(data.results[0]);
+        updateSpotlightHUD(data.results[0], data.results.length);
+        if (state.activeView === 'galaxy3d') galaxy3d.flyToItem(data.results[0]);
+        if (state.activeView === 'galaxy2d') galaxy2d.focusItem(data.results[0]);
+      }
       showToast(`Sketch search complete: ${data.total_results} matches found.`);
     } catch (err) {
       console.error('Sketch search error:', err);
@@ -794,7 +867,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el.bodyUploadFiles.style.display = 'none';
   });
 
-  // Drag & drop
   el.dropzone.addEventListener('click', () => el.fileInput.click());
   el.dropzone.addEventListener('dragover', e => {
     e.preventDefault();
@@ -823,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const f of files) {
         const dataUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result);
+          reader.onload = ev => resolve(ev.target.result);
           reader.onerror = reject;
           reader.readAsDataURL(f);
         });
@@ -867,9 +939,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startProgressTracker() {
     el.progressContainer.style.display = 'flex';
-    if (state.pollTimer) clearInterval(state.pollTimer);
-
-    state.pollTimer = setInterval(async () => {
+    const pollTimer = setInterval(async () => {
       try {
         const res = await fetch('/api/index/status');
         const s = await res.json();
@@ -884,8 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (s.status === 'idle' && s.progress === 100) {
-          clearInterval(state.pollTimer);
-          state.pollTimer = null;
+          clearInterval(pollTimer);
           showToast('Indexing completed! Reloading galaxy…');
           setTimeout(() => {
             loadInitialData();
@@ -906,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.btnRecluster.textContent = 'Re-clustering…';
     try {
       const res = await fetch('/api/recluster', { method: 'POST' });
-      const data = await res.json();
+      await res.json();
       showToast('Reclustering complete!');
       await loadInitialData();
     } catch (err) {
@@ -934,7 +1003,6 @@ document.addEventListener('DOMContentLoaded', () => {
   el.mapZoomOut.addEventListener('click', () => galaxy2d.zoomOut());
   el.mapFit.addEventListener('click', () => galaxy2d.fitView());
 
-  // Close modals on escape
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       el.drawer.classList.remove('open');
@@ -943,7 +1011,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initial load — show loading banner immediately
-  showLoadingBanner('Connecting to ZERO-TEXT server…');
   loadInitialData();
 });

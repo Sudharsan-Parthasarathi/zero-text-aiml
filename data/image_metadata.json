@@ -12,6 +12,10 @@
         "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg"
     },
     {
+        "filename": "blue_ocean.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\blue_ocean.jpg"
+    },
+    {
         "filename": "cat.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg"
     },
@@ -24,8 +28,40 @@
         "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg"
     },
     {
+        "filename": "emerald_forest.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\emerald_forest.jpg"
+    },
+    {
+        "filename": "espresso_cup.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\espresso_cup.jpg"
+    },
+    {
+        "filename": "fighter_jet.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\fighter_jet.jpg"
+    },
+    {
         "filename": "football.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\football.jpg"
+    },
+    {
+        "filename": "genetics_notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\genetics_notes.jpg"
+    },
+    {
+        "filename": "geometric_art.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\geometric_art.jpg"
+    },
+    {
+        "filename": "golden_retriever.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\golden_retriever.jpg"
+    },
+    {
+        "filename": "golden_sunflower.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\golden_sunflower.jpg"
+    },
+    {
+        "filename": "handwritten_todo.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\handwritten_todo.jpg"
     },
     {
         "filename": "math_notes.jpg",
@@ -38,6 +74,42 @@
     {
         "filename": "nasa_rocket.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg"
+    },
+    {
+        "filename": "neon_cyberpunk.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\neon_cyberpunk.jpg"
+    },
+    {
+        "filename": "pepperoni_pizza.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\pepperoni_pizza.jpg"
+    },
+    {
+        "filename": "physics_formulas.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\physics_formulas.jpg"
+    },
+    {
+        "filename": "purple_nebula.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\purple_nebula.jpg"
+    },
+    {
+        "filename": "python_code.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\python_code.jpg"
+    },
+    {
+        "filename": "red_supercar.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\red_supercar.jpg"
+    },
+    {
+        "filename": "snowy_sunset.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\snowy_sunset.jpg"
+    },
+    {
+        "filename": "tax_invoice.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\tax_invoice.jpg"
+    },
+    {
+        "filename": "vintage_camera.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\vintage_camera.jpg"
     },
     {
         "filename": "WIN_20261016_21_52_16_Pro.jpg",

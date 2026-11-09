@@ -75,6 +75,9 @@
 
     <!-- Actions -->
     <div class="header-actions">
+      <button class="btn" id="btn-toggle-search-bar" title="Toggle Search Bar on/off for full-screen 2D/3D visual galaxy exploration">
+        <span>🌌</span> Full Galaxy Mode
+      </button>
       <button class="btn" id="btn-open-sketch" title="Draw a rough sketch to find visually similar images">
         <span>✏️</span> Sketch Search
       </button>
@@ -115,6 +118,22 @@
       </button>
     </div>
 
+    <!-- AI Auto-Weight Decider & Preset Selectors -->
+    <div class="auto-decider-bar" id="auto-decider-bar">
+      <div class="decider-tag" id="decider-tag">
+        <span style="color:var(--accent-cyan);font-weight:700">✨ AI Decider:</span>
+        <strong id="decider-label" style="color:#ffd166">Auto Balancing</strong>
+        <span id="decider-reason" style="color:var(--text-muted);font-size:0.75rem;">(Intelligently analyzes query intent)</span>
+      </div>
+      <div class="preset-pills">
+        <button class="preset-pill active" data-preset="auto" id="preset-auto" title="Automatically decide weights based on query keywords">✨ Auto (Recommended)</button>
+        <button class="preset-pill" data-preset="semantic" title="75% CLIP, 15% OCR, 10% Colour">🧠 Semantic</button>
+        <button class="preset-pill" data-preset="ocr" title="65% OCR, 25% CLIP, 10% Colour">📝 Text / OCR</button>
+        <button class="preset-pill" data-preset="colour" title="75% Colour, 20% CLIP, 5% OCR">🎨 Colour Focus</button>
+        <button class="preset-pill" data-preset="balanced" title="50% CLIP, 30% OCR, 20% Colour">⚖️ Balanced</button>
+      </div>
+    </div>
+
     <!-- Dynamic Tuning Sliders Drawer -->
     <div class="weights-drawer" id="weights-drawer">
       <div class="weight-item">
@@ -152,6 +171,15 @@
     <div class="view-container active" id="view-galaxy3d">
       <canvas id="galaxy3d-canvas"></canvas>
 
+      <!-- 3D Floating Match Navigator HUD -->
+      <div class="match-spotlight-hud" id="spotlight-3d-hud" style="display:none">
+        <span style="color:var(--accent-cyan);font-weight:700">🎯 3D Match:</span>
+        <strong id="spotlight-3d-title">filename.jpg</strong>
+        <span class="spotlight-badge" id="spotlight-3d-score">95%</span>
+        <button class="hud-btn" id="spotlight-3d-prev" title="Fly to previous match in 3D">◀ Prev</button>
+        <button class="hud-btn" id="spotlight-3d-next" title="Fly to next match in 3D">Next ▶</button>
+      </div>
+
       <!-- 3D Floating HUD -->
       <div class="galaxy-hud">
         <button class="hud-btn" id="hud-reset" title="Reset Camera">
@@ -171,6 +199,15 @@
     <div class="view-container" id="view-galaxy2d">
       <div id="galaxy2d-container">
         <canvas id="galaxy2d-canvas"></canvas>
+
+        <!-- 2D Floating Match Navigator HUD -->
+        <div class="match-spotlight-hud" id="spotlight-2d-hud" style="display:none">
+          <span style="color:var(--accent-cyan);font-weight:700">🗺️ 2D Match:</span>
+          <strong id="spotlight-2d-title">filename.jpg</strong>
+          <span class="spotlight-badge" id="spotlight-2d-score">95%</span>
+          <button class="hud-btn" id="spotlight-2d-next" title="Focus next match in 2D">Next ▶</button>
+        </div>
+
         <div class="map-controls">
           <button class="map-btn" id="map-zoom-in" title="Zoom In">+</button>
           <button class="map-btn" id="map-zoom-out" title="Zoom Out">−</button>

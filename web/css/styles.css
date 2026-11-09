@@ -1229,3 +1229,102 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ============================================================
+   AI SMART WEIGHT DECIDER & 1-CLICK PRESETS
+   ============================================================ */
+.auto-decider-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(10, 16, 32, 0.7);
+  border: 1px solid rgba(112, 225, 209, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.decider-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.preset-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.preset-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-pill:hover {
+  color: var(--text-main);
+  background: rgba(112, 225, 209, 0.1);
+  border-color: rgba(112, 225, 209, 0.3);
+}
+
+.preset-pill.active {
+  background: rgba(112, 225, 209, 0.2);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(112, 225, 209, 0.2);
+}
+
+/* ============================================================
+   MATCH SPOTLIGHT HUD (3D & 2D FLOATING NAVIGATOR)
+   ============================================================ */
+.match-spotlight-hud {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 18, 36, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(112, 225, 209, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 16px rgba(112, 225, 209, 0.25);
+  border-radius: 24px;
+  padding: 6px 16px;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  animation: fadeInDown 0.25s ease;
+}
+
+.spotlight-badge {
+  background: linear-gradient(135deg, #ffd166, #ff7b00);
+  color: #0d1322;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+

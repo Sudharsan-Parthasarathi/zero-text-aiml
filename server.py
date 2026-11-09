@@ -8,7 +8,6 @@ import io
 import mimetypes
 import os
 import shutil
-import threading
 from pathlib import Path
 from typing import List, Optional
 
@@ -24,7 +23,7 @@ from pipeline import BASE_DIR, DATA_DIR, SAMPLE_DIR, SKETCHES_DIR, get_engine
 app = FastAPI(
     title="ZERO-TEXT API",
     description="Multimodal Visual Galaxy Explorer & Semantic Search System",
-    version="2.0.0",
+    version="2.5.0",
 )
 
 # Enable CORS for local development
@@ -39,42 +38,30 @@ app.add_middleware(
 engine = get_engine()
 
 
-# -----------------------------------------------------------------
-# STARTUP — Pre-warm CLIP in background (engine already does this,
-#   but we also expose model_ready in status)
-# -----------------------------------------------------------------
-@app.on_event("startup")
-async def startup_event():
-    """
-    Engine __init__ already kicks off a background thread to pre-warm CLIP.
-    This hook is kept for any future startup work.
-    """
-    pass
-
-
 # Request schemas
 class HybridSearchRequest(BaseModel):
     query: str
-    clip_weight: float = 0.65
-    ocr_weight: float = 0.25
-    colour_weight: float = 0.10
+    clip_weight: Optional[float] = None
+    ocr_weight: Optional[float] = None
+    colour_weight: Optional[float] = None
+    auto_weights: bool = True
     cluster_filter: Optional[int] = None
-    top_k: int = 40
+    top_k: int = 50
 
 
 class SketchSearchRequest(BaseModel):
     sketch_data: str  # Base64 data URL e.g. "data:image/png;base64,..."
-    top_k: int = 20
+    top_k: int = 25
 
 
 class ColorSearchRequest(BaseModel):
     hex: str
-    top_k: int = 20
+    top_k: int = 25
 
 
 class SimilarSearchRequest(BaseModel):
     filename: str
-    top_k: int = 10
+    top_k: int = 15
 
 
 class DirectoryIndexRequest(BaseModel):
@@ -98,7 +85,6 @@ class UploadPayload(BaseModel):
 @app.get("/api/status")
 def get_status():
     status = engine.get_system_status()
-    # Flatten model_ready to top level for easy frontend polling
     status["model_ready"] = engine.model_ready
     return status
 
@@ -110,9 +96,6 @@ def get_images():
 
 @app.get("/api/image/{filename}")
 def get_image(filename: str):
-    """
-    Safely retrieves the image file from disk.
-    """
     path_str = engine.get_image_path(filename)
     path = Path(path_str)
     if not path.exists():
@@ -130,18 +113,23 @@ def get_image(filename: str):
     return FileResponse(path, media_type=mime_type or "image/jpeg")
 
 
+@app.get("/api/search/recommend_weights")
+def get_recommended_weights(query: str):
+    """
+    Analyzes query and dynamically decides recommended scoring weights.
+    Satisfies: 'recommended CLIP OCR Dominant colour deciding thing'.
+    """
+    return engine.recommend_weights(query)
+
+
 @app.post("/api/search/hybrid")
 def search_hybrid(req: HybridSearchRequest):
-    if not engine.model_ready:
-        raise HTTPException(
-            status_code=503,
-            detail="CLIP model is still loading. Please wait a moment and try again."
-        )
-    results = engine.hybrid_search(
+    results, rec = engine.hybrid_search(
         query=req.query,
         clip_weight=req.clip_weight,
         ocr_weight=req.ocr_weight,
         colour_weight=req.colour_weight,
+        auto_weights=req.auto_weights,
         cluster_filter=req.cluster_filter,
         top_k=req.top_k,
     )
@@ -150,6 +138,7 @@ def search_hybrid(req: HybridSearchRequest):
         "query": req.query,
         "detected_words": words,
         "detected_colours": colours,
+        "recommendation": rec,
         "total_results": len(results),
         "results": results,
     }
@@ -157,11 +146,6 @@ def search_hybrid(req: HybridSearchRequest):
 
 @app.post("/api/search/sketch")
 def search_sketch(req: SketchSearchRequest):
-    if not engine.model_ready:
-        raise HTTPException(
-            status_code=503,
-            detail="CLIP model is still loading. Please wait a moment and try again."
-        )
     try:
         data_str = req.sketch_data
         if "," in data_str:
@@ -190,11 +174,6 @@ def search_color(req: ColorSearchRequest):
 
 @app.post("/api/search/similar")
 def search_similar(req: SimilarSearchRequest):
-    if not engine.model_ready:
-        raise HTTPException(
-            status_code=503,
-            detail="CLIP model is still loading. Please wait a moment and try again."
-        )
     results = engine.similar_images(req.filename, top_k=req.top_k)
     return {
         "target": req.filename,
@@ -205,10 +184,6 @@ def search_similar(req: SimilarSearchRequest):
 
 @app.post("/api/index/upload")
 def upload_and_index(payload: UploadPayload):
-    """
-    Accepts one or multiple image file uploads via Base64, saves them into
-    data/sample_images, and triggers the background indexing pipeline.
-    """
     saved_paths = []
     upload_dir = DATA_DIR / "sample_images"
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -240,9 +215,6 @@ def upload_and_index(payload: UploadPayload):
 
 @app.post("/api/index/directory")
 def index_directory(req: DirectoryIndexRequest):
-    """
-    Indexes all images found in a specified local directory.
-    """
     try:
         found_count = engine.index_directory(req.directory_path, recursive=req.recursive)
         return {
@@ -301,7 +273,6 @@ def get_sample_sketch_file(filename: str):
 WEB_DIR = BASE_DIR / "web"
 WEB_DIR.mkdir(parents=True, exist_ok=True)
 
-# Mount static files
 app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
