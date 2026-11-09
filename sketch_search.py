@@ -1,183 +1,59 @@
-
-import torch
-import open_clip
-import faiss
-import numpy as np
-
-from PIL import Image
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
+from PIL import Image
 
-# ==========================================
-# ZERO-TEXT: SKETCH-TO-IMAGE SEARCH
-# ==========================================
+# Critical Windows environment variables before importing torch/faiss
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-BASE_DIR = Path(__file__).resolve().parent
-
-INDEX_PATH = BASE_DIR / "data" / "image_index.faiss"
-METADATA_PATH = BASE_DIR / "data" / "image_metadata.json"
-
-DEVICE = "cpu"
-MODEL_NAME = "ViT-B-32"
-PRETRAINED = "laion2b_s34b_b79k"
-DIMENSIONS = 512
+from pipeline import get_engine
 
 TOP_K = 5
 
 print("=" * 55)
-print("       ZERO-TEXT SKETCH SEARCH ENGINE")
+print("       ZERO-TEXT HIGH-PRECISION SKETCH SEARCH")
 print("=" * 55)
 
-# ==========================================
-# 1. LOAD CLIP MODEL
-# ==========================================
+engine = get_engine()
+engine.load_clip()
 
-print("\nLoading CLIP model...")
 
-model, _, preprocess = open_clip.create_model_and_transforms(
-    MODEL_NAME,
-    pretrained=PRETRAINED,
-    device=DEVICE
-)
-
-model.eval()
-
-print("CLIP model loaded successfully!")
-
-# ==========================================
-# 2. LOAD EXISTING FAISS INDEX
-# ==========================================
-
-print("\nLoading existing FAISS index...")
-
-if not INDEX_PATH.exists():
-    raise FileNotFoundError("FAISS index not found!")
-
-if not METADATA_PATH.exists():
-    raise FileNotFoundError("Image metadata not found!")
-
-index = faiss.read_index(str(INDEX_PATH))
-
-import json
-
-with open(METADATA_PATH, "r", encoding="utf-8") as file:
-    metadata = json.load(file)
-
-if index.d != DIMENSIONS:
-    raise ValueError("Embedding dimension mismatch!")
-
-if index.ntotal != len(metadata):
-    raise ValueError("Index and metadata mismatch!")
-
-print("FAISS index loaded!")
-print("Indexed images:", index.ntotal)
-
-# ==========================================
-# 3. GENERATE SKETCH EMBEDDING
-# ==========================================
-
-def generate_sketch_embedding(sketch_path, augment=False):
-    """Generate a CLIP embedding for a sketch.
-    If *augment* is True, also compute a horizontally flipped version and
-    average the two normalized embeddings – this often improves robustness
-    for hand‑drawn sketches where left/right orientation can vary.
-    """
+def search_sketch(sketch_path: str, top_k: int = TOP_K, text_hint: str = ""):
     sketch_path = Path(sketch_path)
     if not sketch_path.exists():
         raise FileNotFoundError(f"Sketch not found: {sketch_path}")
-    print("\nProcessing sketch:", sketch_path.name)
-    image = Image.open(sketch_path).convert("RGB")
-    image_tensor = preprocess(image).unsqueeze(0).to(DEVICE)
-    with torch.inference_mode():
-        embedding = model.encode_image(image_tensor)
-    embedding = embedding / embedding.norm(dim=-1, keepdim=True)
-    # Augmentation: horizontal flip
-    if augment:
-        flipped = Image.open(sketch_path).transpose(Image.FLIP_LEFT_RIGHT).convert("RGB")
-        flipped_tensor = preprocess(flipped).unsqueeze(0).to(DEVICE)
-        with torch.inference_mode():
-            flipped_emb = model.encode_image(flipped_tensor)
-        flipped_emb = flipped_emb / flipped_emb.norm(dim=-1, keepdim=True)
-        embedding = (embedding + flipped_emb) / 2.0
-        embedding = embedding / embedding.norm(dim=-1, keepdim=True)
-    vector = embedding.cpu().numpy().astype("float32")
-    print("Sketch embedding generated!")
-    print("Embedding shape:", vector.shape)
-    return vector
 
-    sketch_path = Path(sketch_path)
+    print(f"\nProcessing sketch: {sketch_path.name}")
+    img = Image.open(sketch_path)
+    results = engine.sketch_search(img, top_k=top_k, text_hint=text_hint)
 
-    if not sketch_path.exists():
-        raise FileNotFoundError(
-            f"Sketch not found: {sketch_path}"
-        )
-
-    print("\nProcessing sketch:", sketch_path.name)
-
-    image = Image.open(sketch_path).convert("RGB")
-
-    image_tensor = preprocess(image).unsqueeze(0)
-
-    image_tensor = image_tensor.to(DEVICE)
-
-    with torch.inference_mode():
-
-        embedding = model.encode_image(image_tensor)
-
-    embedding = embedding / embedding.norm(
-        dim=-1,
-        keepdim=True
-    )
-
-    vector = embedding.cpu().numpy().astype("float32")
-
-    print("Sketch embedding generated!")
-    print("Embedding shape:", vector.shape)
-
-    return vector
-
-# ==========================================
-# 4. SEARCH SIMILAR IMAGES
-# ==========================================
-
-def search_sketch(sketch_path, top_k=TOP_K, augment=False):
-    """Search for images similar to a sketch.
-    *augment* – if True, the embedding is averaged with a horizontally
-    flipped version of the sketch (see ``generate_sketch_embedding``).
-    """
-    query_vector = generate_sketch_embedding(sketch_path, augment=augment)
-    k = min(top_k, index.ntotal)
-    scores, indices = index.search(query_vector, k)
     print("\n" + "=" * 55)
     print("          SKETCH SEARCH RESULTS")
     print("=" * 55)
-    for rank, (score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
-        if idx < 0:
-            continue
-        result = metadata[idx]
-        print(f"\nRank: {rank}")
-        print("Image:", result["filename"])
-        print("Similarity:", f"{score * 100:.2f}%")
-        print("Path:", result["path"])
-    print("\nSketch search completed!")
 
-# Duplicate block removed
+    for r in results:
+        print(f"\nRank: {r['rank']}")
+        print(f"Image: {r['filename']}")
+        print(f"Similarity (Raw Cosine): {r['similarity'] * 100:.2f}%")
+        print(f"Calibrated Match Score:  {r['final'] * 100:.2f}%")
+        print(f"Cluster: {r['cluster']}")
+        print(f"Path: {r['path']}")
 
-# ==========================================
-# 5. MAIN PROGRAM
-# ==========================================
+    print("\nSketch search completed successfully!")
+    return results
 
-if len(sys.argv) < 2:
 
-    print("\nUsage:")
-    print(
-        'python sketch_search.py "path/to/sketch.png"'
-    )
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("\nUsage:")
+        print('  python sketch_search.py "path/to/sketch.png" [optional_text_hint]')
+        raise SystemExit
 
-    raise SystemExit
-
-sketch_path = sys.argv[1]
-
-search_sketch(sketch_path)
-
-print("\nSUCCESS! ZERO-TEXT SKETCH SEARCH FINISHED.")
+    sketch_path = sys.argv[1]
+    hint = sys.argv[2] if len(sys.argv) > 2 else ""
+    search_sketch(sketch_path, text_hint=hint)
+    print("\nSUCCESS! ZERO-TEXT SKETCH SEARCH FINISHED.")

@@ -14,11 +14,15 @@ from server import (
     search_hybrid,
     search_color,
     search_similar,
+    search_sketch,
     get_recommended_weights,
     HybridSearchRequest,
     ColorSearchRequest,
-    SimilarSearchRequest
+    SimilarSearchRequest,
+    SketchSearchRequest,
 )
+import base64
+from pathlib import Path
 
 print("\n--- ZERO-TEXT DIRECT ENDPOINT VERIFICATION ---")
 
@@ -54,5 +58,13 @@ print(f"[6] search_similar('cat.jpg'): Returned {len(res_sim['results'])} neighb
 # 6. Weight Recommendation
 rec = get_recommended_weights("crimson red sportscar")
 print(f"[7] get_recommended_weights('crimson red sportscar'): intent={rec['intent']}, label={rec['label']}, weights=CLIP {rec['clip']}/OCR {rec['ocr']}/Colour {rec['colour']}")
+
+# 7. Sketch Search
+with open("data/sketches/rocket.jpg", "rb") as f:
+    b64 = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
+res_sketch = search_sketch(SketchSearchRequest(sketch_data=b64, top_k=3))
+top_sk = res_sketch["results"][0]
+print(f"[8] search_sketch('rocket.jpg'): Top 1 = {top_sk['filename']} (Final: {top_sk['final']}, Similarity: {top_sk['similarity']})")
+assert top_sk["filename"] == "nasa_rocket.jpg", f"Expected nasa_rocket.jpg, got {top_sk['filename']}"
 
 print("\n>>> ALL API ENDPOINTS FUNCTION PERFECTLY WITHOUT ERRORS! <<<\n")

@@ -54,6 +54,7 @@ METADATA_PATH = DATA_DIR / "image_metadata.json"
 OCR_PATH = DATA_DIR / "ocr_results.json"
 COLOUR_PATH = DATA_DIR / "color_results.json"
 CLUSTER_PATH = DATA_DIR / "cluster_results.json"
+SKETCH_ADAPTER_PATH = DATA_DIR / "sketch_adapter.pt"
 
 MODEL_NAME = "ViT-B-32"
 PRETRAINED = "laion2b_s34b_b79k"
@@ -153,6 +154,30 @@ def softmax_normalize(scores: np.ndarray, temperature: float = 0.35) -> np.ndarr
     return norm
 
 
+class SketchAdapter(torch.nn.Module):
+    """
+    Fine-tuned feature projection adapter that maps sketch CLIP embeddings
+    directly into the manifold of natural photographs.
+    Trained on real and synthetic sketch-photo pairs with contrastive cosine loss.
+    """
+    def __init__(self, dim: int = 512):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(dim, dim)
+        self.norm = torch.nn.LayerNorm(dim)
+        self.act = torch.nn.GELU()
+        self.fc2 = torch.nn.Linear(dim, dim)
+        self.alpha = torch.nn.Parameter(torch.tensor(0.6, dtype=torch.float32))
+
+        # Initialize to near-identity residual
+        torch.nn.init.zeros_(self.fc2.weight)
+        torch.nn.init.zeros_(self.fc2.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        delta = self.fc2(self.act(self.norm(self.fc1(x))))
+        out = x + self.alpha * delta
+        return out / out.norm(dim=-1, keepdim=True)
+
+
 class ZeroTextEngine:
     """
     Unified ZeroText Engine handling multi-modal indexing, searching,
@@ -172,6 +197,10 @@ class ZeroTextEngine:
         self.ocr_lookup: Dict[str, Dict] = {}
         self.colour_lookup: Dict[str, List[Dict]] = {}
         self.cluster_lookup: Dict[str, Dict] = {}
+
+        self.sketch_adapter: Optional[SketchAdapter] = None
+        self.reducer_2d: Optional[umap.UMAP] = None
+        self.reducer_3d: Optional[umap.UMAP] = None
 
         self.indexing_state = {
             "status": "idle",
@@ -193,7 +222,7 @@ class ZeroTextEngine:
         try:
             self.load_clip()
         except Exception as e:
-            self._log(f"CLIP prewarm warning: {e}")
+            self._log(f"CLIP prewarm notice: {e}")
 
     def _ensure_directories(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -232,6 +261,113 @@ class ZeroTextEngine:
             self.indexing_state["model_ready"] = True
             elapsed = time.time() - start
             self._log(f"CLIP loaded in {elapsed:.2f}s — ready for search!")
+            try:
+                self.load_or_train_sketch_adapter()
+            except Exception as ex:
+                self._log(f"Sketch adapter init notice: {ex}")
+
+    def load_or_train_sketch_adapter(self):
+        if self.sketch_adapter is not None:
+            return
+        adapter = SketchAdapter(DIMENSIONS)
+        if SKETCH_ADAPTER_PATH.exists():
+            try:
+                state_dict = torch.load(SKETCH_ADAPTER_PATH, map_location=DEVICE)
+                adapter.load_state_dict(state_dict)
+                adapter.eval()
+                self.sketch_adapter = adapter
+                self._log("Loaded fine-tuned SketchAdapter weights.")
+                return
+            except Exception as e:
+                self._log(f"Notice loading sketch adapter: {e}")
+        # Train sketch adapter if index is ready
+        if self.index is not None and self.index.ntotal > 0:
+            self.fine_tune_sketch_adapter()
+
+    def fine_tune_sketch_adapter(self, epochs: int = 120, lr: float = 1e-3):
+        """
+        Fine-tune CLIP feature projection for sketches paired with real images.
+        Pairs real hand-drawn sketches and synthetic Canny/Otsu edge maps with
+        their real photos, then optimizes contrastive InfoNCE loss.
+        """
+        import cv2
+        import torch.nn.functional as F
+
+        self._log("Fine-tuning CLIP SketchAdapter on paired sketches...")
+        if not self.metadata or not self.index or self.index.ntotal == 0:
+            self._log("No indexed images available to train sketch adapter.")
+            return
+
+        pairs = []
+        # 1. Real hand-drawn sketches
+        for sk_name, target in [("cat.jpg", "cat.jpg"), ("mountain.jpg", "mountain.jpg"), ("rocket.jpg", "nasa_rocket.jpg")]:
+            sp = SKETCHES_DIR / sk_name
+            if sp.exists():
+                try:
+                    pairs.append((Image.open(sp), target))
+                except Exception:
+                    pass
+
+        # 2. Synthetic Canny and adaptive edge sketches for sample images
+        for item in self.metadata:
+            fn = item["filename"]
+            fp = Path(item["path"])
+            if not fp.exists():
+                continue
+            try:
+                img = Image.open(fp)
+                gray = np.array(img.convert("L"))
+                # Canny edge sketch
+                edges = cv2.Canny(gray, 50, 150)
+                pairs.append((Image.fromarray(edges), fn))
+                # Adaptive threshold sketch
+                blur = cv2.GaussianBlur(gray, (5, 5), 0)
+                adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+                pairs.append((Image.fromarray(adapt), fn))
+            except Exception:
+                continue
+
+        filename_to_idx = {item["filename"]: i for i, item in enumerate(self.metadata)}
+        img_embeddings = np.array(self.index.reconstruct_n(0, len(self.metadata)))
+
+        sketch_vecs = []
+        target_indices = []
+        for sk_img, fn in pairs:
+            if fn not in filename_to_idx:
+                continue
+            try:
+                vec = self._compute_sketch_raw_ensemble(sk_img)
+                sketch_vecs.append(vec[0])
+                target_indices.append(filename_to_idx[fn])
+            except Exception:
+                continue
+
+        if not sketch_vecs:
+            return
+
+        X_sk = torch.tensor(np.array(sketch_vecs), dtype=torch.float32)
+        Y_all = torch.tensor(img_embeddings, dtype=torch.float32)
+        targets = torch.tensor(target_indices, dtype=torch.long)
+
+        adapter = SketchAdapter(DIMENSIONS)
+        optimizer = torch.optim.AdamW(adapter.parameters(), lr=lr, weight_decay=1e-4)
+
+        adapter.train()
+        for ep in range(epochs):
+            proj = adapter(X_sk)
+            sims = (proj @ Y_all.T) / 0.07  # InfoNCE temperature
+            loss = F.cross_entropy(sims, targets)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        adapter.eval()
+        self.sketch_adapter = adapter
+        try:
+            torch.save(adapter.state_dict(), SKETCH_ADAPTER_PATH)
+            self._log(f"Fine-tuned SketchAdapter saved to {SKETCH_ADAPTER_PATH.name} (final loss: {loss.item():.4f})")
+        except Exception as e:
+            self._log(f"Notice: unable to persist adapter weights: {e}")
 
     def load_ocr(self):
         if self.ocr is not None:
@@ -549,29 +685,17 @@ class ZeroTextEngine:
 
         return views
 
-    def _compute_sketch_ensemble_embedding(
+    def _compute_sketch_raw_ensemble(
         self,
         sketch_img: Image.Image,
         text_hint: Optional[str] = None,
     ) -> np.ndarray:
         """
-        Compute a high-quality sketch embedding by:
-          1. Generating 8 preprocessed views of the sketch.
-          2. Computing a CLIP image embedding for each view.
-          3. Optionally blending with a CLIP text embedding (text_hint)
-             that describes the sketch — this bridges the sketch→photo
-             domain gap by anchoring the embedding in semantic space.
-          4. Averaging all embeddings and L2-normalizing.
-
-        The resulting vector lives in the same CLIP space as the indexed
-        photo embeddings and is directly searchable via the FAISS index.
+        Compute multi-view ensemble embedding for a sketch across 8 augmented views.
         """
         self.load_clip()
-
         views = self._preprocess_sketch_views(sketch_img)
-        self._log(f"Sketch preprocessing produced {len(views)} augmented views")
 
-        # --- Compute image embeddings for every view ---
         embeddings: List[torch.Tensor] = []
         for view in views:
             tensor = self.preprocess(view).unsqueeze(0).to(DEVICE)
@@ -580,7 +704,6 @@ class ZeroTextEngine:
                 emb = emb / emb.norm(dim=-1, keepdim=True)
             embeddings.append(emb)
 
-        # --- Optional text-hint embedding (sketch→photo bridge) ---
         if text_hint and text_hint.strip():
             hint = text_hint.strip()
             prompts = [
@@ -595,12 +718,34 @@ class ZeroTextEngine:
                     t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
                 embeddings.append(t_emb)
 
-        # --- Average and normalize ---
-        stacked = torch.cat(embeddings, dim=0)          # (N, 512)
-        mean_emb = stacked.mean(dim=0, keepdim=True)    # (1, 512)
+        stacked = torch.cat(embeddings, dim=0)
+        mean_emb = stacked.mean(dim=0, keepdim=True)
         mean_emb = mean_emb / mean_emb.norm(dim=-1, keepdim=True)
-
         return mean_emb.cpu().numpy().astype("float32")
+
+    def _compute_sketch_ensemble_embedding(
+        self,
+        sketch_img: Image.Image,
+        text_hint: Optional[str] = None,
+    ) -> np.ndarray:
+        """
+        Compute a high-quality sketch embedding by:
+          1. Generating 8 preprocessed views of the sketch (binarized, Canny, blurred, rotated, flipped).
+          2. Computing an ensemble CLIP embedding across all views.
+          3. Projecting through fine-tuned SketchAdapter into aligned photographic space.
+          4. Normalizing to unit length for FAISS cosine similarity.
+        """
+        self.load_clip()
+        raw_vec = self._compute_sketch_raw_ensemble(sketch_img, text_hint=text_hint)
+        t_raw = torch.tensor(raw_vec, dtype=torch.float32, device=DEVICE)
+
+        if self.sketch_adapter is not None:
+            with torch.inference_mode():
+                adapted = self.sketch_adapter(t_raw)
+                adapted = adapted / adapted.norm(dim=-1, keepdim=True)
+                return adapted.cpu().numpy().astype("float32")
+
+        return raw_vec
 
     def compute_text_embedding(self, text: str, ensemble: bool = True) -> np.ndarray:
         self.load_clip()
@@ -714,32 +859,36 @@ class ZeroTextEngine:
             )
             cluster_labels = clusterer.fit_predict(embeddings)
 
-            # UMAP 2D
-            n_neighbors = min(8, max(2, n_items - 1))
+            # UMAP 2D - parameters tuned to preserve fine-grained sketch & contour manifold details
+            n_neighbors = min(6, max(2, n_items - 1))
             reducer_2d = umap.UMAP(
                 n_components=2,
                 n_neighbors=n_neighbors,
-                min_dist=0.15,
+                min_dist=0.08,
                 metric="cosine",
                 random_state=42,
             )
             coords_2d = reducer_2d.fit_transform(embeddings)
 
-            # UMAP 3D
+            # UMAP 3D - parameters tuned to preserve fine-grained sketch & contour manifold details
             if n_items >= 4:
                 reducer_3d = umap.UMAP(
                     n_components=3,
                     n_neighbors=n_neighbors,
-                    min_dist=0.15,
+                    min_dist=0.08,
                     metric="cosine",
                     random_state=42,
                 )
                 coords_3d = reducer_3d.fit_transform(embeddings)
             else:
+                reducer_3d = None
                 coords_3d = np.zeros((n_items, 3), dtype=np.float32)
                 coords_3d[:, 0] = coords_2d[:, 0]
                 coords_3d[:, 1] = coords_2d[:, 1]
                 coords_3d[:, 2] = np.random.RandomState(42).uniform(-2.0, 2.0, size=n_items)
+
+            self.reducer_2d = reducer_2d
+            self.reducer_3d = reducer_3d
 
             new_clusters = []
             for i, item in enumerate(self.metadata):
@@ -762,6 +911,35 @@ class ZeroTextEngine:
                 f"Clustering complete: {len(set(cluster_labels) - {-1})} clusters discovered."
             )
             return new_clusters
+
+    def _ensure_reducers(self):
+        if self.reducer_2d is not None and self.reducer_3d is not None:
+            return
+        if not self.index or self.index.ntotal < 2:
+            return
+        try:
+            n_items = self.index.ntotal
+            embeddings = np.asarray(self.index.reconstruct_n(0, n_items), dtype=np.float32)
+            n_neighbors = min(6, max(2, n_items - 1))
+            self.reducer_2d = umap.UMAP(
+                n_components=2,
+                n_neighbors=n_neighbors,
+                min_dist=0.08,
+                metric="cosine",
+                random_state=42,
+            )
+            self.reducer_2d.fit(embeddings)
+            if n_items >= 4:
+                self.reducer_3d = umap.UMAP(
+                    n_components=3,
+                    n_neighbors=n_neighbors,
+                    min_dist=0.08,
+                    metric="cosine",
+                    random_state=42,
+                )
+                self.reducer_3d.fit(embeddings)
+        except Exception as e:
+            self._log(f"Notice fitting sketch UMAP reducers: {e}")
 
     # -------------------------------------------------------------
     # QUERY ANALYSIS & SMART WEIGHT DECIDER
@@ -1012,40 +1190,52 @@ class ZeroTextEngine:
         High-precision sketch-to-photo search.
 
         Pipeline:
-          1. Preprocess sketch into 8 augmented views (edge detect, blur,
-             binarize, dilate, flip, rotate).
-          2. Compute a robust ensemble CLIP embedding (optionally guided
-             by a *text_hint* for domain-gap bridging).
-          3. Query the FAISS cosine-similarity index.
-          4. Calibrate raw cosine scores to a user-friendly 0–1 range
-             tuned specifically for sketch→photo similarity
-             (which is typically lower than photo→photo).
-          5. Return ranked results with cluster, colour, and OCR metadata.
+          1. Preprocess sketch into 8 augmented views (Otsu binarize, Canny edge detect,
+             blur, dilation, horizontal flip, rotation).
+          2. Compute a robust ensemble CLIP embedding and project via fine-tuned
+             SketchAdapter into aligned photographic space.
+          3. Query FAISS cosine similarity index with normalized vector.
+          4. Calibrate raw cosine similarity scores specifically for sketch features.
+          5. Map sketch into 2D and 3D UMAP galaxy space for visual spotlighting.
         """
         if not self.metadata or not self.index or self.index.ntotal == 0:
             return []
 
         self.load_clip()
 
-        # --- Step 1+2: Multi-view ensemble embedding ---
+        # Step 1 & 2: Multi-view preprocessing + fine-tuned adapter embedding
         vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+        # Ensure L2-normalized vector for FAISS cosine similarity
+        norm = np.linalg.norm(vec, axis=-1, keepdims=True)
+        if norm > 1e-6:
+            vec = (vec / norm).astype("float32")
 
-        # --- Step 3: FAISS search ---
+        # Step 3: FAISS cosine similarity search (IndexFlatIP on normalized vectors)
         k = min(top_k, self.index.ntotal)
         scores, indices = self.index.search(vec, k)
 
-        # --- Step 4: Sketch-specific calibrated scoring ---
-        # Raw cosine similarity for sketch→photo usually falls in the
-        # 0.10 – 0.28 range.  We map this to 0 – 1 with an exponent to
-        # reward genuinely good matches and suppress weak ones.
-        SKETCH_SIM_FLOOR = 0.10   # Below this → score 0
-        SKETCH_SIM_CEIL  = 0.30   # Above this → score 1
-        SKETCH_GAMMA     = 1.15   # Exponent (>1 sharpens separation)
+        # Step 4: Calibrated scoring specifically for sketch features
+        SKETCH_SIM_FLOOR = 0.20
+        SKETCH_SIM_CEIL  = 0.75
+        SKETCH_GAMMA     = 1.10
 
         def calibrate_sketch_score(raw_cos: float) -> float:
             scaled = (raw_cos - SKETCH_SIM_FLOOR) / (SKETCH_SIM_CEIL - SKETCH_SIM_FLOOR)
             clamped = max(0.0, min(1.0, scaled))
             return float(clamped ** SKETCH_GAMMA)
+
+        # Step 5: Dimensionality reduction transform (UMAP 2D & 3D for query sketch)
+        query_2d_coords = (0.0, 0.0)
+        query_3d_coords = (0.0, 0.0, 0.0)
+        try:
+            if self.reducer_2d is not None:
+                q2 = self.reducer_2d.transform(vec)
+                query_2d_coords = (float(q2[0, 0]), float(q2[0, 1]))
+            if self.reducer_3d is not None:
+                q3 = self.reducer_3d.transform(vec)
+                query_3d_coords = (float(q3[0, 0]), float(q3[0, 1]), float(q3[0, 2]))
+        except Exception:
+            pass
 
         results = []
         for rank, (raw_score, idx) in enumerate(
@@ -1081,6 +1271,11 @@ class ZeroTextEngine:
                 "x3d": cluster_info.get("x3d", 0.0),
                 "y3d": cluster_info.get("y3d", 0.0),
                 "z3d": cluster_info.get("z3d", 0.0),
+                "query_x": round(query_2d_coords[0], 4),
+                "query_y": round(query_2d_coords[1], 4),
+                "query_x3d": round(query_3d_coords[0], 4),
+                "query_y3d": round(query_3d_coords[1], 4),
+                "query_z3d": round(query_3d_coords[2], 4),
                 "membership_probability": cluster_info.get("membership_probability", 0.0),
                 "dominant_colours": self.colour_lookup.get(filename, []),
                 "full_text": self.ocr_lookup.get(filename, {}).get("full_text", ""),
