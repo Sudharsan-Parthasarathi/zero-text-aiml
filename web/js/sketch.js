@@ -18,6 +18,9 @@ class SketchStudio {
     this.brushColor = '#000000';
     this.lastX = 0;
     this.lastY = 0;
+    this.uploadedDataUrl = null;
+    this.hasUploadedImage = false;
+    this.hasDrawnOverUpload = false;
 
     this.initCanvas();
     this.bindEvents();
@@ -34,6 +37,9 @@ class SketchStudio {
   clear() {
     this.ctx.fillStyle = '#ffffff';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.uploadedDataUrl = null;
+    this.hasUploadedImage = false;
+    this.hasDrawnOverUpload = false;
   }
 
   setTool(tool) {
@@ -109,6 +115,7 @@ class SketchStudio {
   }
 
   draw(x, y, isMove) {
+    this.hasDrawnOverUpload = true;
     const ctx = this.ctx;
     ctx.lineWidth = this.brushSize;
     ctx.lineCap = 'round';
@@ -133,6 +140,9 @@ class SketchStudio {
   }
 
   loadSample(url) {
+    this.uploadedDataUrl = null;
+    this.hasUploadedImage = false;
+    this.hasDrawnOverUpload = false;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -148,6 +158,31 @@ class SketchStudio {
       this.ctx.drawImage(img, dx, dy, dw, dh);
     };
     img.src = url;
+  }
+
+  loadImageFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      this.uploadedDataUrl = e.target.result;
+      this.hasUploadedImage = true;
+      this.hasDrawnOverUpload = false;
+      const img = new Image();
+      img.onload = () => {
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        const cw = this.canvas.width;
+        const ch = this.canvas.height;
+        const scale = Math.min((cw - 20) / img.width, (ch - 20) / img.height);
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        const dx = (cw - dw) / 2;
+        const dy = (ch - dh) / 2;
+        this.ctx.drawImage(img, dx, dy, dw, dh);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   loadSampleSketches() {
@@ -171,6 +206,9 @@ class SketchStudio {
   }
 
   toDataURL() {
+    if (this.hasUploadedImage && !this.hasDrawnOverUpload && this.uploadedDataUrl) {
+      return this.uploadedDataUrl;
+    }
     return this.canvas.toDataURL('image/png');
   }
 }

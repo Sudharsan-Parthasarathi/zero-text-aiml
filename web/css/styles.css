@@ -594,8 +594,8 @@ body {
 
 .grid-wrapper {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 22px;
 }
 
 .image-card {
@@ -624,7 +624,9 @@ body {
 
 .card-img-wrap {
   width: 100%;
-  height: 170px;
+  height: 260px;
+  min-height: 260px;
+  max-height: 260px;
   position: relative;
   background: #080c18;
   overflow: hidden;
@@ -634,6 +636,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
   transition: transform 0.3s ease;
 }
 
@@ -685,7 +688,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
+  height: 96px;
+  min-height: 96px;
+  max-height: 96px;
+  box-sizing: border-box;
 }
 
 .card-title {
@@ -790,8 +796,10 @@ body {
 
 .inspector-preview-wrap {
   width: 100%;
-  height: 240px;
-  background: #060913;
+  height: 320px;
+  min-height: 320px;
+  max-height: 320px;
+  background: #050813;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
@@ -802,9 +810,11 @@ body {
 }
 
 .inspector-preview-img {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  background: #050813;
+  display: block;
 }
 
 .section-label {

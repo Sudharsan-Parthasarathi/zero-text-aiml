@@ -166,7 +166,14 @@ def search_sketch(req: SketchSearchRequest):
         if "," in data_str:
             data_str = data_str.split(",", 1)[1]
         img_bytes = base64.b64decode(data_str)
-        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        raw_img = Image.open(io.BytesIO(img_bytes))
+        # Ensure transparent PNGs/sketches are cleanly composited on solid white background
+        if raw_img.mode in ("RGBA", "LA") or (raw_img.mode == "P" and "transparency" in raw_img.info):
+            bg = Image.new("RGBA", raw_img.size, (255, 255, 255, 255))
+            bg.alpha_composite(raw_img.convert("RGBA"))
+            img = bg.convert("RGB")
+        else:
+            img = raw_img.convert("RGB")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid sketch data: {e}")
 

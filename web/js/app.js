@@ -980,6 +980,21 @@ document.addEventListener('DOMContentLoaded', () => {
     sketchStudio.clear();
   });
 
+  const btnUploadSketch = document.getElementById('btn-upload-sketch-file');
+  const inputUploadSketch = document.getElementById('sketch-file-input');
+  if (btnUploadSketch && inputUploadSketch) {
+    btnUploadSketch.addEventListener('click', () => {
+      inputUploadSketch.click();
+    });
+    inputUploadSketch.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        sketchStudio.loadImageFile(file);
+        showToast(`Loaded ${file.name} into sketch canvas`);
+      }
+    });
+  }
+
   el.toolPen.addEventListener('click', () => {
     sketchStudio.setTool('pen');
     el.toolPen.classList.add('active');

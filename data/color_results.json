@@ -1069,5 +1069,56 @@
                 "percentage": 1.19
             }
         ]
+    },
+    {
+        "filename": "triangle-with-planet_3840x2160_xtrafondos.com.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\triangle-with-planet_3840x2160_xtrafondos.com.jpg",
+        "dominant_colours": [
+            {
+                "hex": "#000000",
+                "rgb": [
+                    0,
+                    0,
+                    0
+                ],
+                "percentage": 68.95
+            },
+            {
+                "hex": "#07070F",
+                "rgb": [
+                    7,
+                    7,
+                    15
+                ],
+                "percentage": 10.36
+            },
+            {
+                "hex": "#274D5B",
+                "rgb": [
+                    39,
+                    77,
+                    91
+                ],
+                "percentage": 9.98
+            },
+            {
+                "hex": "#000002",
+                "rgb": [
+                    0,
+                    0,
+                    2
+                ],
+                "percentage": 6.8
+            },
+            {
+                "hex": "#040005",
+                "rgb": [
+                    4,
+                    0,
+                    5
+                ],
+                "percentage": 3.92
+            }
+        ]
     }
 ]

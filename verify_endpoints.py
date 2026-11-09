@@ -35,6 +35,8 @@ images = get_images()
 print(f"[2] get_images(): retrieved {len(images)} images.")
 assert len(images) >= 20, f"Expected at least 20 images, got {len(images)}"
 
+engine.load_clip()
+
 # 3. Hybrid search (text + colour + clip)
 res_ocean = search_hybrid(HybridSearchRequest(query="blue ocean", top_k=3))
 top_ocean = res_ocean["results"][0]

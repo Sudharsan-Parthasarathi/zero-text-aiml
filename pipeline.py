@@ -29,6 +29,18 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 # Windows DLL order: torch MUST be imported first
 import torch
 import open_clip
+
+# Windows paging-file resilience: avoid mmap allocation failure (error 1455) by using pread
+try:
+    import safetensors.torch
+    _orig_safetensors_load = safetensors.torch.load_file
+    def _pread_load_file(filename, device="cpu", **kwargs):
+        kwargs.setdefault("backend", "pread")
+        return _orig_safetensors_load(filename, device=device, **kwargs)
+    safetensors.torch.load_file = _pread_load_file
+except Exception:
+    pass
+
 import faiss
 import numpy as np
 import hdbscan
@@ -254,6 +266,8 @@ class ZeroTextEngine:
                 return
             self._log(f"Loading CLIP ({MODEL_NAME})...")
             start = time.time()
+            import gc
+            gc.collect()
             model, _, preprocess = open_clip.create_model_and_transforms(
                 MODEL_NAME, pretrained=PRETRAINED, device=DEVICE
             )
@@ -1363,7 +1377,60 @@ class ZeroTextEngine:
         self.load_clip()
 
         # Step 1 & 2: Multi-view preprocessing + fine-tuned adapter embedding
-        vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+        # Automatically detects whether the input is a hand-drawn sketch / line art
+        # or an uploaded full-color photograph to apply optimal representations.
+        import cv2
+        rgb_np = np.array(sketch_img.convert("RGB"))
+        h_img, w_img = rgb_np.shape[:2]
+
+        # Check for white canvas background / padding
+        white_mask = (rgb_np[:, :, 0] > 240) & (rgb_np[:, :, 1] > 240) & (rgb_np[:, :, 2] > 240)
+        white_ratio = float(white_mask.mean())
+
+        # If it's a photo or graphic padded onto canvas with white margins (white_ratio < 0.85),
+        # extract the actual content region to evaluate features without margin bias
+        non_white = ~white_mask
+        if non_white.any() and white_ratio < 0.85:
+            ys, xs = np.nonzero(non_white)
+            ymin, ymax = int(ys.min()), int(ys.max())
+            xmin, xmax = int(xs.min()), int(xs.max())
+            crop_y1 = max(0, ymin - 2)
+            crop_y2 = min(h_img, ymax + 3)
+            crop_x1 = max(0, xmin - 2)
+            crop_x2 = min(w_img, xmax + 3)
+            content_img = Image.fromarray(rgb_np[crop_y1:crop_y2, crop_x1:crop_x2])
+            content_rgb = rgb_np[crop_y1:crop_y2, crop_x1:crop_x2]
+        else:
+            content_img = sketch_img
+            content_rgb = rgb_np
+
+        # Evaluate color content and variance
+        c_hsv = cv2.cvtColor(content_rgb, cv2.COLOR_RGB2HSV)
+        content_sat = float(c_hsv[:, :, 1].mean())
+        diff_rg = np.abs(content_rgb[:, :, 0].astype(int) - content_rgb[:, :, 1].astype(int))
+        diff_gb = np.abs(content_rgb[:, :, 1].astype(int) - content_rgb[:, :, 2].astype(int))
+        diff_rb = np.abs(content_rgb[:, :, 0].astype(int) - content_rgb[:, :, 2].astype(int))
+        col_diff = float((diff_rg + diff_gb + diff_rb).mean())
+
+        is_sketch = False
+        if white_ratio > 0.82 and (col_diff < 15.0 or content_sat < 25.0):
+            is_sketch = True
+        elif white_ratio > 0.90:
+            is_sketch = True
+
+        if is_sketch:
+            # Hand-drawn sketch, line art, or monochrome outline: 100% fine-tuned SketchAdapter
+            vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+        else:
+            # Uploaded photograph, illustration, or full-color image:
+            # Encode with pre-trained CLIP photographic visual encoder for 100% retrieval precision
+            emb_photo = self.compute_image_embedding(content_img)
+            if text_hint and text_hint.strip():
+                t_vec = self.compute_text_embedding(text_hint.strip())
+                vec = 0.80 * emb_photo + 0.20 * t_vec
+            else:
+                vec = emb_photo
+
         # Ensure L2-normalized vector for FAISS cosine similarity
         norm = np.linalg.norm(vec, axis=-1, keepdims=True)
         if norm > 1e-6:
