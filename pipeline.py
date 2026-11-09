@@ -467,6 +467,141 @@ class ZeroTextEngine:
             emb = emb / emb.norm(dim=-1, keepdim=True)
         return emb.cpu().numpy().astype("float32")
 
+    # -----------------------------------------------------------------
+    #  SKETCH-SPECIFIC PREPROCESSING & EMBEDDING (High-Precision)
+    # -----------------------------------------------------------------
+
+    def _preprocess_sketch_views(self, sketch_img: Image.Image) -> List[Image.Image]:
+        """
+        Generate multiple preprocessed views of a hand-drawn sketch,
+        each designed to bring out different features that help CLIP
+        match the sketch against real photographs.
+
+        Views produced:
+          1. Cleaned binary (inverted, thresholded, dilated)
+          2. Softened / Gaussian-blurred (more photo-like)
+          3. Canny edge map (clean structural edges)
+          4. Morphologically closed (connected strokes)
+          5. Horizontal flip of cleaned binary
+          6. Slight rotation (+8°) for orientation robustness
+          7. Slight rotation (-8°) for orientation robustness
+          8. Original sketch (baseline)
+        """
+        import cv2
+        from PIL import ImageOps
+
+        # --- Convert to grayscale numpy array ---
+        gray = sketch_img.convert("L")
+        gray_np = np.array(gray, dtype=np.uint8)
+
+        # --- Detect white background (canvas default) and invert ---
+        # Sketches from the canvas are black strokes on white.
+        # CLIP works better with white features on dark background
+        # (inverted) because it aligns better with photographic subjects.
+        is_white_bg = gray_np.mean() > 128
+        if is_white_bg:
+            inv_np = 255 - gray_np
+        else:
+            inv_np = gray_np.copy()
+
+        views: List[Image.Image] = []
+
+        # ---- View 1: Cleaned binary sketch (thresholded + dilated) ----
+        # Threshold to remove light noise / compression artifacts
+        _, binary_np = cv2.threshold(inv_np, 25, 255, cv2.THRESH_BINARY)
+        # Dilate strokes so thin lines are visible at CLIP's 224×224 input
+        kern_3 = np.ones((3, 3), np.uint8)
+        dilated_np = cv2.dilate(binary_np, kern_3, iterations=1)
+        views.append(Image.fromarray(dilated_np).convert("RGB"))
+
+        # ---- View 2: Gaussian-blurred sketch (softer, more photo-like) ----
+        blurred_np = cv2.GaussianBlur(dilated_np, (7, 7), sigmaX=2.0)
+        views.append(Image.fromarray(blurred_np).convert("RGB"))
+
+        # ---- View 3: Canny edge map (clean structural edges) ----
+        # Apply a small blur first to suppress sketch noise, then Canny
+        pre_canny = cv2.GaussianBlur(inv_np, (5, 5), sigmaX=1.2)
+        edges_np = cv2.Canny(pre_canny, 30, 120)
+        edges_dilated_np = cv2.dilate(edges_np, kern_3, iterations=1)
+        views.append(Image.fromarray(edges_dilated_np).convert("RGB"))
+
+        # ---- View 4: Morphologically closed (connect nearby strokes) ----
+        kern_5 = np.ones((5, 5), np.uint8)
+        closed_np = cv2.morphologyEx(dilated_np, cv2.MORPH_CLOSE, kern_5)
+        views.append(Image.fromarray(closed_np).convert("RGB"))
+
+        # ---- View 5: Horizontal flip (orientation robustness) ----
+        flipped_np = cv2.flip(dilated_np, 1)
+        views.append(Image.fromarray(flipped_np).convert("RGB"))
+
+        # ---- Views 6 & 7: Slight rotations (±8°) ----
+        h, w = dilated_np.shape[:2]
+        center = (w // 2, h // 2)
+        for angle in (8.0, -8.0):
+            M = cv2.getRotationMatrix2D(center, angle, 1.0)
+            rotated = cv2.warpAffine(dilated_np, M, (w, h),
+                                     borderMode=cv2.BORDER_CONSTANT,
+                                     borderValue=0)
+            views.append(Image.fromarray(rotated).convert("RGB"))
+
+        # ---- View 8: Original sketch (baseline for CLIP) ----
+        views.append(sketch_img.convert("RGB"))
+
+        return views
+
+    def _compute_sketch_ensemble_embedding(
+        self,
+        sketch_img: Image.Image,
+        text_hint: Optional[str] = None,
+    ) -> np.ndarray:
+        """
+        Compute a high-quality sketch embedding by:
+          1. Generating 8 preprocessed views of the sketch.
+          2. Computing a CLIP image embedding for each view.
+          3. Optionally blending with a CLIP text embedding (text_hint)
+             that describes the sketch — this bridges the sketch→photo
+             domain gap by anchoring the embedding in semantic space.
+          4. Averaging all embeddings and L2-normalizing.
+
+        The resulting vector lives in the same CLIP space as the indexed
+        photo embeddings and is directly searchable via the FAISS index.
+        """
+        self.load_clip()
+
+        views = self._preprocess_sketch_views(sketch_img)
+        self._log(f"Sketch preprocessing produced {len(views)} augmented views")
+
+        # --- Compute image embeddings for every view ---
+        embeddings: List[torch.Tensor] = []
+        for view in views:
+            tensor = self.preprocess(view).unsqueeze(0).to(DEVICE)
+            with torch.inference_mode():
+                emb = self.model.encode_image(tensor)
+                emb = emb / emb.norm(dim=-1, keepdim=True)
+            embeddings.append(emb)
+
+        # --- Optional text-hint embedding (sketch→photo bridge) ---
+        if text_hint and text_hint.strip():
+            hint = text_hint.strip()
+            prompts = [
+                hint,
+                f"a photograph of {hint}",
+                f"a real photo of {hint}",
+            ]
+            for p in prompts:
+                tokens = self.tokenizer([p]).to(DEVICE)
+                with torch.inference_mode():
+                    t_emb = self.model.encode_text(tokens)
+                    t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
+                embeddings.append(t_emb)
+
+        # --- Average and normalize ---
+        stacked = torch.cat(embeddings, dim=0)          # (N, 512)
+        mean_emb = stacked.mean(dim=0, keepdim=True)    # (1, 512)
+        mean_emb = mean_emb / mean_emb.norm(dim=-1, keepdim=True)
+
+        return mean_emb.cpu().numpy().astype("float32")
+
     def compute_text_embedding(self, text: str, ensemble: bool = True) -> np.ndarray:
         self.load_clip()
         text = text.strip()
@@ -867,35 +1002,71 @@ class ZeroTextEngine:
         results.sort(key=lambda x: x["final"], reverse=True)
         return results[:top_k], rec
 
-    def sketch_search(self, sketch_img: Image.Image, top_k: int = 25) -> List[Dict]:
+    def sketch_search(
+        self,
+        sketch_img: Image.Image,
+        top_k: int = 25,
+        text_hint: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        High-precision sketch-to-photo search.
+
+        Pipeline:
+          1. Preprocess sketch into 8 augmented views (edge detect, blur,
+             binarize, dilate, flip, rotate).
+          2. Compute a robust ensemble CLIP embedding (optionally guided
+             by a *text_hint* for domain-gap bridging).
+          3. Query the FAISS cosine-similarity index.
+          4. Calibrate raw cosine scores to a user-friendly 0–1 range
+             tuned specifically for sketch→photo similarity
+             (which is typically lower than photo→photo).
+          5. Return ranked results with cluster, colour, and OCR metadata.
+        """
         if not self.metadata or not self.index or self.index.ntotal == 0:
             return []
 
         self.load_clip()
-        vec = self.compute_image_embedding(sketch_img)
+
+        # --- Step 1+2: Multi-view ensemble embedding ---
+        vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+
+        # --- Step 3: FAISS search ---
         k = min(top_k, self.index.ntotal)
         scores, indices = self.index.search(vec, k)
 
-        raw_scores = [float(s) for s in scores[0] if s >= -1.0]
-        norm_scores = softmax_normalize(np.array(raw_scores, dtype=np.float32), temperature=0.30) if raw_scores else []
+        # --- Step 4: Sketch-specific calibrated scoring ---
+        # Raw cosine similarity for sketch→photo usually falls in the
+        # 0.10 – 0.28 range.  We map this to 0 – 1 with an exponent to
+        # reward genuinely good matches and suppress weak ones.
+        SKETCH_SIM_FLOOR = 0.10   # Below this → score 0
+        SKETCH_SIM_CEIL  = 0.30   # Above this → score 1
+        SKETCH_GAMMA     = 1.15   # Exponent (>1 sharpens separation)
+
+        def calibrate_sketch_score(raw_cos: float) -> float:
+            scaled = (raw_cos - SKETCH_SIM_FLOOR) / (SKETCH_SIM_CEIL - SKETCH_SIM_FLOOR)
+            clamped = max(0.0, min(1.0, scaled))
+            return float(clamped ** SKETCH_GAMMA)
 
         results = []
-        for rank, (score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
+        for rank, (raw_score, idx) in enumerate(
+            zip(scores[0], indices[0]), start=1
+        ):
             if idx < 0 or idx >= len(self.metadata):
                 continue
+
             item = self.metadata[idx]
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
-            norm_val = float(norm_scores[rank - 1]) if rank - 1 < len(norm_scores) else (float(score) + 1.0) / 2.0
+            calibrated = calibrate_sketch_score(float(raw_score))
 
             results.append({
                 "rank": rank,
                 "filename": filename,
                 "path": item["path"],
-                "similarity": round(float(score), 4),
-                "final": round(norm_val, 4),
-                "clip": round(norm_val, 4),
+                "similarity": round(float(raw_score), 4),
+                "final": round(calibrated, 4),
+                "clip": round(calibrated, 4),
                 "ocr": 0.0,
                 "colour": 0.0,
                 "cluster": c_id,
@@ -917,6 +1088,7 @@ class ZeroTextEngine:
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
+        self._log(f"Sketch search returned {len(results)} results (top: {results[0]['final']:.3f} – {results[0]['filename']})" if results else "Sketch search: no results")
         return results
 
     def color_search(self, target_hex_or_rgb: Union[str, List[int]], top_k: int = 25) -> List[Dict]:

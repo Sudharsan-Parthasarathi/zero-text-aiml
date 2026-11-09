@@ -58,6 +58,7 @@ class HybridSearchRequest(BaseModel):
 class SketchSearchRequest(BaseModel):
     sketch_data: str  # Base64 data URL e.g. "data:image/png;base64,..."
     top_k: int = 25
+    text_hint: str = ""  # Optional text hint to bridge sketch→photo domain gap
 
 
 class ColorSearchRequest(BaseModel):
@@ -161,7 +162,7 @@ def search_sketch(req: SketchSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid sketch data: {e}")
 
-    results = engine.sketch_search(img, top_k=req.top_k)
+    results = engine.sketch_search(img, top_k=req.top_k, text_hint=req.text_hint)
     return {
         "total_results": len(results),
         "results": results,

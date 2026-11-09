@@ -911,12 +911,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.btnSearchSketch.addEventListener('click', async () => {
     const dataUrl = sketchStudio.toDataURL();
+    const hintEl = document.getElementById('sketch-text-hint');
+    const textHint = hintEl ? hintEl.value.trim() : '';
     el.btnSearchSketch.textContent = 'Analyzing sketch…';
     try {
       const res = await fetch('/api/search/sketch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sketch_data: dataUrl }),
+        body: JSON.stringify({ sketch_data: dataUrl, text_hint: textHint }),
       });
       const data = await res.json();
 
