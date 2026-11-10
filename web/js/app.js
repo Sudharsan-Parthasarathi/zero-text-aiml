@@ -145,6 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btnClearSketch: document.getElementById('btn-clear-sketch'),
     toolPen: document.getElementById('tool-pen'),
     toolEraser: document.getElementById('tool-eraser'),
+    toolBucket: document.getElementById('tool-bucket'),
+    btnUndoSketch: document.getElementById('btn-undo-sketch'),
+    btnRedoSketch: document.getElementById('btn-redo-sketch'),
 
     // Add Images Modal
     btnOpenAdd: document.getElementById('btn-open-add'),
@@ -998,14 +1001,64 @@ document.addEventListener('DOMContentLoaded', () => {
   el.toolPen.addEventListener('click', () => {
     sketchStudio.setTool('pen');
     el.toolPen.classList.add('active');
-    el.toolEraser.classList.remove('active');
+    if (el.toolEraser) el.toolEraser.classList.remove('active');
+    if (el.toolBucket) el.toolBucket.classList.remove('active');
   });
+
+  if (el.toolBucket) {
+    el.toolBucket.addEventListener('click', () => {
+      sketchStudio.setTool('bucket');
+      el.toolBucket.classList.add('active');
+      el.toolPen.classList.remove('active');
+      if (el.toolEraser) el.toolEraser.classList.remove('active');
+    });
+  }
 
   el.toolEraser.addEventListener('click', () => {
     sketchStudio.setTool('eraser');
     el.toolEraser.classList.add('active');
     el.toolPen.classList.remove('active');
+    if (el.toolBucket) el.toolBucket.classList.remove('active');
   });
+
+  if (el.btnUndoSketch) {
+    el.btnUndoSketch.addEventListener('click', () => {
+      sketchStudio.undo();
+    });
+  }
+
+  if (el.btnRedoSketch) {
+    el.btnRedoSketch.addEventListener('click', () => {
+      sketchStudio.redo();
+    });
+  }
+
+  // Multi-Color Palette Selection
+  const colorSwatches = document.querySelectorAll('.color-swatch');
+  const customColorInput = document.getElementById('sketch-custom-color');
+  const customColorWrapper = document.querySelector('.color-picker-wrapper');
+
+  colorSwatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      colorSwatches.forEach(s => s.classList.remove('active'));
+      if (customColorWrapper) customColorWrapper.classList.remove('active');
+      swatch.classList.add('active');
+      const color = swatch.dataset.color;
+      sketchStudio.setBrushColor(color);
+      if (customColorInput) customColorInput.value = color;
+    });
+  });
+
+  if (customColorInput) {
+    const handleCustomColor = e => {
+      const color = e.target.value;
+      colorSwatches.forEach(s => s.classList.remove('active'));
+      if (customColorWrapper) customColorWrapper.classList.add('active');
+      sketchStudio.setBrushColor(color);
+    };
+    customColorInput.addEventListener('input', handleCustomColor);
+    customColorInput.addEventListener('change', handleCustomColor);
+  }
 
   document.querySelectorAll('.brush-size-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1019,12 +1072,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const dataUrl = sketchStudio.toDataURL();
     const hintEl = document.getElementById('sketch-text-hint');
     const textHint = hintEl ? hintEl.value.trim() : '';
+    const isCanvas = sketchStudio.hasDrawnOverUpload || !sketchStudio.hasUploadedImage;
     el.btnSearchSketch.textContent = 'Analyzing sketch…';
     try {
       const res = await fetch('/api/search/sketch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sketch_data: dataUrl, text_hint: textHint }),
+        body: JSON.stringify({
+          sketch_data: dataUrl,
+          text_hint: textHint,
+          is_canvas_sketch: isCanvas,
+        }),
       });
       const data = await res.json();
 

@@ -375,8 +375,13 @@
         <!-- Controls -->
         <div class="sketch-toolbar">
           <div class="sketch-tools">
-            <button class="tool-btn active" id="tool-pen" title="Pencil">🖊️</button>
+            <button class="tool-btn active" id="tool-pen" title="Pen Tool">🖊️</button>
+            <button class="tool-btn" id="tool-bucket" title="Bucket Fill (Flood Fill)">🪣</button>
             <button class="tool-btn" id="tool-eraser" title="Eraser">🧹</button>
+            <div class="tool-divider"></div>
+            <button class="tool-btn" id="btn-undo-sketch" title="Undo Last Stroke (Ctrl+Z)" disabled>↩️</button>
+            <button class="tool-btn" id="btn-redo-sketch" title="Redo Last Stroke (Ctrl+Y)" disabled>↪️</button>
+            <div class="tool-divider"></div>
             <button class="tool-btn" id="btn-clear-sketch" title="Clear Canvas">🗑️</button>
             <button class="tool-btn" id="btn-upload-sketch-file" title="Upload sketch or image from computer">📁 Upload</button>
             <input type="file" id="sketch-file-input" accept="image/*" style="display:none" />
@@ -393,6 +398,29 @@
           <div class="sample-sketches-row">
             <span style="font-size:0.75rem;color:var(--text-muted)">Presets:</span>
             <div id="sample-sketches-row" style="display:flex;gap:6px"></div>
+          </div>
+        </div>
+
+        <!-- Multi-Color Palette & Custom Color Picker -->
+        <div class="sketch-colors-row">
+          <span style="font-size:0.75rem;color:var(--text-muted);margin-right:4px">Color:</span>
+          <div class="sketch-colors" id="sketch-colors-palette">
+            <button type="button" class="color-swatch active" data-color="#000000" style="background:#000000" title="Black (#000000)"></button>
+            <button type="button" class="color-swatch" data-color="#4b5563" style="background:#4b5563" title="Charcoal (#4b5563)"></button>
+            <button type="button" class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="Red (#ef4444)"></button>
+            <button type="button" class="color-swatch" data-color="#f97316" style="background:#f97316" title="Orange (#f97316)"></button>
+            <button type="button" class="color-swatch" data-color="#eab308" style="background:#eab308" title="Yellow (#eab308)"></button>
+            <button type="button" class="color-swatch" data-color="#22c55e" style="background:#22c55e" title="Green (#22c55e)"></button>
+            <button type="button" class="color-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Cyan (#06b6d4)"></button>
+            <button type="button" class="color-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Blue (#3b82f6)"></button>
+            <button type="button" class="color-swatch" data-color="#a855f7" style="background:#a855f7" title="Purple (#a855f7)"></button>
+            <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="Pink (#ec4899)"></button>
+            <button type="button" class="color-swatch" data-color="#854d0e" style="background:#854d0e" title="Brown (#854d0e)"></button>
+            <button type="button" class="color-swatch" data-color="#ffffff" style="background:#ffffff" title="White (#ffffff)"></button>
+            <div class="color-picker-wrapper" title="Pick Custom Color">
+              <input type="color" id="sketch-custom-color" class="sketch-color-input" value="#000000" />
+              <span class="color-picker-icon" id="sketch-custom-icon">🎨</span>
+            </div>
           </div>
         </div>
 

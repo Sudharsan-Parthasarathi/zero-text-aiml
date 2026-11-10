@@ -1009,6 +1009,13 @@ body {
   gap: 8px;
 }
 
+.tool-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-subtle);
+  margin: 0 2px;
+}
+
 .tool-btn {
   width: 36px;
   height: 36px;
@@ -1021,16 +1028,113 @@ body {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 1rem;
 }
 
-.tool-btn:hover {
+.tool-btn:hover:not(:disabled) {
   border-color: var(--accent-cyan);
+  background: rgba(76, 201, 240, 0.1);
 }
 
 .tool-btn.active {
   background: rgba(112, 225, 209, 0.2);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(76, 201, 240, 0.25);
+}
+
+.tool-btn:disabled,
+.tool-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* SKETCH MULTI-COLOR PALETTE */
+.sketch-colors-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(17, 26, 46, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.sketch-colors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+
+.color-swatch:hover {
+  transform: scale(1.18);
+}
+
+.color-swatch.active {
+  border-color: var(--accent-cyan, #4cc9f0);
+  transform: scale(1.22);
+  box-shadow: 0 0 8px rgba(76, 201, 240, 0.7);
+}
+
+.color-swatch[data-color="#ffffff"] {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.color-swatch[data-color="#ffffff"].active {
+  border: 2px solid var(--accent-cyan, #4cc9f0);
+}
+
+.color-picker-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.sketch-color-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  left: 0;
+  top: 0;
+}
+
+.color-picker-icon {
+  font-size: 1.05rem;
+  transition: transform 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+}
+
+.color-picker-wrapper.active .color-picker-icon {
+  border-color: var(--accent-cyan, #4cc9f0);
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(76, 201, 240, 0.7);
 }
 
 .brush-sizes {

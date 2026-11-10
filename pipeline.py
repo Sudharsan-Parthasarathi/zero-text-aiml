@@ -355,6 +355,19 @@ class ZeroTextEngine:
                 pencil = 255 - dodge
                 pairs.append((Image.fromarray(pencil), fn, True))
 
+                # Style D: Bucket-fill flat color posterized sketch
+                q_img = img.quantize(colors=6, method=Image.MEDIANCUT).convert("RGB")
+                q_np = np.array(q_img)
+                edges_3ch = np.stack([c1] * 3, axis=-1)
+                fill_sketch = np.where(edges_3ch > 80, 0, q_np)
+                pairs.append((Image.fromarray(fill_sketch.astype(np.uint8)), fn, True))
+
+                # Style E: Multi-color stroke outline sketch
+                img_rgb = np.array(img.convert("RGB"))
+                white_bg = np.ones_like(img_rgb) * 255
+                color_outline = np.where(edges_3ch > 80, img_rgb, white_bg)
+                pairs.append((Image.fromarray(color_outline.astype(np.uint8)), fn, True))
+
             except Exception:
                 continue
 
@@ -751,21 +764,24 @@ class ZeroTextEngine:
         """
         import cv2
 
-        # --- Convert to grayscale numpy array ---
-        gray = sketch_img.convert("L")
-        gray_np = np.array(gray, dtype=np.uint8)
+        # --- Convert to RGB and inspect color and background ---
+        rgb_np = np.array(sketch_img.convert("RGB"), dtype=np.uint8)
+        gray_np = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2GRAY)
 
-        # --- Detect white background (canvas default) and invert ---
+        # Detect white background (canvas default)
         is_white_bg = gray_np.mean() > 128
         if is_white_bg:
-            inv_np = 255 - gray_np
+            # Distance from white background across all 3 channels.
+            # This ensures light/bright colored strokes (e.g. yellow, cyan, lime, orange, pink)
+            # preserve full stroke contrast and do not get thresholded out!
+            inv_np = np.max(255 - rgb_np, axis=2).astype(np.uint8)
         else:
-            inv_np = gray_np.copy()
+            inv_np = np.max(rgb_np, axis=2).astype(np.uint8)
 
         # --- Auto-center & scale-normalize stroke bounding box ---
         # When users draw off-center or small sketches, this brings the stroke
         # into central focus with 15% margin, matching CLIP's receptive field
-        stroke_mask = inv_np > 25
+        stroke_mask = inv_np > 20
         if np.any(stroke_mask):
             ys, xs = np.nonzero(stroke_mask)
             y_min, y_max = int(ys.min()), int(ys.max())
@@ -851,9 +867,29 @@ class ZeroTextEngine:
             views.append(Image.fromarray(rotated).convert("RGB"))
             weights.append(0.7)
 
-        # ---- View 11: Original sketch (baseline for CLIP) ----
-        views.append(sketch_img.convert("RGB"))
-        weights.append(1.0)
+        # Check if sketch has distinct color content
+        c_hsv = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2HSV)
+        sat_vals = c_hsv[:, :, 1]
+        has_color = float(sat_vals.mean()) > 8.0 or (sat_vals > 35).mean() > 0.025
+
+        if has_color:
+            # ---- View 11: Original full-color sketch ----
+            views.append(sketch_img.convert("RGB"))
+            weights.append(1.6)
+
+            # ---- View 12: Color-vibrant enhanced sketch for strong semantic CLIP alignment ----
+            try:
+                from PIL import ImageEnhance
+                boosted = ImageEnhance.Color(sketch_img).enhance(1.4)
+                contrast_boosted = ImageEnhance.Contrast(boosted).enhance(1.15)
+                views.append(contrast_boosted.convert("RGB"))
+                weights.append(1.4)
+            except Exception:
+                pass
+        else:
+            # ---- View 11: Original monochrome sketch (baseline for CLIP) ----
+            views.append(sketch_img.convert("RGB"))
+            weights.append(1.0)
 
         return views, weights
 
@@ -1358,6 +1394,7 @@ class ZeroTextEngine:
         sketch_img: Image.Image,
         top_k: int = 25,
         text_hint: Optional[str] = None,
+        is_canvas_sketch: Optional[bool] = None,
     ) -> List[Dict]:
         """
         High-precision sketch-to-photo search.
@@ -1412,11 +1449,31 @@ class ZeroTextEngine:
         diff_rb = np.abs(content_rgb[:, :, 0].astype(int) - content_rgb[:, :, 2].astype(int))
         col_diff = float((diff_rg + diff_gb + diff_rb).mean())
 
-        is_sketch = False
-        if white_ratio > 0.82 and (col_diff < 15.0 or content_sat < 25.0):
-            is_sketch = True
-        elif white_ratio > 0.90:
-            is_sketch = True
+        if is_canvas_sketch is not None:
+            is_sketch = bool(is_canvas_sketch)
+        else:
+            is_sketch = False
+            if white_ratio > 0.82:
+                is_sketch = True
+            elif white_ratio > 0.25:
+                gray_c = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2GRAY)
+                lap_var = float(cv2.Laplacian(gray_c, cv2.CV_64F).var())
+                if white_ratio > 0.35 and lap_var < 350.0:
+                    is_sketch = True
+                elif white_ratio > 0.50:
+                    is_sketch = True
+
+        # Check if the sketch contains meaningful color (drawn strokes or bucket-filled regions)
+        sketch_color_rgb = None
+        if is_sketch and not white_mask.all():
+            non_white_px = rgb_np[~white_mask]
+            if len(non_white_px) > 50:
+                nw_hsv = cv2.cvtColor(non_white_px.reshape(-1, 1, 3), cv2.COLOR_RGB2HSV)
+                sat_vals = nw_hsv[:, 0, 1]
+                if (sat_vals > 35).mean() > 0.035 or sat_vals.mean() > 18.0:
+                    sat_px = non_white_px[sat_vals > 25]
+                    if len(sat_px) > 25:
+                        sketch_color_rgb = sat_px.mean(axis=0).astype(float)
 
         if is_sketch:
             # Hand-drawn sketch, line art, or monochrome outline: 100% fine-tuned SketchAdapter
@@ -1474,17 +1531,31 @@ class ZeroTextEngine:
             filename = item["filename"]
             cluster_info = self.cluster_lookup.get(filename, {})
             c_id = cluster_info.get("cluster", -1)
-            calibrated = calibrate_sketch_score(float(raw_score))
+            raw_calibrated = calibrate_sketch_score(float(raw_score))
+            colour_score = 0.0
+
+            if sketch_color_rgb is not None:
+                img_colours = self.colour_lookup.get(filename, [])
+                if img_colours:
+                    tot_w = sum(float(c.get("percentage", 0)) for c in img_colours) or 1.0
+                    for c in img_colours:
+                        c_rgb = np.array(c["rgb"], dtype=float)
+                        dist = np.linalg.norm(sketch_color_rgb - c_rgb)
+                        w = float(c.get("percentage", 0)) / tot_w
+                        colour_score += max(0.0, 1.0 - dist / 441.67) ** 2 * w
+                final_score = float(0.82 * raw_calibrated + 0.18 * colour_score)
+            else:
+                final_score = raw_calibrated
 
             results.append({
                 "rank": rank,
                 "filename": filename,
                 "path": item["path"],
                 "similarity": round(float(raw_score), 4),
-                "final": round(calibrated, 4),
-                "clip": round(calibrated, 4),
+                "final": round(final_score, 4),
+                "clip": round(raw_calibrated, 4),
                 "ocr": 0.0,
-                "colour": 0.0,
+                "colour": round(colour_score, 4),
                 "cluster": c_id,
                 "cluster_color": (
                     "#8b96a8"
