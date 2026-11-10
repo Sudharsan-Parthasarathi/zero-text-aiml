@@ -112,7 +112,8 @@ COLOURS = {
 }
 
 DOCUMENT_MARKERS = {
-    "code", "python", "script", "import", "class", "def", "function",
+    "code", "coding", "coder", "python", "script", "import", "class", "def", "function",
+    "programmer", "programming", "developer", "software", "algorithm",
     "formula", "equation", "math", "physics", "quantum", "notes",
     "study", "biology", "genetics", "dna", "cell", "text", "document",
     "invoice", "bill", "tax", "statement", "todo", "checklist", "action",
@@ -989,7 +990,7 @@ class ZeroTextEngine:
                     "a photo of a crimson sports car supercar",
                     "a high performance automotive vehicle"
                 ])
-            elif any(k in t_lower for k in ["code", "programming", "python", "script", "software"]):
+            elif any(k in t_lower for k in ["code", "coding", "coder", "programming", "programmer", "python", "script", "software", "developer", "algorithm"]):
                 prompts.extend([
                     "computer programming code in an IDE text editor",
                     "python source code script on dark screen"
@@ -1217,7 +1218,7 @@ class ZeroTextEngine:
             }
 
         # 3. Document / Text-Heavy Query (e.g. 'python code', 'physics formula', 'invoice', 'notes')
-        if has_doc_marker or "notes" in q_lower or "code" in q_lower or "text" in q_lower:
+        if has_doc_marker or "notes" in q_lower or "code" in q_lower or "coding" in q_lower or "coder" in q_lower or "text" in q_lower:
             return {
                 "clip": 0.25,
                 "ocr": 0.65,
