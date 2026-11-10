@@ -1019,6 +1019,25 @@ class ZeroTextEngine:
                     "a hot baked pepperoni pizza with melted cheese",
                     "delicious fresh gourmet food"
                 ])
+            elif any(k in t_lower for k in ["human", "person", "people", "man", "woman", "boy", "girl", "guy", "face", "portrait", "selfie", "individual"]):
+                prompts.extend([
+                    "a photo of a person",
+                    "a portrait photo of a human person",
+                    "a real human being portrait photograph",
+                    "a selfie photo of a person looking at the camera",
+                    "a photo of a man or woman face",
+                    "a real human face portrait"
+                ])
+            elif any(k in t_lower for k in ["camera", "photography", "lens", "rangefinder"]):
+                prompts.extend([
+                    "a photo of a vintage 35mm rangefinder mechanical camera",
+                    "a vintage film camera sitting on a wooden desk"
+                ])
+            elif any(k in t_lower for k in ["spiderman", "superhero", "spider-man", "spider man"]):
+                prompts.extend([
+                    "spiderman upside down falling from the sky over a city",
+                    "a superhero in a red and black suit"
+                ])
 
         tokens = self.tokenizer(prompts).to(DEVICE)
         with torch.inference_mode():

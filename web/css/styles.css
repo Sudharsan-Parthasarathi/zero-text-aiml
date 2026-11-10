@@ -1016,6 +1016,11 @@ body {
   margin: 0 2px;
 }
 
+.tool-divider-wide {
+  margin: 0 8px;
+  background: rgba(76, 201, 240, 0.25);
+}
+
 .tool-btn {
   width: 36px;
   height: 36px;
@@ -1048,6 +1053,49 @@ body {
   opacity: 0.35;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.upload-sketch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  margin-left: 4px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.12), rgba(112, 225, 209, 0.08));
+  border: 1px solid rgba(76, 201, 240, 0.4);
+  color: var(--accent-cyan);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.upload-sketch-btn:hover {
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.25), rgba(112, 225, 209, 0.18));
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(76, 201, 240, 0.35);
+  transform: translateY(-1px);
+}
+
+.upload-sketch-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(76, 201, 240, 0.2);
+}
+
+.upload-btn-icon {
+  font-size: 1rem;
+}
+
+.upload-btn-text {
+  font-size: 0.82rem;
+  line-height: 1;
 }
 
 /* SKETCH MULTI-COLOR PALETTE */
