@@ -1464,20 +1464,59 @@ class ZeroTextEngine:
                     is_sketch = True
 
         # Check if the sketch contains meaningful color (drawn strokes or bucket-filled regions)
+        sketch_has_color = False
         sketch_color_rgb = None
         if is_sketch and not white_mask.all():
             non_white_px = rgb_np[~white_mask]
             if len(non_white_px) > 50:
                 nw_hsv = cv2.cvtColor(non_white_px.reshape(-1, 1, 3), cv2.COLOR_RGB2HSV)
                 sat_vals = nw_hsv[:, 0, 1]
-                if (sat_vals > 35).mean() > 0.035 or sat_vals.mean() > 18.0:
-                    sat_px = non_white_px[sat_vals > 25]
-                    if len(sat_px) > 25:
+                color_fraction = float((sat_vals > 35).mean())
+                mean_sat = float(sat_vals.mean())
+                if color_fraction > 0.03 or mean_sat > 15.0:
+                    sketch_has_color = True
+                    sat_px = non_white_px[sat_vals > 20]
+                    if len(sat_px) > 20:
                         sketch_color_rgb = sat_px.mean(axis=0).astype(float)
 
         if is_sketch:
-            # Hand-drawn sketch, line art, or monochrome outline: 100% fine-tuned SketchAdapter
-            vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+            if sketch_has_color:
+                # COLORED SKETCH: Triple-path blend
+                # Path A: SketchAdapter captures shape/structure from line art
+                sketch_vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
+
+                # Path B: CLIP photo encoder on the FULL sketch image (with white bg context)
+                photo_vec = self.compute_image_embedding(sketch_img)
+
+                # Path C: Auto-generate color-based text description for semantic guidance
+                # This is critical because CLIP can't infer object identity from simple shapes,
+                # but color names carry strong semantic signal (e.g. "red" → cars, roses, etc.)
+                auto_color_hints = []
+                if sketch_color_rgb is not None:
+                    min_dist = float('inf')
+                    closest_name = None
+                    for cname, crgb in COLOURS.items():
+                        d = np.linalg.norm(sketch_color_rgb - np.array(crgb, dtype=float))
+                        if d < min_dist:
+                            min_dist = d
+                            closest_name = cname
+                    if closest_name and min_dist < 180:
+                        auto_color_hints.append(closest_name)
+
+                all_hints = list(auto_color_hints)
+                if text_hint and text_hint.strip():
+                    all_hints.append(text_hint.strip())
+
+                if all_hints:
+                    hint_text = " ".join(all_hints)
+                    t_vec = self.compute_text_embedding(hint_text)
+                    # Blend: shape (adapter) + visual (photo) + semantic (text)
+                    vec = 0.35 * sketch_vec + 0.40 * photo_vec + 0.25 * t_vec
+                else:
+                    vec = 0.40 * sketch_vec + 0.60 * photo_vec
+            else:
+                # MONOCHROME SKETCH: 100% fine-tuned SketchAdapter (original path)
+                vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
         else:
             # Uploaded photograph, illustration, or full-color image:
             # Encode with pre-trained CLIP photographic visual encoder for 100% retrieval precision
@@ -1534,7 +1573,7 @@ class ZeroTextEngine:
             raw_calibrated = calibrate_sketch_score(float(raw_score))
             colour_score = 0.0
 
-            if sketch_color_rgb is not None:
+            if sketch_has_color and sketch_color_rgb is not None:
                 img_colours = self.colour_lookup.get(filename, [])
                 if img_colours:
                     tot_w = sum(float(c.get("percentage", 0)) for c in img_colours) or 1.0
@@ -1543,7 +1582,8 @@ class ZeroTextEngine:
                         dist = np.linalg.norm(sketch_color_rgb - c_rgb)
                         w = float(c.get("percentage", 0)) / tot_w
                         colour_score += max(0.0, 1.0 - dist / 441.67) ** 2 * w
-                final_score = float(0.82 * raw_calibrated + 0.18 * colour_score)
+                # Colored sketch: lighter blend since color intent is already in vec via text path
+                final_score = float(0.85 * raw_calibrated + 0.15 * colour_score)
             else:
                 final_score = raw_calibrated
 
