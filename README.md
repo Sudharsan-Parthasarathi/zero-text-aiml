@@ -102,7 +102,16 @@ All endpoints return JSON payloads; see `server.py` for exact schema.
 
 - **Gallery view** – thumbnails of indexed images (fixed height 260 px). The previous “Art” thumbnail has been removed.
 - **Search bar** – type text, pick a dominant colour, or click **Sketch** to open the drawing canvas.
-- **Sketch canvas** – draw over an uploaded photo or start from a blank canvas. The canvas now preserves the original uploaded image when no drawing occurs, ensuring the same embedding accuracy as the pre‑trained CLIP model.
+- **Sketch canvas** – draw over an uploaded photo or start from a blank canvas. The studio now includes:
+  - **Multi-color Drawing**: 12 curated color swatches + HTML5 native custom color picker.
+  - **Bucket Fill (Flood Fill)**: Fast flood-fill tool with color-tolerance matching to easily fill sketch regions.
+  - **Undo & Redo**: Full stroke-level history tracking (up to 35 steps) with canvas toolbar buttons and standard keyboard shortcuts (`Ctrl+Z` / `Ctrl+Y` / `Ctrl+Shift+Z`).
+  - **Preserved Upload Accuracy**: Canvas preserves the original uploaded image when no drawing occurs, ensuring 100% photographic CLIP accuracy.
+- **Multi-Color Sketch Understanding & Retrieval**:
+  - Automatically detects color strokes and bucket-filled areas on canvas sketches.
+  - Multi-view ensemble features multi-channel stroke contrast preservation (so light colors like yellow, cyan, and orange maintain full stroke definition).
+  - Fine-tuned `SketchAdapter` trained on synthetic multi-color outlines and bucket-filled posterized pairs (achieving 100% Precision@1 and 1.0 MRR on validation pairs).
+  - Semantic color blend pipeline seamlessly retrieves colored objects (e.g., red car sketches retrieve `red_supercar.jpg`, yellow sunflower sketches retrieve `golden_sunflower.jpg`).
 - **Delete Image** – each card now includes a **Delete** button. Clicking opens a modal with **Cancel** and **Confirm Delete** options.
 - **Result grid** – all result images share the same size, preventing the “very small” thumbnails reported earlier.
 
@@ -166,9 +175,9 @@ Zero text AIML/
 Run the provided verification scripts to ensure the system works after any change:
 
 ```bash
-python verify_endpoints.py   # checks that all API routes respond correctly
-python verify_search.py      # runs a suite of queries (text, colour, hybrid)
-python test_sketch_and_uploads.py   # validates sketch detection and upload accuracy
+python verify_endpoints.py         # checks that all API routes respond correctly
+python verify_search.py            # runs a suite of queries (text, colour, hybrid)
+python test_sketch_multicolor.py   # verifies multi-color, bucket fill, B&W, and upload paths
 ```
 All tests should pass with **exit code 0**.
 

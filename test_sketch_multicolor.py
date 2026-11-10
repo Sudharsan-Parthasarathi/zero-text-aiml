@@ -56,6 +56,8 @@ for r in res_flower["results"]:
     print(f"    {r['rank']}: {r['filename']:32} Final: {r['final']:.4f} CLIP: {r['clip']:.4f} Colour: {r['colour']:.4f}")
 top1_flower = res_flower["results"][0]
 print(f"  Top 1: {top1_flower['filename']}")
+assert top1_flower["filename"] == "golden_sunflower.jpg", f"Expected golden_sunflower.jpg, got {top1_flower['filename']}"
+print("  ✓ Multi-color flower sketch correctly retrieved golden_sunflower.jpg!")
 
 # Test 3: Standard black/white rocket sketch (backwards compatibility)
 print("\n[Test 3] Black & white sketch (rocket)...")
