@@ -1649,3 +1649,8 @@ body {
 }
 
 
+
+/* Custom style for the Add Images button to increase spacing from previous buttons */
+#btn-open-add {
+  margin-left: 14px; /* pushes it farther from preceding buttons */
+}
