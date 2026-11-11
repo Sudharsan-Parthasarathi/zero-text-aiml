@@ -783,6 +783,7 @@ class ZeroTextEngine:
         # When users draw off-center or small sketches, this brings the stroke
         # into central focus with 15% margin, matching CLIP's receptive field
         stroke_mask = inv_np > 20
+        rgb_centered = rgb_np
         if np.any(stroke_mask):
             ys, xs = np.nonzero(stroke_mask)
             y_min, y_max = int(ys.min()), int(ys.max())
@@ -807,6 +808,11 @@ class ZeroTextEngine:
                 off_x = (square_size - cw) // 2
                 centered[off_y:off_y + ch, off_x:off_x + cw] = cropped
                 inv_np = cv2.resize(centered, (w, h), interpolation=cv2.INTER_LINEAR)
+
+                cropped_rgb = rgb_np[crop_y1:crop_y2, crop_x1:crop_x2]
+                centered_rgb = np.ones((square_size, square_size, 3), dtype=np.uint8) * (255 if is_white_bg else 0)
+                centered_rgb[off_y:off_y + ch, off_x:off_x + cw] = cropped_rgb
+                rgb_centered = cv2.resize(centered_rgb, (w, h), interpolation=cv2.INTER_LINEAR)
 
         views: List[Image.Image] = []
         weights: List[float] = []
@@ -874,22 +880,23 @@ class ZeroTextEngine:
         has_color = float(sat_vals.mean()) > 8.0 or (sat_vals > 35).mean() > 0.025
 
         if has_color:
-            # ---- View 11: Original full-color sketch ----
-            views.append(sketch_img.convert("RGB"))
+            # ---- View 11: Centered full-color sketch ----
+            img_c = Image.fromarray(rgb_centered).convert("RGB")
+            views.append(img_c)
             weights.append(1.6)
 
             # ---- View 12: Color-vibrant enhanced sketch for strong semantic CLIP alignment ----
             try:
                 from PIL import ImageEnhance
-                boosted = ImageEnhance.Color(sketch_img).enhance(1.4)
+                boosted = ImageEnhance.Color(img_c).enhance(1.4)
                 contrast_boosted = ImageEnhance.Contrast(boosted).enhance(1.15)
                 views.append(contrast_boosted.convert("RGB"))
                 weights.append(1.4)
             except Exception:
                 pass
         else:
-            # ---- View 11: Original monochrome sketch (baseline for CLIP) ----
-            views.append(sketch_img.convert("RGB"))
+            # ---- View 11: Centered monochrome sketch (baseline for CLIP) ----
+            views.append(Image.fromarray(rgb_centered).convert("RGB"))
             weights.append(1.0)
 
         return views, weights
@@ -1469,8 +1476,14 @@ class ZeroTextEngine:
         diff_rb = np.abs(content_rgb[:, :, 0].astype(int) - content_rgb[:, :, 2].astype(int))
         col_diff = float((diff_rg + diff_gb + diff_rb).mean())
 
-        if is_canvas_sketch is not None:
-            is_sketch = bool(is_canvas_sketch)
+        if is_canvas_sketch is True:
+            is_sketch = True
+        elif is_canvas_sketch is False:
+            # Uploaded image: detect whether it is an uploaded sketch/line drawing or a real photograph
+            if white_ratio > 0.65 and (content_sat < 25.0 or col_diff < 15.0):
+                is_sketch = True
+            else:
+                is_sketch = False
         else:
             is_sketch = False
             if white_ratio > 0.82:
@@ -1485,19 +1498,52 @@ class ZeroTextEngine:
 
         # Check if the sketch contains meaningful color (drawn strokes or bucket-filled regions)
         sketch_has_color = False
-        sketch_color_rgb = None
+        sketch_palette = []
         if is_sketch and not white_mask.all():
             non_white_px = rgb_np[~white_mask]
-            if len(non_white_px) > 50:
+            if len(non_white_px) > 30:
                 nw_hsv = cv2.cvtColor(non_white_px.reshape(-1, 1, 3), cv2.COLOR_RGB2HSV)
                 sat_vals = nw_hsv[:, 0, 1]
-                color_fraction = float((sat_vals > 35).mean())
+                val_vals = nw_hsv[:, 0, 2]
+                color_fraction = float((sat_vals > 28).mean())
                 mean_sat = float(sat_vals.mean())
-                if color_fraction > 0.03 or mean_sat > 15.0:
+                if color_fraction > 0.02 or mean_sat > 12.0:
                     sketch_has_color = True
-                    sat_px = non_white_px[sat_vals > 20]
-                    if len(sat_px) > 20:
-                        sketch_color_rgb = sat_px.mean(axis=0).astype(float)
+                    # Extract multi-color clusters from colored and distinct strokes
+                    sig_mask = (sat_vals > 22) | (val_vals < 45)
+                    sig_px = non_white_px[sig_mask]
+                    if len(sig_px) >= 20:
+                        try:
+                            from sklearn.cluster import MiniBatchKMeans
+                            n_c = min(4, len(np.unique(sig_px, axis=0)))
+                            kmeans = MiniBatchKMeans(n_clusters=n_c, random_state=42, n_init=3)
+                            labels = kmeans.fit_predict(sig_px)
+                            centers = kmeans.cluster_centers_
+                            counts = np.bincount(labels)
+                            total_pts = len(labels)
+                            for idx in np.argsort(-counts):
+                                pct = float(counts[idx] / total_pts)
+                                if pct < 0.04:
+                                    continue
+                                c_rgb = centers[idx]
+                                c_hsv = cv2.cvtColor(np.uint8([[c_rgb]]), cv2.COLOR_RGB2HSV)[0, 0]
+                                min_d = float('inf')
+                                best_name = None
+                                for cname, crgb in COLOURS.items():
+                                    d = np.linalg.norm(c_rgb - np.array(crgb, dtype=float))
+                                    if d < min_d:
+                                        min_d = d
+                                        best_name = cname
+                                is_chrom = bool(c_hsv[1] > 28 and c_hsv[2] > 35)
+                                sketch_palette.append({
+                                    "name": best_name,
+                                    "rgb": c_rgb.astype(float),
+                                    "percentage": pct,
+                                    "is_chromatic": is_chrom,
+                                    "dist": float(min_d),
+                                })
+                        except Exception:
+                            pass
 
         if is_sketch:
             if sketch_has_color:
@@ -1505,35 +1551,54 @@ class ZeroTextEngine:
                 # Path A: SketchAdapter captures shape/structure from line art
                 sketch_vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
 
-                # Path B: CLIP photo encoder on the FULL sketch image (with white bg context)
-                photo_vec = self.compute_image_embedding(sketch_img)
+                # Path B: CLIP photo encoder on centered content image
+                photo_vec = self.compute_image_embedding(content_img)
 
-                # Path C: Auto-generate color-based text description for semantic guidance
-                # This is critical because CLIP can't infer object identity from simple shapes,
-                # but color names carry strong semantic signal (e.g. "red" → cars, roses, etc.)
-                auto_color_hints = []
-                if sketch_color_rgb is not None:
-                    min_dist = float('inf')
-                    closest_name = None
-                    for cname, crgb in COLOURS.items():
-                        d = np.linalg.norm(sketch_color_rgb - np.array(crgb, dtype=float))
-                        if d < min_dist:
-                            min_dist = d
-                            closest_name = cname
-                    if closest_name and min_dist < 180:
-                        auto_color_hints.append(closest_name)
+                # Path C: Semantic text guidance using accurately extracted color descriptors
+                CANONICAL_COLOR_MAP = {
+                    "amber": "yellow", "gold": "yellow", "golden": "yellow",
+                    "crimson": "red", "scarlet": "red",
+                    "emerald": "green", "forest": "green",
+                    "navy": "dark blue", "cyan": "cyan", "teal": "teal",
+                    "violet": "purple", "magenta": "pink",
+                }
+                chromatic_names = []
+                for p in sketch_palette:
+                    if p["is_chromatic"] and p["dist"] < 170:
+                        mapped = CANONICAL_COLOR_MAP.get(p["name"], p["name"])
+                        if mapped not in chromatic_names:
+                            chromatic_names.append(mapped)
 
-                all_hints = list(auto_color_hints)
-                if text_hint and text_hint.strip():
-                    all_hints.append(text_hint.strip())
+                prompts = []
+                if chromatic_names:
+                    color_phrase = " and ".join(chromatic_names[:2])
+                    prompts.extend([
+                        color_phrase,
+                        f"a photo featuring {color_phrase}",
+                        f"a vibrant photo with {color_phrase} colors",
+                    ])
+                    if text_hint and text_hint.strip():
+                        prompts.extend([
+                            f"a {color_phrase} {text_hint.strip()}",
+                            f"a photo of a {color_phrase} {text_hint.strip()}",
+                        ])
+                elif text_hint and text_hint.strip():
+                    prompts.extend([
+                        text_hint.strip(),
+                        f"a photo of {text_hint.strip()}",
+                    ])
 
-                if all_hints:
-                    hint_text = " ".join(all_hints)
-                    t_vec = self.compute_text_embedding(hint_text)
-                    # Blend: shape (adapter) + visual (photo) + semantic (text)
-                    vec = 0.35 * sketch_vec + 0.40 * photo_vec + 0.25 * t_vec
+                if prompts:
+                    t_tokens = self.tokenizer(prompts).to(DEVICE)
+                    with torch.inference_mode():
+                        t_embs = self.model.encode_text(t_tokens)
+                        t_embs = t_embs / t_embs.norm(dim=-1, keepdim=True)
+                        t_vec = t_embs.mean(dim=0, keepdim=True)
+                        t_vec = (t_vec / t_vec.norm(dim=-1, keepdim=True)).cpu().numpy().astype("float32")
+                    # Optimal fusion: shape anchor (adapter) + visual (photo) + semantic (text)
+                    vec = 0.55 * sketch_vec + 0.15 * photo_vec + 0.30 * t_vec
                 else:
-                    vec = 0.40 * sketch_vec + 0.60 * photo_vec
+                    vec = 0.65 * sketch_vec + 0.35 * photo_vec
             else:
                 # MONOCHROME SKETCH: 100% fine-tuned SketchAdapter (original path)
                 vec = self._compute_sketch_ensemble_embedding(sketch_img, text_hint=text_hint)
@@ -1593,17 +1658,25 @@ class ZeroTextEngine:
             raw_calibrated = calibrate_sketch_score(float(raw_score))
             colour_score = 0.0
 
-            if sketch_has_color and sketch_color_rgb is not None:
+            if sketch_has_color and sketch_palette:
                 img_colours = self.colour_lookup.get(filename, [])
                 if img_colours:
-                    tot_w = sum(float(c.get("percentage", 0)) for c in img_colours) or 1.0
-                    for c in img_colours:
-                        c_rgb = np.array(c["rgb"], dtype=float)
-                        dist = np.linalg.norm(sketch_color_rgb - c_rgb)
-                        w = float(c.get("percentage", 0)) / tot_w
-                        colour_score += max(0.0, 1.0 - dist / 441.67) ** 2 * w
-                # Colored sketch: lighter blend since color intent is already in vec via text path
-                final_score = float(0.85 * raw_calibrated + 0.15 * colour_score)
+                    tot_sk = sum(p["percentage"] for p in sketch_palette) or 1.0
+                    tot_score = 0.0
+                    for sk in sketch_palette:
+                        sk_rgb = sk["rgb"]
+                        sk_w = sk["percentage"] / tot_sk
+                        best_m = 0.0
+                        for img_c in img_colours:
+                            img_rgb = np.array(img_c["rgb"], dtype=float)
+                            dist = np.linalg.norm(sk_rgb - img_rgb)
+                            m = max(0.0, 1.0 - dist / 441.67) ** 2
+                            if m > best_m:
+                                best_m = m
+                        tot_score += sk_w * best_m
+                    colour_score = float(tot_score)
+                # Colored sketch: balance calibrated visual shape similarity with multi-color harmony
+                final_score = float(0.70 * raw_calibrated + 0.30 * colour_score)
             else:
                 final_score = raw_calibrated
 

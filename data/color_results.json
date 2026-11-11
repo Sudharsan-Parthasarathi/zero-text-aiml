@@ -1120,5 +1120,56 @@
                 "percentage": 3.92
             }
         ]
+    },
+    {
+        "filename": "loki-grabs-timeline (1).avif",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\loki-grabs-timeline (1).avif",
+        "dominant_colours": [
+            {
+                "hex": "#071406",
+                "rgb": [
+                    7,
+                    20,
+                    6
+                ],
+                "percentage": 25.56
+            },
+            {
+                "hex": "#0A2C1C",
+                "rgb": [
+                    10,
+                    44,
+                    28
+                ],
+                "percentage": 24.69
+            },
+            {
+                "hex": "#104433",
+                "rgb": [
+                    16,
+                    68,
+                    51
+                ],
+                "percentage": 22.68
+            },
+            {
+                "hex": "#1F6149",
+                "rgb": [
+                    31,
+                    97,
+                    73
+                ],
+                "percentage": 16.1
+            },
+            {
+                "hex": "#469979",
+                "rgb": [
+                    70,
+                    153,
+                    121
+                ],
+                "percentage": 10.98
+            }
+        ]
     }
 ]
