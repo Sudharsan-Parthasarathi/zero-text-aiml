@@ -57,9 +57,15 @@ def run_tests():
 
     # Clean any prior test remnants
     engine.text_search_dataset = [e for e in engine.text_search_dataset if e.get("query_normalized") != q_norm]
-    engine.feedback_dataset = [e for e in engine.feedback_dataset if e.get("query_normalized") != q_norm]
+    engine.sketch_dataset = [e for e in engine.sketch_dataset if e.get("text_hint") != "dummy square"]
+    engine.feedback_dataset = [e for e in engine.feedback_dataset if e.get("query_normalized") != q_norm and e.get("text_hint") != "dummy square"]
     engine.validated_text_queries.pop(q_norm, None)
     engine.negative_feedback_queries.pop(q_norm, None)
+    engine.validated_sketch_pairs = {
+        (item.get("sketch_hash", ""), item.get("filename", ""))
+        for item in engine.sketch_dataset
+        if item.get("filename")
+    }
 
     # ----------------------------------------------------
     # TEST 1: Positive Text Search Feedback & Enrichment
