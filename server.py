@@ -86,6 +86,18 @@ class UploadPayload(BaseModel):
     files: List[FileUploadItem]
 
 
+class FeedbackRequest(BaseModel):
+    search_type: str  # "text" or "sketch"
+    feedback: str  # "positive" (yes) or "negative" (no)
+    filename: str  # Target image filename
+    query: Optional[str] = ""
+    sketch_data: Optional[str] = ""
+    text_hint: Optional[str] = ""
+    score: Optional[float] = None
+    cluster: Optional[int] = None
+    session_id: Optional[str] = None
+
+
 # -----------------------------------------------------------------
 # API ENDPOINTS
 # -----------------------------------------------------------------
@@ -208,6 +220,29 @@ def search_similar(req: SimilarSearchRequest):
         "total_results": len(results),
         "results": results,
     }
+
+
+@app.post("/api/feedback")
+def submit_feedback(req: FeedbackRequest):
+    res = engine.record_feedback(
+        search_type=req.search_type,
+        feedback=req.feedback,
+        filename=req.filename,
+        query=req.query or "",
+        sketch_data=req.sketch_data or "",
+        text_hint=req.text_hint or "",
+        score=req.score,
+        cluster=req.cluster,
+        session_id=req.session_id,
+    )
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("message", "Feedback submission error"))
+    return res
+
+
+@app.get("/api/feedback/stats")
+def get_feedback_stats():
+    return engine.get_feedback_stats()
 
 
 @app.post("/api/index/upload")

@@ -254,6 +254,25 @@
         </div>
       </div>
 
+      <!-- Search Result Feedback & Dataset Enrichment Component -->
+      <div class="search-feedback-card" id="search-feedback-card" style="display: none;">
+        <div class="feedback-inner">
+          <div class="feedback-header">
+            <span class="feedback-question">Was this your desired output?</span>
+            <span class="feedback-meta" id="feedback-search-meta">Search Match</span>
+          </div>
+          <div class="feedback-actions" id="feedback-actions">
+            <button type="button" class="feedback-btn feedback-yes" id="feedback-btn-yes" title="Yes, this is the desired output">
+              <span class="feedback-btn-icon">✓</span> Yes
+            </button>
+            <button type="button" class="feedback-btn feedback-no" id="feedback-btn-no" title="No, this is not what I wanted">
+              <span class="feedback-btn-icon">✕</span> No
+            </button>
+          </div>
+          <div class="feedback-status" id="feedback-status" style="display: none;"></div>
+        </div>
+      </div>
+
       <!-- Match Scores -->
       <div>
         <div class="section-label">Relevance & Match Scores</div>

@@ -1,0 +1,14 @@
+[
+    {
+        "id": "text_be96c0e8f8c6",
+        "query": "unique test feedback query",
+        "query_normalized": "unique test feedback query",
+        "filename": "aiml.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
+        "category": "Aiml",
+        "score": 0.88,
+        "cluster": 1,
+        "timestamp": "2026-11-12T10:17:02Z",
+        "validated": true
+    }
+]

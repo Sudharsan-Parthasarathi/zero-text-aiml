@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMatchIndex: 0,
     searchDebounceTimer: null,
     lightboxZoom: 1.0,
+    activeSearch: null, // { type: 'text'|'sketch', query: string, sketchData: string, textHint: string, timestamp: number }
+    feedbackHistory: {}, // searchKey -> { feedback: 'positive'|'negative', message: string, enriched: boolean, already_exists: boolean }
   };
 
   // UI Elements
@@ -114,6 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
     drawerSimilarBtn: document.getElementById('drawer-similar-btn'),
     drawerCopyPathBtn: document.getElementById('drawer-copy-path-btn'),
     drawerDeleteBtn: document.getElementById('drawer-delete-btn'),
+
+    // Search Result Feedback & Dataset Enrichment
+    feedbackCard: document.getElementById('search-feedback-card'),
+    feedbackMeta: document.getElementById('feedback-search-meta'),
+    feedbackActions: document.getElementById('feedback-actions'),
+    feedbackBtnYes: document.getElementById('feedback-btn-yes'),
+    feedbackBtnNo: document.getElementById('feedback-btn-no'),
+    feedbackStatus: document.getElementById('feedback-status'),
 
     // Delete Confirmation Modal
     modalDeleteConfirm: document.getElementById('modal-delete-confirm'),
@@ -507,7 +517,121 @@ document.addEventListener('DOMContentLoaded', () => {
       searchSimilar(item.filename);
     };
 
+    // Update Search Result Feedback Component
+    updateFeedbackUI(item);
+
     el.drawer.classList.add('open');
+  }
+
+  // -------------------------------------------------------------
+  // SEARCH RESULT FEEDBACK & DATASET ENRICHMENT LOGIC
+  // -------------------------------------------------------------
+  function getSearchKey(item) {
+    if (!state.activeSearch || !item) return null;
+    if (state.activeSearch.type === 'text') {
+      return `text:${(state.activeSearch.query || '').toLowerCase().trim()}:${item.filename}`;
+    } else if (state.activeSearch.type === 'sketch') {
+      const skId = state.activeSearch.sketchData ? state.activeSearch.sketchData.slice(-32) : 'sketch';
+      return `sketch:${skId}:${item.filename}`;
+    }
+    return null;
+  }
+
+  function updateFeedbackUI(item) {
+    if (!el.feedbackCard) return;
+
+    // Rule 2: Only appear after a search has been successfully performed.
+    // Remain hidden on the initial screen before any search is performed.
+    if (!state.activeSearch || !item) {
+      el.feedbackCard.style.display = 'none';
+      return;
+    }
+
+    el.feedbackCard.style.display = 'block';
+    if (el.feedbackMeta) {
+      el.feedbackMeta.textContent = state.activeSearch.type === 'sketch' ? 'Sketch Match' : 'Text Match';
+    }
+
+    const key = getSearchKey(item);
+    const existing = key ? state.feedbackHistory[key] : null;
+
+    if (existing) {
+      // Once submitted, disable or replace the feedback options to prevent repeated submissions
+      if (el.feedbackActions) el.feedbackActions.style.display = 'none';
+      if (el.feedbackStatus) {
+        el.feedbackStatus.style.display = 'flex';
+        const isPos = existing.feedback === 'positive';
+        el.feedbackStatus.className = `feedback-status ${existing.already_exists ? 'existing' : isPos ? 'positive' : 'negative'}`;
+        const icon = isPos ? '✓' : '✕';
+        el.feedbackStatus.innerHTML = `<span>${icon}</span> <span>${existing.message || (isPos ? 'Feedback recorded — Dataset enriched' : 'Feedback recorded — Marked inaccurate')}</span>`;
+      }
+    } else {
+      // Show active Yes / No options for this search result
+      if (el.feedbackActions) el.feedbackActions.style.display = 'flex';
+      if (el.feedbackBtnYes) el.feedbackBtnYes.disabled = false;
+      if (el.feedbackBtnNo) el.feedbackBtnNo.disabled = false;
+      if (el.feedbackStatus) el.feedbackStatus.style.display = 'none';
+    }
+  }
+
+  async function submitFeedback(feedbackType) {
+    if (!state.activeSearch || !state.selectedItem) return;
+    const item = state.selectedItem;
+    const key = getSearchKey(item);
+    if (!key) return;
+
+    // Prevent repeated submission
+    if (state.feedbackHistory[key]) return;
+
+    if (el.feedbackBtnYes) el.feedbackBtnYes.disabled = true;
+    if (el.feedbackBtnNo) el.feedbackBtnNo.disabled = true;
+
+    try {
+      const payload = {
+        search_type: state.activeSearch.type,
+        feedback: feedbackType,
+        filename: item.filename,
+        query: state.activeSearch.query || '',
+        sketch_data: state.activeSearch.sketchData || '',
+        text_hint: state.activeSearch.textHint || '',
+        score: item.final ?? item.clip ?? 0,
+        cluster: item.cluster ?? -1,
+      };
+
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Feedback submission failed');
+      }
+
+      // Preserve feedback state for the current search session
+      state.feedbackHistory[key] = {
+        feedback: feedbackType,
+        message: data.message,
+        enriched: data.enriched,
+        already_exists: data.already_exists,
+      };
+
+      updateFeedbackUI(item);
+      showToast(feedbackType === 'positive' ? `✓ ${data.message}` : `✕ ${data.message}`);
+    } catch (err) {
+      console.error('Feedback error:', err);
+      showToast(`Feedback error: ${err.message}`);
+      if (el.feedbackBtnYes) el.feedbackBtnYes.disabled = false;
+      if (el.feedbackBtnNo) el.feedbackBtnNo.disabled = false;
+    }
+  }
+
+  if (el.feedbackBtnYes) {
+    el.feedbackBtnYes.addEventListener('click', () => submitFeedback('positive'));
+  }
+  if (el.feedbackBtnNo) {
+    el.feedbackBtnNo.addEventListener('click', () => submitFeedback('negative'));
   }
 
   el.drawerCloseBtn.addEventListener('click', () => {
@@ -758,6 +882,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       state.displayedImages = data.results;
       state.currentMatchIndex = 0;
+      state.activeSearch = {
+        type: 'text',
+        query,
+        timestamp: Date.now(),
+      };
 
       // Update AI Recommendation Display
       if (data.recommendation) {
@@ -885,6 +1014,8 @@ document.addEventListener('DOMContentLoaded', () => {
     el.searchClearBtn.style.display = 'none';
     if (el.queryInsights) el.queryInsights.style.display = 'none';
     hideSpotlightHUD();
+    state.activeSearch = null;
+    if (el.feedbackCard) el.feedbackCard.style.display = 'none';
     filterByCluster(state.activeClusterFilter);
   }
 
@@ -1085,6 +1216,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }),
       });
       const data = await res.json();
+
+      state.activeSearch = {
+        type: 'sketch',
+        query: textHint || 'sketch',
+        sketchData: dataUrl,
+        textHint: textHint,
+        timestamp: Date.now(),
+      };
 
       el.modalSketch.classList.remove('open');
       state.displayedImages = data.results;

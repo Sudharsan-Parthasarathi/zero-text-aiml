@@ -50,6 +50,8 @@ import json
 import re
 import threading
 import time
+import base64
+import hashlib
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from PIL import Image
 
@@ -67,6 +69,10 @@ OCR_PATH = DATA_DIR / "ocr_results.json"
 COLOUR_PATH = DATA_DIR / "color_results.json"
 CLUSTER_PATH = DATA_DIR / "cluster_results.json"
 SKETCH_ADAPTER_PATH = DATA_DIR / "sketch_adapter.pt"
+FEEDBACK_PATH = DATA_DIR / "feedback_dataset.json"
+TEXT_DATASET_PATH = DATA_DIR / "text_search_dataset.json"
+SKETCH_DATASET_PATH = DATA_DIR / "sketch_dataset.json"
+USER_SKETCHES_DIR = SKETCHES_DIR / "user_validated"
 
 MODEL_NAME = "ViT-B-32"
 PRETRAINED = "laion2b_s34b_b79k"
@@ -215,6 +221,15 @@ class ZeroTextEngine:
         self.colour_lookup: Dict[str, List[Dict]] = {}
         self.cluster_lookup: Dict[str, Dict] = {}
 
+        # Feedback & Dataset Enrichment
+        self.feedback_dataset: List[Dict] = []
+        self.text_search_dataset: List[Dict] = []
+        self.sketch_dataset: List[Dict] = []
+        self.validated_text_queries: Dict[str, set] = {}
+        self.negative_feedback_queries: Dict[str, set] = {}
+        self.validated_sketch_pairs: set = set()
+        self.negative_sketch_pairs: set = set()
+
         self.sketch_adapter: Optional[SketchAdapter] = None
         self.reducer_2d: Optional[umap.UMAP] = None
         self.reducer_3d: Optional[umap.UMAP] = None
@@ -245,6 +260,7 @@ class ZeroTextEngine:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
         SKETCHES_DIR.mkdir(parents=True, exist_ok=True)
+        USER_SKETCHES_DIR.mkdir(parents=True, exist_ok=True)
 
     def _log(self, message: str):
         print(f"[ZERO-TEXT] {message}")
@@ -328,6 +344,20 @@ class ZeroTextEngine:
                     pairs.append((sk_img.transpose(Image.FLIP_LEFT_RIGHT), target, True))
                 except Exception:
                     pass
+
+        # 1b. User-validated enriched sketch-image pairs
+        for sk_entry in self.sketch_dataset:
+            rel_file = sk_entry.get("sketch_file")
+            target = sk_entry.get("filename")
+            if rel_file and target:
+                sp = SKETCHES_DIR / rel_file
+                if sp.exists():
+                    try:
+                        sk_img = Image.open(sp)
+                        pairs.append((sk_img, target, True))
+                        pairs.append((sk_img.transpose(Image.FLIP_LEFT_RIGHT), target, True))
+                    except Exception:
+                        pass
 
         # 2. Diverse multi-style synthetic sketches for sample images
         for item in self.metadata:
@@ -533,9 +563,72 @@ class ZeroTextEngine:
             else:
                 self.cluster_lookup = {}
 
+            # Load Feedback & Enriched Datasets
+            if FEEDBACK_PATH.exists():
+                try:
+                    with open(FEEDBACK_PATH, "r", encoding="utf-8") as f:
+                        self.feedback_dataset = json.load(f)
+                except Exception as e:
+                    self._log(f"Failed to load feedback dataset: {e}")
+                    self.feedback_dataset = []
+            else:
+                self.feedback_dataset = []
+
+            if TEXT_DATASET_PATH.exists():
+                try:
+                    with open(TEXT_DATASET_PATH, "r", encoding="utf-8") as f:
+                        self.text_search_dataset = json.load(f)
+                except Exception as e:
+                    self._log(f"Failed to load text search dataset: {e}")
+                    self.text_search_dataset = []
+            else:
+                self.text_search_dataset = []
+
+            if SKETCH_DATASET_PATH.exists():
+                try:
+                    with open(SKETCH_DATASET_PATH, "r", encoding="utf-8") as f:
+                        self.sketch_dataset = json.load(f)
+                except Exception as e:
+                    self._log(f"Failed to load sketch dataset: {e}")
+                    self.sketch_dataset = []
+            else:
+                self.sketch_dataset = []
+
+            # Populate in-memory lookup indices for quick relevance calibration
+            self.validated_text_queries = {}
+            for item in self.text_search_dataset:
+                qn = item.get("query_normalized", "").strip()
+                fn = item.get("filename", "").strip()
+                if qn and fn:
+                    self.validated_text_queries.setdefault(qn, set()).add(fn)
+
+            self.validated_sketch_pairs = {
+                (item.get("sketch_hash", ""), item.get("filename", ""))
+                for item in self.sketch_dataset
+                if item.get("filename")
+            }
+
+            self.negative_feedback_queries = {}
+            self.negative_sketch_pairs = set()
+            for fb in self.feedback_dataset:
+                if fb.get("feedback") in ("negative", "no"):
+                    st = fb.get("search_type")
+                    fn = fb.get("filename")
+                    if st == "text" and fn:
+                        qn = fb.get("query_normalized", "").strip()
+                        if qn:
+                            self.negative_feedback_queries.setdefault(qn, set()).add(fn)
+                    elif st == "sketch" and fn:
+                        sh = fb.get("sketch_hash", "")
+                        if sh:
+                            self.negative_sketch_pairs.add((sh, fn))
+
             self._log(
                 f"Data loaded: {len(self.metadata)} images indexed, "
-                f"{len(self.cluster_lookup)} cluster records."
+                f"{len(self.cluster_lookup)} cluster records, "
+                f"{len(self.text_search_dataset)} validated text queries, "
+                f"{len(self.sketch_dataset)} validated sketches, "
+                f"{len(self.feedback_dataset)} feedback logs."
             )
 
     def _save_data(self):
@@ -565,7 +658,244 @@ class ZeroTextEngine:
             with open(CLUSTER_PATH, "w", encoding="utf-8") as f:
                 json.dump(cluster_list, f, indent=4, ensure_ascii=False)
 
+            self._save_feedback_dataset()
+            self._save_text_dataset()
+            self._save_sketch_dataset()
+
             self._log("All data files saved successfully.")
+
+    def _save_feedback_dataset(self):
+        with self._lock:
+            with open(FEEDBACK_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.feedback_dataset, f, indent=4, ensure_ascii=False)
+
+    def _save_text_dataset(self):
+        with self._lock:
+            with open(TEXT_DATASET_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.text_search_dataset, f, indent=4, ensure_ascii=False)
+
+    def _save_sketch_dataset(self):
+        with self._lock:
+            with open(SKETCH_DATASET_PATH, "w", encoding="utf-8") as f:
+                json.dump(self.sketch_dataset, f, indent=4, ensure_ascii=False)
+
+    def record_feedback(
+        self,
+        search_type: str,
+        feedback: str,
+        filename: str,
+        query: str = "",
+        sketch_data: str = "",
+        text_hint: str = "",
+        score: Optional[float] = None,
+        cluster: Optional[int] = None,
+        session_id: Optional[str] = None,
+    ) -> Dict:
+        """
+        Record user feedback (Yes / No) and perform intelligent dataset enrichment.
+        When YES (positive):
+          - Identifies exact image, object category, and search metadata.
+          - Performs duplicate detection: if already in dataset, duplicate is prevented.
+          - If new, adds validated result to text_search_dataset.json or sketch_dataset.json.
+        When NO (negative):
+          - Records rejection in feedback_dataset.json for future search relevance calibration.
+          - Does not add to positive datasets.
+        """
+        with self._lock:
+            st = (search_type or "text").lower().strip()
+            fb = "positive" if (feedback or "").lower().strip() in ("positive", "yes", "true", "1") else "negative"
+            fn = Path(filename).name
+
+            # Verify image exists
+            img_path = self.get_image_path(fn)
+            matched = any(item["filename"] == fn for item in self.metadata) or Path(img_path).exists()
+            if not matched:
+                return {
+                    "status": "error",
+                    "enriched": False,
+                    "already_exists": False,
+                    "message": f"Target image '{fn}' not found in index.",
+                }
+
+            clean_stem = Path(fn).stem.replace("_", " ").replace("-", " ")
+            category = clean_stem.title()
+            timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+            enriched = False
+            already_exists = False
+            sketch_hash = ""
+
+            if fb == "positive":
+                if st == "text":
+                    q_raw = query.strip()
+                    q_norm = q_raw.lower()
+                    if not q_norm:
+                        return {
+                            "status": "error",
+                            "enriched": False,
+                            "already_exists": False,
+                            "message": "Search query text is required for text feedback.",
+                        }
+
+                    # Duplicate detection
+                    exists = any(
+                        e.get("query_normalized") == q_norm and e.get("filename") == fn
+                        for e in self.text_search_dataset
+                    )
+                    if exists or fn in self.validated_text_queries.get(q_norm, set()):
+                        already_exists = True
+                        msg = f"Feedback noted! Match for '{q_raw}' already exists in dataset (duplicate prevented)."
+                    else:
+                        entry_id = f"text_{hashlib.md5(f'{q_norm}_{fn}'.encode()).hexdigest()[:12]}"
+                        new_entry = {
+                            "id": entry_id,
+                            "query": q_raw,
+                            "query_normalized": q_norm,
+                            "filename": fn,
+                            "path": img_path,
+                            "category": category,
+                            "score": round(float(score or 0.0), 4),
+                            "cluster": int(cluster if cluster is not None else -1),
+                            "timestamp": timestamp,
+                            "validated": True,
+                        }
+                        self.text_search_dataset.append(new_entry)
+                        self._save_text_dataset()
+                        self.validated_text_queries.setdefault(q_norm, set()).add(fn)
+                        if q_norm in self.negative_feedback_queries:
+                            self.negative_feedback_queries[q_norm].discard(fn)
+                        enriched = True
+                        msg = f"Validated! '{fn}' added to text dataset for '{q_raw}'."
+
+                elif st == "sketch":
+                    sketch_bytes = None
+                    if sketch_data:
+                        try:
+                            b64 = sketch_data
+                            if "," in b64:
+                                b64 = b64.split(",", 1)[1]
+                            sketch_bytes = base64.b64decode(b64)
+                        except Exception as e:
+                            self._log(f"Notice decoding sketch for feedback: {e}")
+
+                    if sketch_bytes:
+                        sketch_hash = hashlib.sha256(sketch_bytes).hexdigest()[:16]
+                    else:
+                        sketch_hash = hashlib.md5(f"{fn}_{timestamp}".encode()).hexdigest()[:16]
+
+                    # Duplicate detection
+                    exists = any(
+                        e.get("sketch_hash") == sketch_hash and e.get("filename") == fn
+                        for e in self.sketch_dataset
+                    )
+                    if exists or (sketch_hash, fn) in self.validated_sketch_pairs:
+                        already_exists = True
+                        msg = f"Feedback noted! Sketch mapping for '{fn}' already exists in dataset (duplicate prevented)."
+                    else:
+                        USER_SKETCHES_DIR.mkdir(parents=True, exist_ok=True)
+                        rel_sketch_file = ""
+                        if sketch_bytes:
+                            sk_filename = f"sketch_{sketch_hash}.png"
+                            sk_save_path = USER_SKETCHES_DIR / sk_filename
+                            try:
+                                with open(sk_save_path, "wb") as f_sk:
+                                    f_sk.write(sketch_bytes)
+                                rel_sketch_file = f"user_validated/{sk_filename}"
+                            except Exception as e:
+                                self._log(f"Error saving user sketch file: {e}")
+
+                        new_entry = {
+                            "id": f"sketch_{sketch_hash[:12]}",
+                            "sketch_hash": sketch_hash,
+                            "sketch_file": rel_sketch_file,
+                            "filename": fn,
+                            "path": img_path,
+                            "category": category,
+                            "text_hint": text_hint.strip() if text_hint else "",
+                            "score": round(float(score or 0.0), 4),
+                            "cluster": int(cluster if cluster is not None else -1),
+                            "timestamp": timestamp,
+                            "validated": True,
+                        }
+                        self.sketch_dataset.append(new_entry)
+                        self._save_sketch_dataset()
+                        self.validated_sketch_pairs.add((sketch_hash, fn))
+                        if (sketch_hash, fn) in self.negative_sketch_pairs:
+                            self.negative_sketch_pairs.discard((sketch_hash, fn))
+                        enriched = True
+                        msg = f"Validated! Sketch match for '{fn}' added to sketch dataset."
+                else:
+                    msg = f"Feedback registered for '{fn}'."
+
+            else:
+                # Negative feedback
+                if st == "text":
+                    q_norm = query.strip().lower()
+                    if q_norm:
+                        self.negative_feedback_queries.setdefault(q_norm, set()).add(fn)
+                        if q_norm in self.validated_text_queries:
+                            self.validated_text_queries[q_norm].discard(fn)
+                elif st == "sketch":
+                    if sketch_data:
+                        try:
+                            b64 = sketch_data.split(",", 1)[1] if "," in sketch_data else sketch_data
+                            sketch_hash = hashlib.sha256(base64.b64decode(b64)).hexdigest()[:16]
+                        except Exception:
+                            sketch_hash = ""
+                    if sketch_hash:
+                        self.negative_sketch_pairs.add((sketch_hash, fn))
+
+                msg = f"Feedback recorded. '{fn}' marked as not desired to refine future results."
+
+            # Audit log entry in feedback_dataset.json
+            q_norm = query.strip().lower() if st == "text" else ""
+            log_id = f"fb_{hashlib.md5(f'{st}_{fn}_{timestamp}_{fb}'.encode()).hexdigest()[:10]}"
+            feedback_log_entry = {
+                "id": log_id,
+                "search_type": st,
+                "feedback": fb,
+                "filename": fn,
+                "query": query.strip() if st == "text" else "",
+                "query_normalized": q_norm,
+                "sketch_hash": sketch_hash,
+                "text_hint": text_hint.strip() if text_hint else "",
+                "score": round(float(score or 0.0), 4),
+                "cluster": int(cluster if cluster is not None else -1),
+                "category": category,
+                "timestamp": timestamp,
+                "session_id": session_id or "",
+                "enriched": enriched,
+            }
+
+            # Avoid spamming duplicate logs
+            is_dup_log = any(
+                e.get("search_type") == st and e.get("filename") == fn and e.get("feedback") == fb
+                and e.get("query_normalized") == q_norm and e.get("sketch_hash") == sketch_hash
+                for e in self.feedback_dataset[-20:]
+            )
+            if not is_dup_log:
+                self.feedback_dataset.append(feedback_log_entry)
+                self._save_feedback_dataset()
+
+            return {
+                "status": "ok",
+                "enriched": enriched,
+                "already_exists": already_exists,
+                "feedback": fb,
+                "filename": fn,
+                "category": category,
+                "message": msg,
+            }
+
+    def get_feedback_stats(self) -> Dict:
+        with self._lock:
+            return {
+                "total_feedback": len(self.feedback_dataset),
+                "positive_count": sum(1 for f in self.feedback_dataset if f.get("feedback") == "positive"),
+                "negative_count": sum(1 for f in self.feedback_dataset if f.get("feedback") == "negative"),
+                "text_dataset_count": len(self.text_search_dataset),
+                "sketch_dataset_count": len(self.sketch_dataset),
+            }
 
     def get_image_path(self, filename: str) -> str:
         for item in self.metadata:
@@ -1385,6 +1715,14 @@ class ZeroTextEngine:
             is_code_file = "code.jpg" in filename.lower() or "calculator.py" in ocr_item.get("full_text", "").lower()
             if not is_doc_or_code_query and is_code_file:
                 final_s *= 0.25
+
+            # User feedback adjustments (continuous feedback-driven accuracy improvement)
+            q_norm = query.lower().strip()
+            if q_norm:
+                if filename in self.validated_text_queries.get(q_norm, set()):
+                    final_s = min(1.0, final_s * 1.35 + 0.15)
+                elif filename in self.negative_feedback_queries.get(q_norm, set()):
+                    final_s *= 0.25
 
             display_clip = clip_s
 
