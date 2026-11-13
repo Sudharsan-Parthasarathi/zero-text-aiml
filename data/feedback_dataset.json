@@ -494,5 +494,21 @@
         "timestamp": "2026-11-13T09:27:08Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_2f47c4757c",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "loki-grabs-timeline (1).avif",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "c572195ea38e327b",
+        "text_hint": "",
+        "score": 0.3985,
+        "cluster": 1,
+        "category": "Loki Grabs Timeline (1)",
+        "timestamp": "2026-11-13T09:29:42Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

@@ -141,5 +141,18 @@
         "cluster": 1,
         "timestamp": "2026-11-13T09:27:08Z",
         "validated": true
+    },
+    {
+        "id": "sketch_c572195ea38e",
+        "sketch_hash": "c572195ea38e327b",
+        "sketch_file": "user_validated/sketch_c572195ea38e327b.png",
+        "filename": "loki-grabs-timeline (1).avif",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\loki-grabs-timeline (1).avif",
+        "category": "Loki Grabs Timeline (1)",
+        "text_hint": "",
+        "score": 0.3985,
+        "cluster": 1,
+        "timestamp": "2026-11-13T09:29:42Z",
+        "validated": true
     }
 ]
