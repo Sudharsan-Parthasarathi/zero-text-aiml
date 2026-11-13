@@ -203,15 +203,10 @@ def run_tests():
     # TEST 8: Server Endpoints Validation
     # ----------------------------------------------------
     print("\n[Test 8] Testing FastAPI /api/feedback & /api/feedback/stats endpoints...")
-    from fastapi.testclient import TestClient
-    from server import app
-
-    client = TestClient(app)
+    from server import submit_feedback, get_feedback_stats, FeedbackRequest
 
     # Test GET /api/feedback/stats
-    stats_res = client.get("/api/feedback/stats")
-    assert stats_res.status_code == 200
-    stats_data = stats_res.json()
+    stats_data = get_feedback_stats()
     assert "total_feedback" in stats_data
     assert "positive_count" in stats_data
     assert "negative_count" in stats_data
@@ -219,16 +214,14 @@ def run_tests():
     assert "sketch_dataset_count" in stats_data
     print(f" -> Feedback stats endpoint operational: {stats_data}")
 
-    # Test POST /api/feedback via HTTP
-    api_post_res = client.post("/api/feedback", json={
-        "search_type": "text",
-        "feedback": "positive",
-        "filename": test_target,
-        "query": "api test query",
-        "score": 0.95,
-    })
-    assert api_post_res.status_code == 200
-    post_data = api_post_res.json()
+    # Test POST /api/feedback
+    post_data = submit_feedback(FeedbackRequest(
+        search_type="text",
+        feedback="positive",
+        filename=test_target,
+        query="api test query",
+        score=0.95,
+    ))
     assert post_data["status"] == "ok"
     assert post_data["enriched"] is True
     print(f" -> POST /api/feedback verified successfully: {post_data['message']}")

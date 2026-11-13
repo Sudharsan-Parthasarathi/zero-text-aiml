@@ -84,15 +84,15 @@
         "validated": true
     },
     {
-        "id": "text_be96c0e8f8c6",
-        "query": "unique test feedback query",
-        "query_normalized": "unique test feedback query",
+        "id": "text_218ef1c9c912",
+        "query": "test_query",
+        "query_normalized": "test_query",
         "filename": "aiml.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
         "category": "Aiml",
         "score": 0.88,
         "cluster": 1,
-        "timestamp": "2026-11-13T12:08:11Z",
+        "timestamp": "2026-11-13T14:18:15Z",
         "validated": true
     }
 ]
