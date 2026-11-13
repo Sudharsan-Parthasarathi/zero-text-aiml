@@ -94,5 +94,29 @@
         "cluster": 1,
         "timestamp": "2026-11-13T14:18:15Z",
         "validated": true
+    },
+    {
+        "id": "text_2ebd6754b1df",
+        "query": "greatest of all time",
+        "query_normalized": "greatest of all time",
+        "filename": "WIN_20261016_21_52_16_Pro.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\WIN_20261016_21_52_16_Pro.jpg",
+        "category": "Win 20261016 21 52 16 Pro",
+        "score": 0.1971,
+        "cluster": -1,
+        "timestamp": "2026-11-13T17:50:29Z",
+        "validated": true
+    },
+    {
+        "id": "text_26830f4d6cb1",
+        "query": "Flerkens",
+        "query_normalized": "flerkens",
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "category": "Cat",
+        "score": 0.0,
+        "cluster": -1,
+        "timestamp": "2026-11-13T17:56:54Z",
+        "validated": true
     }
 ]

@@ -154,5 +154,18 @@
         "cluster": 1,
         "timestamp": "2026-11-13T14:34:55Z",
         "validated": true
+    },
+    {
+        "id": "sketch_dd621aeec123",
+        "sketch_hash": "dd621aeec123dfe1",
+        "sketch_file": "user_validated/sketch_dd621aeec123dfe1.png",
+        "filename": "red_supercar.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\red_supercar.jpg",
+        "category": "Red Supercar",
+        "text_hint": "",
+        "score": 0.2166,
+        "cluster": -1,
+        "timestamp": "2026-11-13T17:48:02Z",
+        "validated": true
     }
 ]
