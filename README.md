@@ -1,6 +1,6 @@
 # 🌌 ZERO‑TEXT — Multimodal Visual Galaxy & AI‑Powered Image Search
 
-> **Search your image library by typing text, picking a colour, uploading a photo, or drawing a sketch — all powered by CLIP, FAISS, and a custom Sketch‑to‑Photo AI adapter.**
+> **Search your image library by typing text, picking a colour, uploading a photo, or drawing a sketch — all powered by CLIP, FAISS, and a frozen, CPU‑efficient Sketch‑to‑Photo structural projection architecture.**
 
 ---
 
@@ -19,12 +19,18 @@
    - [Find Similar Images](#5-find-similar-images)
    - [Adding Images to the Gallery](#6-adding-images-to-the-gallery)
    - [Deleting Images](#7-deleting-images)
-   - [3D Visual Galaxy](#8-3d-visual-galaxy)
-   - [2D Star Map](#9-2d-star-map)
-   - [Gallery Grid](#10-gallery-grid)
-   - [Reclustering](#11-reclustering)
-   - [AI Auto‑Weight Decider](#12-ai-auto-weight-decider)
-7. [Feature Details](#feature-details)
+   - [Search Result Feedback & Dataset Collection](#8-search-result-feedback--dataset-collection)
+   - [3D Visual Galaxy](#9-3d-visual-galaxy)
+   - [2D Star Map](#10-2d-star-map)
+   - [Gallery Grid](#11-gallery-grid)
+   - [Reclustering](#12-reclustering)
+   - [AI Auto‑Weight Decider](#13-ai-auto-weight-decider)
+7. [Architecture & Technical Details](#architecture--technical-details)
+   - [Structural Sketch‑to‑Photo Pipeline](#structural-sketch-to-photo-pipeline)
+   - [Frozen SketchProjection Head](#frozen-sketchprojection-head)
+   - [Zero Runtime Training Guarantee](#zero-runtime-training-guarantee)
+   - [Offline Training Utility](#offline-training-utility)
+   - [Colour‑Aware Sketch Search](#colour-aware-sketch-search)
 8. [API Endpoints](#api-endpoints)
 9. [Project Structure](#project-structure)
 10. [Testing & Verification](#testing--verification)
@@ -52,7 +58,7 @@ All images are organised into an interactive **3D Visual Galaxy** (WebGL) and a 
 | Feature | Description |
 |---------|-------------|
 | 🔍 **Hybrid Text Search** | Combines CLIP semantic understanding + OCR text matching + dominant colour scoring with intelligent auto‑weights. |
-| ✏️ **Sketch‑to‑Image Search** | Draw a rough outline on a canvas and the AI maps it to real photos via a fine‑tuned SketchAdapter neural network. |
+| ✏️ **Structural Sketch Search** | Draw strokes or shapes and retrieve matching photos via multi-scale contour + distance-field silhouettes and a frozen projection head (0 startup/runtime training). |
 | 🎨 **Multi‑Colour Drawing** | 12 preset colour swatches + a custom colour picker for coloured sketches. |
 | 🪣 **Bucket Fill (Flood Fill)** | One‑click fill tool with colour tolerance — fill regions of your sketch quickly. |
 | ↩️ **Undo / Redo** | Stroke‑level history (up to 35 steps). Keyboard shortcuts: `Ctrl+Z`, `Ctrl+Y`, `Ctrl+Shift+Z`. |
@@ -60,6 +66,7 @@ All images are organised into an interactive **3D Visual Galaxy** (WebGL) and a 
 | 🎯 **Find Similar Images** | Click any image → "Find Visually Similar" to locate related photos in the index. |
 | 🌈 **Colour‑Based Search** | Search by hex colour code or colour name — finds images whose dominant palette matches. |
 | 📝 **OCR Text Extraction** | RapidOCR automatically reads text from every indexed image (code screenshots, handwritten notes, invoices, etc.). |
+| 👍 **Feedback & Dataset Curation** | Upvote/downvote search results to curate versioned training and evaluation datasets without modifying live model parameters. |
 | 🪐 **3D Visual Galaxy** | Interactive WebGL 3D space where each image is a floating point, clustered by visual similarity. Orbit, zoom, spin. |
 | 🗺️ **2D Semantic Star Map** | A 2D UMAP projection showing how all images relate to each other spatially. |
 | 🗂️ **Gallery Grid** | Traditional card grid with fixed‑size thumbnails (260 px), score badges, cluster labels, and OCR tags. |
@@ -202,16 +209,21 @@ The **AI Auto‑Weight Decider** automatically detects whether your query is a v
 6. Click **🚀 Search Galaxy by Sketch**.
 
 The AI processes your sketch through:
-- Multi‑view preprocessing (8+ augmented views: binary, edge, blur, gradient, etc.)
-- CLIP visual encoding
-- A fine‑tuned **SketchAdapter** neural network that bridges the sketch→photo domain gap
-- FAISS cosine similarity search
+- **Foreground Bounding-Box Detection & Centering**: Crops whitespace and centers the drawing with aspect-ratio preservation.
+- **Normalized Stroke Contour**: Inverts lines and applies adaptive morphological dilation to capture delicate line work.
+- **Soft Distance-Field Silhouette**: Computes Euclidean distance transforms to capture 2D spatial mass, boundary topology, and volume.
+- **Horizontal Mirroring**: Evaluates mirrored views for left/right orientation invariance.
+- **Chromatic View**: Extracts bucket fills and colored strokes when non-grayscale colors are detected.
+- **Frozen CLIP ViT-B/32 Visual Encoder**: Fast, zero-training CPU inference.
+- **Frozen `SketchProjection` Head**: Lightweight projection head loaded directly from checkpoint (`data/sketch_projection.pt`).
+- **Code & Screenshot Suppression**: Suppresses high-frequency text/code documents from false-positive sketch matches.
+- **FAISS Cosine Similarity Search**: Fast nearest-neighbour retrieval.
 
 **Tips for better sketch results:**
 - Draw the overall **shape/silhouette** of the object.
 - Use **colours** that match the target (red for a red car, yellow for a sunflower).
 - Use **bucket fill** to colour large regions.
-- Add a **text hint** for extra accuracy.
+- Add an optional **text hint** for extra accuracy.
 
 ### 3. Colour Search
 
@@ -257,7 +269,15 @@ Click the **➕ Add Images / Folder** button. Two options:
 4. Click **Confirm Delete** to permanently remove the image from disk, FAISS index, and all metadata.
 5. Click **Cancel** to abort.
 
-### 8. 3D Visual Galaxy
+### 8. Search Result Feedback & Dataset Collection
+
+Every search result card and inspector panel includes quick feedback buttons (👍 / 👎):
+- **Positive Feedback (👍)**: Confirms that the retrieved photo correctly matches the search query or sketch. The query-target pair is saved to `data/text_search_dataset.json` or `data/sketch_dataset.json` (along with user sketch canvas PNGs saved in `data/sketches/user_validated/`).
+- **Negative Feedback (👎)**: Logs false-positive retrievals for auditing and negative-pair contrastive training.
+- **Audit Log**: Every feedback event is logged with timestamps, scores, clusters, and session IDs to `data/feedback_dataset.json`.
+- **Zero Runtime Weight Modification**: Unlike fragile online feedback learning loops, feedback **never** mutates live weights or FAISS embeddings during execution. Data collection is purely additive and feeds into the offline training script [`scripts/train_sketch_projection.py`](file:///e:/Zero%20text%20AIML/scripts/train_sketch_projection.py).
+
+### 9. 3D Visual Galaxy
 
 Click the **🪐 3D Galaxy** tab. Every indexed image appears as a glowing point in 3D space. Images that are visually similar cluster together.
 
@@ -272,7 +292,7 @@ Controls:
 
 When you search, matching images are highlighted and a **Match Navigator HUD** lets you fly between results.
 
-### 9. 2D Star Map
+### 10. 2D Star Map
 
 Click the **🗺️ 2D Star Map** tab. A 2D UMAP projection of all images. Similar images appear close together.
 
@@ -284,7 +304,7 @@ Controls:
 - **Hover** — preview tooltip.
 - **Click** — open Inspector.
 
-### 10. Gallery Grid
+### 11. Gallery Grid
 
 Click the **🗂️ Gallery Grid** tab. A traditional card layout showing:
 - Image thumbnail (fixed 260 px height).
@@ -294,7 +314,7 @@ Click the **🗂️ Gallery Grid** tab. A traditional card layout showing:
 - Filename and extracted text preview.
 - Colour palette bar at the bottom of each card.
 
-### 11. Reclustering
+### 12. Reclustering
 
 After adding or removing images, click the **🔄 Recluster** button. This re‑runs:
 - **UMAP 2D** projection (n_neighbours=30, min_dist=0.1)
@@ -303,7 +323,7 @@ After adding or removing images, click the **🔄 Recluster** button. This re‑
 
 The 3D Galaxy and 2D Star Map update with the new cluster assignments.
 
-### 12. AI Auto‑Weight Decider
+### 13. AI Auto‑Weight Decider
 
 The search system blends three scoring signals:
 
@@ -326,41 +346,49 @@ You can also manually adjust weights by clicking **⚖️ Weights** or selecting
 
 ---
 
-## Feature Details
+## Architecture & Technical Details
 
-### Sketch‑to‑Photo SketchAdapter
+### Structural Sketch‑to‑Photo Pipeline
 
-The core AI behind sketch search is a **3‑layer residual MLP** called `SketchAdapter`:
+Rather than relying on fragile online training loops or unstable pixel-space heuristics, ZERO‑TEXT uses a **multi-scale structural feature representation** that bridges the sketch→photo domain gap directly on CPU:
 
-- Takes a 512‑D CLIP sketch embedding as input.
-- Passes it through: `Linear(512→768) → LayerNorm → GELU → Linear(768→768) → LayerNorm → GELU → Linear(768→512)`.
-- Uses a **residual connection** with a learnable scaling factor (`α ≈ 0.8`): `output = input + α × delta`.
-- L2‑normalises the output.
+1. **Foreground Bounding-Box Detection & Centering**: Automatically detects drawing stroke boundaries, removes empty canvas margins, and rescales the drawing to a canonical $224 \times 224$ canvas while preserving stroke aspect ratios.
+2. **Normalized Stroke Contour**: Inverts dark strokes on bright canvases and applies adaptive morphological dilation (`cv2.dilate`) to compensate for ultra-thin stylus and pencil strokes.
+3. **Soft Distance-Field Silhouette**: Computes Euclidean distance transforms (`cv2.distanceTransform`) to encode continuous 2D mass, boundary topology, and volume.
+4. **Horizontal Flip Invariance**: Synthesizes mirrored views to ensure robust retrieval regardless of drawing orientation (e.g. car facing left vs. right).
+5. **Color-Enhanced View**: Preserves stroke pigments and bucket fills when chromatic content is detected, extracting dominant colors via K-Means and blending text-prompt color tokens.
+6. **Code & Screenshot Suppression**: Suppresses high-frequency textual screenshots from cluttering natural sketch results.
 
-**Training:** The adapter is fine‑tuned automatically on startup using **contrastive InfoNCE loss** over synthetic sketch‑photo pairs:
-- Canny edge sketches
-- Adaptive threshold ink sketches
-- Pencil‑style dodge/burn sketches
-- Bucket‑fill posterised colour sketches
-- Multi‑colour stroke outline sketches
-- Real hand‑drawn sketches (if present in `data/sketches/`)
-- Horizontally flipped augmentations
+### Frozen SketchProjection Head
 
-The trained weights are saved to `data/sketch_adapter.pt` and reloaded on subsequent starts.
+The extracted structural representations are mapped into the shared 512-D photographic embedding space using a frozen, pretrained **`SketchProjection`** head:
 
-### Multi‑View Sketch Preprocessing
+- **Input / Output**: $512 \text{D} \to 512 \text{D}$
+- **Architecture**:
+  $$\text{LayerNorm}(512) \to \text{Linear}(512 \to 768) \to \text{GELU} \to \text{Linear}(768 \to 512)$$
+- **Residual Connection**:
+  $$\mathbf{z}_{\text{out}} = \mathbf{z}_{\text{in}} + \alpha \cdot \Delta \mathbf{z} \quad (\alpha \approx 0.8)$$
+- **L2 Normalization**: Output is L2-normalized for exact cosine compatibility with the FAISS photographic gallery index.
+- **Weights**: Loaded directly from static checkpoint [`data/sketch_projection.pt`](file:///e:/Zero%20text%20AIML/data/sketch_projection.pt).
 
-Before CLIP encoding, sketches go through **8+ preprocessing views** with importance weights:
-1. Cleaned binary (inverted, thresholded, dilated)
-2. Gaussian‑blurred softened view
-3. Canny edge map
-4. Morphological gradient
-5. Distance transform potential field
-6. Morphologically closed (bridges stroke gaps)
-7. Thinned/eroded strokes
-8. Horizontally flipped + centred/cropped views
+### Zero Runtime Training Guarantee
 
-The final embedding is a **weighted average** of all views' CLIP vectors, then projected through the SketchAdapter.
+- **No Startup Training**: Cold boots load model weights in **~1.5 seconds**. The previous 180-epoch training loop has been completely eliminated.
+- **Deterministic Search**: Every search query executes through frozen inference paths; model weights never mutate during runtime.
+- **Decoupled User Feedback**: User upvotes and downvotes are stored purely as structured audit records and training pairs (`data/feedback_dataset.json`, `data/sketch_dataset.json`), completely isolated from model parameters.
+
+### Offline Training Utility
+
+To train or refine the projection weights without affecting the running application, ZERO-TEXT provides an offline training CLI:
+
+```bash
+python scripts/train_sketch_projection.py --epochs 60 --lr 0.0003 --temperature 0.07
+```
+
+Key features of the training script:
+- **InfoNCE Contrastive Loss**: Learns invariant representations between synthetic multi-view sketches and photo gallery embeddings.
+- **Evaluation Metrics**: Logs Precision@1 ($P@1$), Recall@3 ($R@3$), and Mean Reciprocal Rank ($\text{MRR}$).
+- **Versioned Export**: Saves frozen weights directly to `data/sketch_projection.pt`.
 
 ### Colour‑Aware Sketch Search
 
@@ -377,15 +405,17 @@ All endpoints are served from `http://127.0.0.1:8000/api/`.
 
 | Endpoint | Method | Description | Key Parameters |
 |----------|--------|-------------|----------------|
-| `/api/status` | GET | System status (image count, model readiness). | — |
-| `/api/images` | GET | List all indexed images with full metadata. | — |
+| `/api/status` | GET | System status (image count, cluster count, model readiness). | — |
+| `/api/images` | GET | List all indexed images with full 2D/3D coordinates & metadata. | — |
 | `/api/image/{filename}` | GET | Serve an image file by filename. | `filename` |
-| `/api/image/{filename}` | DELETE | Delete an image permanently. | `filename` |
+| `/api/image/{filename}` | DELETE | Delete an image permanently from disk and FAISS. | `filename` |
 | `/api/search/hybrid` | POST | Hybrid text + OCR + colour search. | `query`, `clip_weight`, `ocr_weight`, `colour_weight`, `auto_weights`, `cluster_filter`, `top_k` |
-| `/api/search/sketch` | POST | Sketch‑to‑image search. | `sketch_data` (base64), `top_k`, `text_hint`, `is_canvas_sketch` |
+| `/api/search/sketch` | POST | Sketch‑to‑image search with multi-scale structural matching. | `sketch_data` (base64), `top_k`, `text_hint`, `is_canvas_sketch` |
 | `/api/search/color` | POST | Colour‑based search. | `hex` (e.g., "#FF0000"), `top_k` |
 | `/api/search/similar` | POST | Find visually similar images. | `filename`, `top_k` |
 | `/api/search/recommend_weights` | GET | Get AI‑recommended scoring weights for a query. | `query` |
+| `/api/feedback` | POST | Record user feedback (positive/negative) for text or sketch queries. | `search_type`, `feedback`, `filename`, `query`, `sketch_data`, `text_hint` |
+| `/api/feedback/stats` | GET | Get summary statistics of collected user feedback and datasets. | — |
 | `/api/index/upload` | POST | Upload and index new images. | `files` (array of base64 data) |
 | `/api/index/directory` | POST | Index all images in a local folder. | `directory_path`, `recursive` |
 | `/api/index/status` | GET | Check background indexing progress. | — |
@@ -402,65 +432,81 @@ All POST endpoints accept JSON bodies and return JSON responses.
 ```
 Zero text AIML/
 │
-├── main.py                 # Entry point — starts server, opens browser
-├── server.py               # FastAPI backend with all API routes
-├── pipeline.py             # Core AI engine (CLIP, FAISS, UMAP, HDBSCAN, SketchAdapter, OCR, colour)
-├── sketch_search.py        # Sketch search helper module
-├── hybrid_search.py        # Hybrid search helper module
-├── search_images.py        # Image search utilities
-├── cluster_images.py       # Clustering utilities
-├── run_app.bat             # Windows one‑click launcher
-├── requirements.txt        # Python dependencies
-├── README.md               # This file
-├── .gitignore              # Git ignore rules
+├── main.py                          # Entry point — starts server, opens browser
+├── server.py                        # FastAPI backend with all API routes & feedback handlers
+├── pipeline.py                      # Core AI engine (CLIP, FAISS, UMAP, HDBSCAN, SketchProjection, OCR)
+├── sketch_search.py                 # Sketch search helper module
+├── hybrid_search.py                 # Hybrid search helper module
+├── search_images.py                 # Image search utilities
+├── cluster_images.py                # Clustering utilities
+├── run_app.bat                      # Windows one‑click launcher
+├── requirements.txt                 # Python dependencies
+├── README.md                        # This file
+├── .gitignore                       # Git ignore rules
+│
+├── scripts/
+│   └── train_sketch_projection.py   # Standalone offline training utility for SketchProjection
 │
 ├── data/
-│   ├── sample_images/      # Your indexed images live here
-│   ├── sketches/           # Sample/reference sketches (cat.jpg, mountain.jpg, rocket.jpg)
-│   ├── image_index.faiss   # FAISS vector index (auto‑generated)
-│   ├── image_metadata.json # Image metadata (auto‑generated)
-│   ├── ocr_results.json    # OCR text extraction results (auto‑generated)
-│   ├── color_results.json  # Dominant colour palettes (auto‑generated)
-│   ├── cluster_results.json# Cluster assignments + UMAP coords (auto‑generated)
-│   └── sketch_adapter.pt   # Trained SketchAdapter weights (auto‑generated)
+│   ├── sample_images/               # Your indexed images live here
+│   ├── sketches/                    # Sample reference sketches (cat.jpg, mountain.jpg, rocket.jpg)
+│   │   └── user_validated/          # Curated user sketches from verified search feedback
+│   ├── image_index.faiss            # FAISS vector index (auto‑generated)
+│   ├── image_metadata.json          # Image metadata (auto‑generated)
+│   ├── ocr_results.json             # OCR text extraction results (auto‑generated)
+│   ├── color_results.json           # Dominant colour palettes (auto‑generated)
+│   ├── cluster_results.json         # Cluster assignments + UMAP coords (auto‑generated)
+│   ├── sketch_projection.pt         # Frozen pretrained SketchProjection weights
+│   ├── feedback_dataset.json        # User feedback audit log
+│   ├── text_search_dataset.json     # Curated query-to-photo validation pairs
+│   └── sketch_dataset.json          # Curated sketch-to-photo validation pairs
 │
-├── model_cache/            # CLIP model files (auto‑downloaded on first run)
+├── model_cache/                     # CLIP model files (auto‑downloaded on first run)
 │   └── hub/models--laion--CLIP-ViT-B-32-laion2B-s34B-b79K/
 │
-├── web/                    # Frontend (served as static files by FastAPI)
-│   ├── index.html          # Single‑page app HTML
+├── web/                             # Frontend (served as static files by FastAPI)
+│   ├── index.html                   # Single‑page app HTML
 │   ├── css/
-│   │   └── styles.css      # All styling (dark theme, galaxy aesthetic)
+│   │   └── styles.css               # All styling (dark theme, galaxy aesthetic)
 │   └── js/
-│       ├── app.js          # Main application logic (search, gallery, inspector, modals)
-│       ├── sketch.js       # Sketch Studio (canvas drawing, bucket fill, undo/redo, upload)
-│       ├── galaxy3d.js     # 3D WebGL galaxy renderer (Three.js)
-│       └── galaxy2d.js     # 2D UMAP star map renderer (Canvas 2D)
+│       ├── app.js                   # Main application logic (search, gallery, inspector, modals)
+│       ├── sketch.js                # Sketch Studio (canvas drawing, bucket fill, undo/redo, upload)
+│       ├── galaxy3d.js              # 3D WebGL galaxy renderer (Three.js)
+│       └── galaxy2d.js              # 2D UMAP star map renderer (Canvas 2D)
 │
 └── tests/
-    ├── verify_endpoints.py       # API route health checks
-    ├── verify_search.py          # Search quality verification
-    ├── test_sketch_multicolor.py # Multi‑colour sketch + bucket fill tests
-    ├── test_app_endpoints.py     # App endpoint tests
-    ├── test_color_extraction.py  # Colour extraction tests
-    ├── test_image_embedding.py   # CLIP embedding tests
-    ├── test_ocr.py               # OCR extraction tests
-    └── test.py                   # General tests
+    ├── test_app_endpoints.py        # End-to-end integration & endpoint tests
+    ├── test_sketch_multicolor.py    # Multi‑colour sketch, bucket fill, B&W, and upload tests
+    ├── test_feedback_enrichment.py  # User feedback & dataset enrichment tests
+    ├── verify_endpoints.py          # API route health checks
+    ├── verify_search.py             # Search quality verification
+    ├── test_color_extraction.py     # Colour extraction tests
+    ├── test_image_embedding.py      # CLIP embedding tests
+    ├── test_ocr.py                  # OCR extraction tests
+    └── test.py                      # General unit tests
 ```
 
 ---
 
 ## Testing & Verification
 
-Run these scripts to verify everything is working:
+Run these scripts to verify complete system health:
 
 ```bash
-python verify_endpoints.py         # Checks all API routes respond correctly
-python verify_search.py            # Runs text, colour, and hybrid search queries
-python test_sketch_multicolor.py   # Tests multi‑colour sketch, bucket fill, B&W, and upload paths
+# 1. Full application endpoint & multi-modal search integration
+python test_app_endpoints.py
+
+# 2. Structural & multi-color sketch-to-photo retrieval verification
+python test_sketch_multicolor.py
+
+# 3. User feedback logging & dataset curation test suite
+python tests/test_feedback_enrichment.py
+
+# 4. Standalone offline training utility health check
+python scripts/train_sketch_projection.py --help
 ```
 
-All tests should exit with **code 0** and print a summary of passed checks.
+All tests exit with **code 0** and print detailed diagnostic summaries.
 
 ---
 
