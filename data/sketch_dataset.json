@@ -1,18 +1,5 @@
 [
     {
-        "id": "sketch_bb6451307c26",
-        "sketch_hash": "bb6451307c26bef6",
-        "sketch_file": "user_validated/sketch_bb6451307c26bef6.png",
-        "filename": "bio notes.jpg",
-        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
-        "category": "Bio Notes",
-        "text_hint": "dummy square",
-        "score": 0.92,
-        "cluster": 0,
-        "timestamp": "2026-11-12T10:29:57Z",
-        "validated": true
-    },
-    {
         "id": "sketch_32d3c669722e",
         "sketch_hash": "32d3c669722e1e6b",
         "sketch_file": "user_validated/sketch_32d3c669722e1e6b.png",
@@ -153,6 +140,19 @@
         "score": 0.3985,
         "cluster": 1,
         "timestamp": "2026-11-13T09:29:42Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_bb6451307c26",
+        "sketch_hash": "bb6451307c26bef6",
+        "sketch_file": "user_validated/sketch_bb6451307c26bef6.png",
+        "filename": "bio notes.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
+        "category": "Bio Notes",
+        "text_hint": "dummy square",
+        "score": 0.92,
+        "cluster": 0,
+        "timestamp": "2026-11-13T12:08:12Z",
         "validated": true
     }
 ]

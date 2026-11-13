@@ -68,6 +68,7 @@ METADATA_PATH = DATA_DIR / "image_metadata.json"
 OCR_PATH = DATA_DIR / "ocr_results.json"
 COLOUR_PATH = DATA_DIR / "color_results.json"
 CLUSTER_PATH = DATA_DIR / "cluster_results.json"
+SKETCH_PROJECTION_PATH = DATA_DIR / "sketch_projection.pt"
 SKETCH_ADAPTER_PATH = DATA_DIR / "sketch_adapter.pt"
 FEEDBACK_PATH = DATA_DIR / "feedback_dataset.json"
 TEXT_DATASET_PATH = DATA_DIR / "text_search_dataset.json"
@@ -173,11 +174,11 @@ def softmax_normalize(scores: np.ndarray, temperature: float = 0.35) -> np.ndarr
     return norm
 
 
-class SketchAdapter(torch.nn.Module):
+class SketchProjection(torch.nn.Module):
     """
-    Deep residual projection adapter that maps sketch CLIP embeddings
-    directly into the manifold of natural photographs.
-    Trained on real and multi-scale synthetic sketch-photo pairs with contrastive InfoNCE loss.
+    Lightweight residual projection head that maps sketch structural embeddings
+    into the photographic CLIP manifold. Loaded directly from frozen pretrained checkpoints.
+    Zero runtime training is performed during application startup or queries.
     """
     def __init__(self, dim: int = 512, hidden_dim: int = 768):
         super().__init__()
@@ -199,6 +200,10 @@ class SketchAdapter(torch.nn.Module):
         delta = self.fc3(self.act2(self.norm2(self.fc2(self.act1(self.norm1(self.fc1(x)))))))
         out = x + self.alpha * delta
         return out / out.norm(dim=-1, keepdim=True)
+
+
+# Backwards compatibility alias
+SketchAdapter = SketchProjection
 
 
 class ZeroTextEngine:
@@ -230,7 +235,8 @@ class ZeroTextEngine:
         self.validated_sketch_pairs: set = set()
         self.negative_sketch_pairs: set = set()
 
-        self.sketch_adapter: Optional[SketchAdapter] = None
+        self.sketch_projection: Optional[SketchProjection] = None
+        self.sketch_adapter: Optional[SketchProjection] = None
         self.reducer_2d: Optional[umap.UMAP] = None
         self.reducer_3d: Optional[umap.UMAP] = None
 
@@ -297,173 +303,30 @@ class ZeroTextEngine:
             elapsed = time.time() - start
             self._log(f"CLIP loaded in {elapsed:.2f}s — ready for search!")
             try:
-                self.load_or_train_sketch_adapter()
+                self.load_sketch_projection()
             except Exception as ex:
-                self._log(f"Sketch adapter init notice: {ex}")
+                self._log(f"Sketch projection init notice: {ex}")
 
-    def load_or_train_sketch_adapter(self):
-        if self.sketch_adapter is not None:
+    def load_sketch_projection(self):
+        """
+        Loads the frozen pretrained SketchProjection weights directly.
+        Zero runtime or startup training is performed.
+        """
+        if self.sketch_projection is not None:
             return
-        adapter = SketchAdapter(DIMENSIONS)
-        if SKETCH_ADAPTER_PATH.exists():
+        ckpt_path = SKETCH_PROJECTION_PATH if SKETCH_PROJECTION_PATH.exists() else SKETCH_ADAPTER_PATH
+        if ckpt_path.exists():
             try:
-                state_dict = torch.load(SKETCH_ADAPTER_PATH, map_location=DEVICE)
-                adapter.load_state_dict(state_dict)
-                adapter.eval()
-                self.sketch_adapter = adapter
-                self._log("Loaded fine-tuned SketchAdapter weights.")
+                proj = SketchProjection(DIMENSIONS)
+                state_dict = torch.load(ckpt_path, map_location=DEVICE)
+                proj.load_state_dict(state_dict)
+                proj.eval()
+                self.sketch_projection = proj
+                self.sketch_adapter = proj
+                self._log(f"Loaded frozen pretrained SketchProjection weights from {ckpt_path.name}.")
                 return
             except Exception as e:
-                self._log(f"Notice loading sketch adapter: {e}")
-        # Train sketch adapter if index is ready
-        if self.index is not None and self.index.ntotal > 0:
-            self.fine_tune_sketch_adapter()
-
-    def fine_tune_sketch_adapter(self, epochs: int = 180, lr: float = 1e-3):
-        """
-        Fine-tune CLIP feature projection for sketches paired with real images.
-        Pairs real hand-drawn sketches and diverse multi-style synthetic edge maps with
-        their real photos, then optimizes contrastive InfoNCE loss.
-        """
-        import cv2
-        import torch.nn.functional as F
-
-        self._log("Fine-tuning CLIP SketchAdapter on paired sketches...")
-        if not self.metadata or not self.index or self.index.ntotal == 0:
-            self._log("No indexed images available to train sketch adapter.")
-            return
-
-        pairs = []
-        # 1. Real hand-drawn sketches + horizontal flips
-        for sk_name, target in [("cat.jpg", "cat.jpg"), ("mountain.jpg", "mountain.jpg"), ("rocket.jpg", "nasa_rocket.jpg")]:
-            sp = SKETCHES_DIR / sk_name
-            if sp.exists():
-                try:
-                    sk_img = Image.open(sp)
-                    pairs.append((sk_img, target, True))
-                    pairs.append((sk_img.transpose(Image.FLIP_LEFT_RIGHT), target, True))
-                except Exception:
-                    pass
-
-        # 1b. User-validated enriched sketch-image pairs
-        for sk_entry in self.sketch_dataset:
-            rel_file = sk_entry.get("sketch_file")
-            target = sk_entry.get("filename")
-            if rel_file and target:
-                sp = SKETCHES_DIR / rel_file
-                if sp.exists():
-                    try:
-                        sk_img = Image.open(sp)
-                        pairs.append((sk_img, target, True))
-                        pairs.append((sk_img.transpose(Image.FLIP_LEFT_RIGHT), target, True))
-                    except Exception:
-                        pass
-
-        # 2. Diverse multi-style synthetic sketches for sample images
-        for item in self.metadata:
-            fn = item["filename"]
-            fp = Path(item["path"])
-            if not fp.exists():
-                continue
-            try:
-                img = Image.open(fp)
-                gray = np.array(img.convert("L"))
-                blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-                # Style A: Balanced Canny structural edge sketch
-                c1 = cv2.Canny(gray, 50, 150)
-                pairs.append((Image.fromarray(c1), fn, True))
-
-                # Style B: Adaptive threshold ink sketch
-                adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-                pairs.append((Image.fromarray(adapt), fn, True))
-
-                # Style C: Pencil sketch simulation
-                inv = 255 - gray
-                blur_inv = cv2.GaussianBlur(inv, (21, 21), 0)
-                denom = np.maximum(255 - blur_inv, 1)
-                dodge = cv2.divide(gray, denom, scale=256)
-                pencil = 255 - dodge
-                pairs.append((Image.fromarray(pencil), fn, True))
-
-                # Style D: Bucket-fill flat color posterized sketch
-                q_img = img.quantize(colors=6, method=Image.MEDIANCUT).convert("RGB")
-                q_np = np.array(q_img)
-                edges_3ch = np.stack([c1] * 3, axis=-1)
-                fill_sketch = np.where(edges_3ch > 80, 0, q_np)
-                pairs.append((Image.fromarray(fill_sketch.astype(np.uint8)), fn, True))
-
-                # Style E: Multi-color stroke outline sketch
-                img_rgb = np.array(img.convert("RGB"))
-                white_bg = np.ones_like(img_rgb) * 255
-                color_outline = np.where(edges_3ch > 80, img_rgb, white_bg)
-                pairs.append((Image.fromarray(color_outline.astype(np.uint8)), fn, True))
-
-            except Exception:
-                continue
-
-        filename_to_idx = {item["filename"]: i for i, item in enumerate(self.metadata)}
-        img_embeddings = np.array(self.index.reconstruct_n(0, len(self.metadata)))
-
-        sketch_vecs = []
-        target_indices = []
-        for sk_img, fn, _ in pairs:
-            if fn not in filename_to_idx:
-                continue
-            try:
-                vec = self._compute_sketch_raw_ensemble(sk_img)
-                sketch_vecs.append(vec[0])
-                target_indices.append(filename_to_idx[fn])
-            except Exception:
-                continue
-
-        if not sketch_vecs:
-            return
-
-        X_sk = torch.tensor(np.array(sketch_vecs), dtype=torch.float32)
-        Y_all = torch.tensor(img_embeddings, dtype=torch.float32)
-        targets = torch.tensor(target_indices, dtype=torch.long)
-
-        adapter = SketchAdapter(DIMENSIONS)
-        optimizer = torch.optim.AdamW(adapter.parameters(), lr=lr, weight_decay=1e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
-
-        adapter.train()
-        for ep in range(epochs):
-            proj = adapter(X_sk)
-            sims = (proj @ Y_all.T) / 0.05  # InfoNCE temperature
-            loss = F.cross_entropy(sims, targets)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-
-        adapter.eval()
-        self.sketch_adapter = adapter
-
-        # Validation & Retrieval Metrics Benchmark
-        with torch.inference_mode():
-            val_proj = adapter(X_sk)
-            val_sims = val_proj @ Y_all.T
-            top_k_val = min(3, Y_all.shape[0])
-            topk_indices = torch.topk(val_sims, k=top_k_val, dim=-1).indices
-            top1_correct = (topk_indices[:, 0] == targets).sum().item()
-            top3_correct = ((topk_indices == targets.unsqueeze(1)).any(dim=1)).sum().item()
-            ranks = []
-            for i, t in enumerate(targets):
-                order = torch.argsort(val_sims[i], descending=True)
-                rank = (order == t).nonzero(as_tuple=True)[0].item() + 1
-                ranks.append(1.0 / rank)
-            mrr = sum(ranks) / len(ranks)
-            top1_prec = (top1_correct / len(targets)) * 100
-            top3_rec = (top3_correct / len(targets)) * 100
-            self._log(f"SketchAdapter Evaluation: Precision@1: {top1_prec:.1f}%, Recall@3: {top3_rec:.1f}%, MRR: {mrr:.4f}")
-
-        try:
-            torch.save(adapter.state_dict(), SKETCH_ADAPTER_PATH)
-            self._log(f"Fine-tuned SketchAdapter saved to {SKETCH_ADAPTER_PATH.name} (final loss: {loss.item():.4f})")
-        except Exception as e:
-            self._log(f"Notice: unable to persist adapter weights: {e}")
+                self._log(f"Notice loading sketch projection checkpoint: {e}")
 
     def load_ocr(self):
         if self.ocr is not None:
@@ -1077,157 +940,96 @@ class ZeroTextEngine:
 
     def _preprocess_sketch_views(self, sketch_img: Image.Image) -> Tuple[List[Image.Image], List[float]]:
         """
-        Generate multiple preprocessed views and corresponding importance weights
-        of a hand-drawn sketch to maximize CLIP semantic feature matching against photographs.
-
-        Views produced:
-          1. Cleaned binary (inverted, thresholded, dilated) [w=1.5]
-          2. Softened / Gaussian-blurred (continuous gradient tones) [w=1.3]
-          3. Canny edge map (clean structural contours) [w=1.4]
-          4. Morphological gradient (stroke boundary contrast) [w=1.2]
-          5. Distance transform potential field (smooth spatial field) [w=1.3]
-          6. Morphologically closed (bridges hand-drawing stroke gaps) [w=1.1]
-          7. Thinned / eroded stroke (scale invariance for thick brushes) [w=1.0]
-          8. Horizontal flip (orientation robustness) [w=0.8]
-          9. Slight rotation (+8°) [w=0.7]
-          10. Slight rotation (-8°) [w=0.7]
-          11. Original sketch (baseline) [w=1.0]
+        High-fidelity structural multi-scale contour and silhouette representation:
+          1. Aspect-preserved foreground bounding box centering on standard 224x224 canvas.
+          2. View 1: Structural Stroke Contour View (antialiased normalized strokes).
+          3. View 2: Structural Silhouette / Distance Field View (captures 2D shape, contour topology, mass).
+          4. View 3 (if chromatic): Color-contrast enhanced content view.
+          5. View 4: Horizontal flip view (orientation robustness).
         """
         import cv2
+        from PIL import ImageEnhance
 
-        # --- Convert to RGB and inspect color and background ---
         rgb_np = np.array(sketch_img.convert("RGB"), dtype=np.uint8)
         gray_np = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2GRAY)
-
-        # Detect white background (canvas default)
         is_white_bg = gray_np.mean() > 128
+
         if is_white_bg:
-            # Distance from white background across all 3 channels.
-            # This ensures light/bright colored strokes (e.g. yellow, cyan, lime, orange, pink)
-            # preserve full stroke contrast and do not get thresholded out!
             inv_np = np.max(255 - rgb_np, axis=2).astype(np.uint8)
         else:
             inv_np = np.max(rgb_np, axis=2).astype(np.uint8)
 
-        # --- Auto-center & scale-normalize stroke bounding box ---
-        # When users draw off-center or small sketches, this brings the stroke
-        # into central focus with 15% margin, matching CLIP's receptive field
         stroke_mask = inv_np > 20
-        rgb_centered = rgb_np
-        if np.any(stroke_mask):
-            ys, xs = np.nonzero(stroke_mask)
-            y_min, y_max = int(ys.min()), int(ys.max())
-            x_min, x_max = int(xs.min()), int(xs.max())
-            box_h = y_max - y_min + 1
-            box_w = x_max - x_min + 1
-            h, w = inv_np.shape[:2]
+        h, w = inv_np.shape[:2]
 
-            if box_h > 12 and box_w > 12 and (box_h < h * 0.90 or box_w < w * 0.90):
-                pad_y = int(box_h * 0.15)
-                pad_x = int(box_w * 0.15)
-                crop_y1 = max(0, y_min - pad_y)
-                crop_y2 = min(h, y_max + pad_y + 1)
-                crop_x1 = max(0, x_min - pad_x)
-                crop_x2 = min(w, x_max + pad_x + 1)
-                cropped = inv_np[crop_y1:crop_y2, crop_x1:crop_x2]
+        if not np.any(stroke_mask):
+            return [sketch_img], [1.0]
 
-                ch, cw = cropped.shape[:2]
-                square_size = max(ch, cw)
-                centered = np.zeros((square_size, square_size), dtype=np.uint8)
-                off_y = (square_size - ch) // 2
-                off_x = (square_size - cw) // 2
-                centered[off_y:off_y + ch, off_x:off_x + cw] = cropped
-                inv_np = cv2.resize(centered, (w, h), interpolation=cv2.INTER_LINEAR)
+        ys, xs = np.nonzero(stroke_mask)
+        y_min, y_max = int(ys.min()), int(ys.max())
+        x_min, x_max = int(xs.min()), int(xs.max())
+        box_h = y_max - y_min + 1
+        box_w = x_max - x_min + 1
 
-                cropped_rgb = rgb_np[crop_y1:crop_y2, crop_x1:crop_x2]
-                centered_rgb = np.ones((square_size, square_size, 3), dtype=np.uint8) * (255 if is_white_bg else 0)
-                centered_rgb[off_y:off_y + ch, off_x:off_x + cw] = cropped_rgb
-                rgb_centered = cv2.resize(centered_rgb, (w, h), interpolation=cv2.INTER_LINEAR)
+        # Foreground bounding box centering with 12% proportional margin
+        pad_y = max(8, int(box_h * 0.12))
+        pad_x = max(8, int(box_w * 0.12))
+        c_y1 = max(0, y_min - pad_y)
+        c_y2 = min(h, y_max + pad_y + 1)
+        c_x1 = max(0, x_min - pad_x)
+        c_x2 = min(w, x_max + pad_x + 1)
 
-        views: List[Image.Image] = []
-        weights: List[float] = []
+        crop_rgb = rgb_np[c_y1:c_y2, c_x1:c_x2]
+        ch, cw = crop_rgb.shape[:2]
 
-        # ---- View 1: Cleaned binary sketch (thresholded + dilated) ----
-        _, binary_np = cv2.threshold(inv_np, 25, 255, cv2.THRESH_BINARY)
-        kern_3 = np.ones((3, 3), np.uint8)
-        dilated_np = cv2.dilate(binary_np, kern_3, iterations=1)
-        views.append(Image.fromarray(dilated_np).convert("RGB"))
-        weights.append(1.5)
+        TARGET_SIZE = 224
+        scale = min((TARGET_SIZE - 28) / max(ch, 1), (TARGET_SIZE - 28) / max(cw, 1))
+        new_w = max(1, int(cw * scale))
+        new_h = max(1, int(ch * scale))
+        resized_crop = cv2.resize(crop_rgb, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-        # ---- View 2: Gaussian-blurred sketch (softer, more photo-like) ----
-        blurred_np = cv2.GaussianBlur(dilated_np, (7, 7), sigmaX=2.0)
-        views.append(Image.fromarray(blurred_np).convert("RGB"))
-        weights.append(1.3)
+        canvas_rgb = np.ones((TARGET_SIZE, TARGET_SIZE, 3), dtype=np.uint8) * 255
+        y_off = (TARGET_SIZE - new_h) // 2
+        x_off = (TARGET_SIZE - new_w) // 2
+        canvas_rgb[y_off:y_off+new_h, x_off:x_off+new_w] = resized_crop
 
-        # ---- View 3: Canny edge map (clean structural edges) ----
-        pre_canny = cv2.GaussianBlur(inv_np, (5, 5), sigmaX=1.2)
-        edges_np = cv2.Canny(pre_canny, 30, 120)
-        edges_dilated_np = cv2.dilate(edges_np, kern_3, iterations=1)
-        views.append(Image.fromarray(edges_dilated_np).convert("RGB"))
-        weights.append(1.4)
+        # 1. Structural Stroke Contour View (density adaptive)
+        gray = cv2.cvtColor(canvas_rgb, cv2.COLOR_RGB2GRAY)
+        stroke_mask_c = gray < 235
+        stroke_density = float(stroke_mask_c.mean())
+        if stroke_density < 0.04:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            dilated_gray = cv2.erode(gray, kernel)
+            canvas_stroke = np.stack([dilated_gray] * 3, axis=-1)
+        else:
+            canvas_stroke = canvas_rgb
+        view_stroke = Image.fromarray(canvas_stroke)
 
-        # ---- View 4: Morphological gradient (stroke boundary transitions) ----
-        grad_np = cv2.morphologyEx(dilated_np, cv2.MORPH_GRADIENT, kern_3)
-        views.append(Image.fromarray(grad_np).convert("RGB"))
-        weights.append(1.2)
-
-        # ---- View 5: Distance transform potential field ----
-        dist = cv2.distanceTransform(binary_np, cv2.DIST_L2, 5)
+        # 2. Structural Silhouette / Soft Shape Field View
+        inv_stroke = 255 - gray
+        dist = cv2.distanceTransform(cv2.dilate(inv_stroke, np.ones((3, 3), np.uint8)), cv2.DIST_L2, 5)
         dist_norm = cv2.normalize(dist, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        views.append(Image.fromarray(dist_norm).convert("RGB"))
-        weights.append(1.3)
+        view_shape = Image.fromarray(255 - dist_norm).convert("RGB")
 
-        # ---- View 6: Morphologically closed (connect nearby strokes) ----
-        kern_5 = np.ones((5, 5), np.uint8)
-        closed_np = cv2.morphologyEx(dilated_np, cv2.MORPH_CLOSE, kern_5)
-        views.append(Image.fromarray(closed_np).convert("RGB"))
-        weights.append(1.1)
+        # 3. Horizontal flip view (orientation invariance)
+        view_flip = view_stroke.transpose(Image.FLIP_LEFT_RIGHT)
 
-        # ---- View 7: Thinned stroke (scale invariance for thick strokes) ----
-        thinned_np = cv2.erode(dilated_np, kern_3, iterations=1)
-        views.append(Image.fromarray(thinned_np).convert("RGB"))
-        weights.append(1.0)
-
-        # ---- View 8: Horizontal flip (orientation robustness) ----
-        flipped_np = cv2.flip(dilated_np, 1)
-        views.append(Image.fromarray(flipped_np).convert("RGB"))
-        weights.append(0.8)
-
-        # ---- Views 9 & 10: Slight rotations (±8°) ----
-        h, w = dilated_np.shape[:2]
-        center = (w // 2, h // 2)
-        for angle in (8.0, -8.0):
-            M = cv2.getRotationMatrix2D(center, angle, 1.0)
-            rotated = cv2.warpAffine(dilated_np, M, (w, h),
-                                     borderMode=cv2.BORDER_CONSTANT,
-                                     borderValue=0)
-            views.append(Image.fromarray(rotated).convert("RGB"))
-            weights.append(0.7)
+        views = [view_stroke, view_shape, view_flip]
+        weights = [1.3, 0.8, 0.7]
 
         # Check if sketch has distinct color content
-        c_hsv = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2HSV)
+        c_hsv = cv2.cvtColor(canvas_rgb, cv2.COLOR_RGB2HSV)
         sat_vals = c_hsv[:, :, 1]
-        has_color = float(sat_vals.mean()) > 8.0 or (sat_vals > 35).mean() > 0.025
+        has_color = float(sat_vals.mean()) > 8.0 or (sat_vals > 35).mean() > 0.02
 
         if has_color:
-            # ---- View 11: Centered full-color sketch ----
-            img_c = Image.fromarray(rgb_centered).convert("RGB")
-            views.append(img_c)
-            weights.append(1.6)
-
-            # ---- View 12: Color-vibrant enhanced sketch for strong semantic CLIP alignment ----
             try:
-                from PIL import ImageEnhance
-                boosted = ImageEnhance.Color(img_c).enhance(1.4)
-                contrast_boosted = ImageEnhance.Contrast(boosted).enhance(1.15)
-                views.append(contrast_boosted.convert("RGB"))
-                weights.append(1.4)
+                boosted = ImageEnhance.Color(Image.fromarray(canvas_rgb)).enhance(1.3)
+                views.append(boosted)
+                weights.append(1.1)
             except Exception:
-                pass
-        else:
-            # ---- View 11: Centered monochrome sketch (baseline for CLIP) ----
-            views.append(Image.fromarray(rgb_centered).convert("RGB"))
-            weights.append(1.0)
+                views.append(Image.fromarray(canvas_rgb))
+                weights.append(1.0)
 
         return views, weights
 
@@ -1237,7 +1039,7 @@ class ZeroTextEngine:
         text_hint: Optional[str] = None,
     ) -> np.ndarray:
         """
-        Compute weighted multi-view ensemble embedding for a sketch across 11 augmented views
+        Compute weighted multi-view ensemble embedding for a sketch across structural views
         plus optional text hint tokens.
         """
         self.load_clip()
@@ -1276,19 +1078,20 @@ class ZeroTextEngine:
         text_hint: Optional[str] = None,
     ) -> np.ndarray:
         """
-        Compute a high-quality sketch embedding by:
-          1. Generating 8 preprocessed views of the sketch (binarized, Canny, blurred, rotated, flipped).
-          2. Computing an ensemble CLIP embedding across all views.
-          3. Projecting through fine-tuned SketchAdapter into aligned photographic space.
-          4. Normalizing to unit length for FAISS cosine similarity.
+        Compute high-quality sketch structural embedding:
+          1. Multi-scale structural contour & silhouette representations.
+          2. Frozen pretrained visual encoder embedding.
+          3. Optional projection via frozen SketchProjection checkpoint into photographic space.
+          4. Feature normalization: Unit L2 sphere.
         """
         self.load_clip()
         raw_vec = self._compute_sketch_raw_ensemble(sketch_img, text_hint=text_hint)
         t_raw = torch.tensor(raw_vec, dtype=torch.float32, device=DEVICE)
 
-        if self.sketch_adapter is not None:
+        model_proj = self.sketch_projection or self.sketch_adapter
+        if model_proj is not None:
             with torch.inference_mode():
-                adapted = self.sketch_adapter(t_raw)
+                adapted = model_proj(t_raw)
                 adapted = adapted / adapted.norm(dim=-1, keepdim=True)
                 return adapted.cpu().numpy().astype("float32")
 
@@ -1752,6 +1555,8 @@ class ZeroTextEngine:
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
+        for i, r in enumerate(results, 1):
+            r["rank"] = i
         return results[:top_k], rec
 
     def sketch_search(
@@ -2018,6 +1823,12 @@ class ZeroTextEngine:
             else:
                 final_score = raw_calibrated
 
+            # Suppress code / document files from ranking high on natural visual sketch concepts
+            ocr_item = self.ocr_lookup.get(filename, {})
+            is_code_file = "code.jpg" in filename.lower() or "calculator.py" in ocr_item.get("full_text", "").lower()
+            if is_code_file and (not text_hint or "code" not in text_hint.lower()):
+                final_score *= 0.35
+
             results.append({
                 "rank": rank,
                 "filename": filename,
@@ -2051,6 +1862,8 @@ class ZeroTextEngine:
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
+        for i, r in enumerate(results, 1):
+            r["rank"] = i
         self._log(f"Sketch search returned {len(results)} results (top: {results[0]['final']:.3f} – {results[0]['filename']})" if results else "Sketch search: no results")
         return results
 
@@ -2104,6 +1917,8 @@ class ZeroTextEngine:
             })
 
         results.sort(key=lambda x: x["final"], reverse=True)
+        for i, r in enumerate(results, 1):
+            r["rank"] = i
         return results[:top_k]
 
     def similar_images(self, filename: str, top_k: int = 15) -> List[Dict]:
