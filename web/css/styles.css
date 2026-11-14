@@ -701,6 +701,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .card-ocr-preview {
@@ -2111,7 +2112,7 @@ body {
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 245, 212, 0.25);
 }
 
-.card-badge {
+.arcade-card .card-badge {
   align-self: flex-start;
   font-size: 0.68rem;
   font-weight: 800;
@@ -2124,33 +2125,34 @@ body {
   margin-bottom: 16px;
 }
 
-.card-badge.boxing-badge {
+.arcade-card .card-badge.boxing-badge {
   background: rgba(247, 37, 133, 0.15);
   color: #f72585;
   border-color: rgba(247, 37, 133, 0.35);
 }
 
-.card-badge.fruit-badge {
+.arcade-card .card-badge.fruit-badge {
   background: rgba(0, 245, 212, 0.15);
   color: #00f5d4;
   border-color: rgba(0, 245, 212, 0.35);
 }
 
-.card-icon {
+.arcade-card .card-icon {
   font-size: 2.8rem;
   margin-bottom: 12px;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
 }
 
-.card-title {
+.arcade-card .card-title {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.45rem;
   font-weight: 800;
   color: var(--text-main);
   margin: 0 0 8px 0;
+  line-height: 1.25;
 }
 
-.card-desc {
+.arcade-card .card-desc {
   font-size: 0.88rem;
   color: var(--text-muted);
   line-height: 1.5;
@@ -2158,14 +2160,14 @@ body {
   flex: 1;
 }
 
-.card-specs {
+.arcade-card .card-specs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 22px;
 }
 
-.card-specs span {
+.arcade-card .card-specs span {
   font-size: 0.75rem;
   padding: 4px 9px;
   background: rgba(255, 255, 255, 0.04);
