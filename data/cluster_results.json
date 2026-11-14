@@ -262,17 +262,5 @@
         "y3d": 7.1790971755981445,
         "z3d": 5.171853065490723,
         "membership_probability": 1.0
-    },
-    {
-        "filename": "loki-grabs-timeline (1).avif",
-        "path": "E:\\Zero text AIML\\data\\sample_images\\loki-grabs-timeline (1).avif",
-        "cluster": 1,
-        "x": 13.208609580993652,
-        "y": 1.1348505020141602,
-        "z": 4.831359386444092,
-        "x3d": 12.845412254333496,
-        "y3d": 7.494602680206299,
-        "z3d": 4.831359386444092,
-        "membership_probability": 0.9327682889757398
     }
 ]

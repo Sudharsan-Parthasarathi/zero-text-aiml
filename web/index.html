@@ -28,6 +28,18 @@
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
   </div>
 
+  <!-- Retro Cyberpunk Arcade Unlock Banner (Triggered by secret 'SAM') -->
+  <div id="arcade-unlock-banner" class="arcade-unlock-banner hidden" style="display: none;">
+    <div class="arcade-unlock-content">
+      <span class="arcade-unlock-icon">⚡</span>
+      <div class="arcade-unlock-text">
+        <span class="arcade-unlock-title">SHADOWBOX ARCADE UNLOCKED</span>
+        <span class="arcade-unlock-sub">YOUR BODY IS THE CONTROLLER — SECRET PROTOCOL INITIALIZED</span>
+      </div>
+      <button class="arcade-unlock-close" id="btn-close-arcade-banner" title="Dismiss">✕</button>
+    </div>
+  </div>
+
   <!-- ============================================================
        TOP NAVBAR & BRANDING
        ============================================================ -->
@@ -70,6 +82,10 @@
       </button>
       <button class="view-tab-btn" id="tab-grid" title="Card Gallery Grid">
         <span>🗂️</span> Gallery Grid
+      </button>
+      <!-- Secret Arcade Tab (unlocked by typing 'SAM') -->
+      <button class="view-tab-btn hidden" id="tab-arcade" title="Shadowbox Arcade Portal" style="display: none;">
+        <span>🕹️</span> Arcade
       </button>
     </div>
 
@@ -221,6 +237,111 @@
       <div id="grid-container">
         <div class="grid-wrapper" id="grid-wrapper">
           <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. SHADOWBOX ARCADE BAY VIEW (SECRET ACCESS) -->
+    <div class="view-container" id="view-arcade">
+      <div class="arcade-bay-wrapper">
+        <!-- Hero Header -->
+        <div class="arcade-hero">
+          <div class="arcade-hero-badge">AR KINETIC PLATFORM</div>
+          <h1 class="arcade-hero-title">SHADOWBOX ARCADE</h1>
+          <p class="arcade-hero-tagline">YOUR BODY IS THE CONTROLLER • 60 FPS ZERO-CONTROLLER COMPUTER VISION</p>
+
+          <!-- Live Telemetry Status Bar -->
+          <div class="arcade-status-bar" id="arcade-status-bar">
+            <div class="status-indicator">
+              <span class="status-dot ready" id="arcade-status-dot"></span>
+              <span class="status-text" id="arcade-status-text">System Ready</span>
+            </div>
+            <div class="status-telemetry" id="arcade-active-info">
+              <span class="telemetry-item">Active Player: <strong id="arcade-active-player">...</strong></span>
+              <span class="telemetry-item" id="arcade-active-process" style="display:none">Running: <strong id="arcade-game-name">-</strong> (PID: <strong id="arcade-pid-val">-</strong>)</span>
+            </div>
+            <div class="status-actions">
+              <button class="btn btn-arcade-refresh" id="btn-arcade-refresh" title="Refresh Live Stats">🔄 Refresh</button>
+              <button class="btn btn-arcade-stop danger" id="btn-arcade-stop" style="display: none;" title="Emergency Exit">🛑 Emergency Exit</button>
+            </div>
+          </div>
+
+          <!-- Missing Dependency Alert Box -->
+          <div class="arcade-alert-box" id="arcade-deps-alert" style="display: none;">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-content">
+              <strong>Native Hardware Packages Not Yet Detected:</strong>
+              <div id="arcade-missing-list" style="margin: 4px 0 6px 0; color: #ffbe76;"></div>
+              <div>Run in your terminal to enable native camera and audio: <code class="code-pill">pip install pygame mediapipe sounddevice</code></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 Interactive Launch Cards -->
+        <div class="arcade-cards-grid">
+          <!-- Card 1: Unified Launcher -->
+          <div class="arcade-card launcher-card" data-game="launcher">
+            <div class="arcade-card-glow"></div>
+            <div class="card-badge">UNIFIED PORTAL</div>
+            <div class="card-icon">🕹️</div>
+            <h3 class="card-title">Arcade Launcher</h3>
+            <p class="card-desc">The full desktop experience with interactive profile selection, background synthwave music, glove customizer, sound settings, and leaderboard browser.</p>
+            <div class="card-specs">
+              <span>🎛️ Settings Modal</span>
+              <span>🎵 Music Manager</span>
+              <span>🥊 Glove Skins</span>
+            </div>
+            <button class="btn-arcade-launch" data-game="launcher">
+              <span>▶</span> Launch Unified Portal
+            </button>
+          </div>
+
+          <!-- Card 2: Shadow Boxing -->
+          <div class="arcade-card boxing-card" data-game="boxing">
+            <div class="arcade-card-glow"></div>
+            <div class="card-badge boxing-badge">KINETIC COMBAT</div>
+            <div class="card-icon">🥊</div>
+            <h3 class="card-title">Shadow Boxing AR</h3>
+            <p class="card-desc">33 BlazePose points with 1€ filter stabilization, 6-stage punch state machine, acoustic Kiai microphone battle cries, sonic shield claps, and mecha boss waves.</p>
+            <div class="card-specs">
+              <span>⚡ 1€ Filter Pose</span>
+              <span>🛡️ Sonic Shield</span>
+              <span>💥 Kiai Overdrive</span>
+            </div>
+            <button class="btn-arcade-launch" data-game="boxing">
+              <span>▶</span> Launch Shadow Boxing
+            </button>
+          </div>
+
+          <!-- Card 3: Fruit Ninja -->
+          <div class="arcade-card fruit-card" data-game="fruit_ninja">
+            <div class="arcade-card-glow"></div>
+            <div class="card-badge fruit-badge">LASER BLADES</div>
+            <div class="card-icon">🍉</div>
+            <h3 class="card-title">Fruit Ninja 2.0</h3>
+            <p class="card-desc">Dual fist-gripped laser energy swords derived from knuckles. Continuous swept-capsule anti-tunneling slicing, combo multipliers, bomb hazards, and extra-life heart fruit.</p>
+            <div class="card-specs">
+              <span>⚔️ Dual Energy Blades</span>
+              <span>🍉 Swept Capsule Physics</span>
+              <span>⭐ 3 Difficulty Tiers</span>
+            </div>
+            <button class="btn-arcade-launch" data-game="fruit_ninja">
+              <span>▶</span> Launch Fruit Ninja
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Player Leaderboard & Stats Grid -->
+        <div class="arcade-leaderboard-section">
+          <div class="leaderboard-header">
+            <div>
+              <h2 class="leaderboard-title">🏆 Arcade Hall of Fame & Live Profiles</h2>
+              <p class="leaderboard-subtitle">Per-player records synchronized in real time with atomic local persistence</p>
+            </div>
+          </div>
+          <div class="arcade-stats-container" id="arcade-leaderboard-table-wrap">
+            <!-- Dynamic Leaderboard Table -->
+          </div>
         </div>
       </div>
     </div>

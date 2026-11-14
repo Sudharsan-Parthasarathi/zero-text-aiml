@@ -504,9 +504,34 @@ python tests/test_feedback_enrichment.py
 
 # 4. Standalone offline training utility health check
 python scripts/train_sketch_projection.py --help
+
+# 5. Shadowbox Arcade manager & endpoint test suites
+python tests/test_arcade_manager.py
+python tests/test_arcade_endpoints.py
 ```
 
 All tests exit with **code 0** and print detailed diagnostic summaries.
+
+---
+
+## 🕹️ Shadowbox Arcade (Secret "SAM" Unlock)
+
+ZERO-TEXT directly integrates **SHADOWBOX ARCADE** (AR Kinetic Shadow Boxing & Dual Fist-Grip Fruit Ninja) via native desktop execution managed by FastAPI:
+
+- **Concealed by Default**: The `🕹️ Arcade` tab is hidden as an easter-egg.
+- **Secret "SAM" Keystroke**: Typing `S` $\to$ `A` $\to$ `M` (case-insensitive, within 2 seconds of each other) while outside search/input fields reveals the retro cyberpunk unlock banner and opens the **Arcade Bay**.
+- **Native 60 FPS Subprocesses**:
+  - `04_arcade_launcher.py`: Full interactive portal with profile selection, music manager, and settings.
+  - `02_shadow_boxer_game.py`: 33 BlazePose points, 1€ filter stabilization, 6-stage punch state machine, acoustic Kiai battle cries, and mecha boss fights.
+  - `03_fruit_ninja_game.py`: Dual-wield fist-controlled laser energy swords, swept-capsule collision, combos, and heart extra-life fruit.
+- **Hardware Concurrency Lock**: Thread-safe lock in `arcade_manager.py` guarantees only one game owns the webcam at any time.
+- **Live Leaderboard & Player Profiles**: Reads and syncs `player_profiles.json` atomically with active player selection in the web UI.
+
+### Arcade Dependencies
+To run the native camera and audio drivers for the games:
+```bash
+pip install pygame mediapipe sounddevice
+```
 
 ---
 

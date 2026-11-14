@@ -50,9 +50,26 @@ document.addEventListener('DOMContentLoaded', () => {
     tabGalaxy3d: document.getElementById('tab-galaxy3d'),
     tabGalaxy2d: document.getElementById('tab-galaxy2d'),
     tabGrid: document.getElementById('tab-grid'),
+    tabArcade: document.getElementById('tab-arcade'),
     viewGalaxy3d: document.getElementById('view-galaxy3d'),
     viewGalaxy2d: document.getElementById('view-galaxy2d'),
     viewGrid: document.getElementById('view-grid'),
+    viewArcade: document.getElementById('view-arcade'),
+
+    // Arcade Bay Telemetry & Controls
+    arcadeUnlockBanner: document.getElementById('arcade-unlock-banner'),
+    btnCloseArcadeBanner: document.getElementById('btn-close-arcade-banner'),
+    arcadeStatusDot: document.getElementById('arcade-status-dot'),
+    arcadeStatusText: document.getElementById('arcade-status-text'),
+    arcadeActivePlayer: document.getElementById('arcade-active-player'),
+    arcadeActiveProcess: document.getElementById('arcade-active-process'),
+    arcadeGameName: document.getElementById('arcade-game-name'),
+    arcadePidVal: document.getElementById('arcade-pid-val'),
+    btnArcadeRefresh: document.getElementById('btn-arcade-refresh'),
+    btnArcadeStop: document.getElementById('btn-arcade-stop'),
+    arcadeDepsAlert: document.getElementById('arcade-deps-alert'),
+    arcadeMissingList: document.getElementById('arcade-missing-list'),
+    arcadeLeaderboardWrap: document.getElementById('arcade-leaderboard-table-wrap'),
 
     // Search
     searchInput: document.getElementById('search-input'),
@@ -329,24 +346,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // VIEW SWITCHER
   // -------------------------------------------------------------
+  let arcadePollTimer = null;
+
   function setView(viewName) {
     state.activeView = viewName;
 
     el.tabGalaxy3d.classList.toggle('active', viewName === 'galaxy3d');
     el.tabGalaxy2d.classList.toggle('active', viewName === 'galaxy2d');
     el.tabGrid.classList.toggle('active', viewName === 'grid');
+    if (el.tabArcade) el.tabArcade.classList.toggle('active', viewName === 'arcade');
 
     el.viewGalaxy3d.classList.toggle('active', viewName === 'galaxy3d');
     el.viewGalaxy2d.classList.toggle('active', viewName === 'galaxy2d');
     el.viewGrid.classList.toggle('active', viewName === 'grid');
+    if (el.viewArcade) el.viewArcade.classList.toggle('active', viewName === 'arcade');
 
     if (viewName === 'galaxy3d') galaxy3d.resize();
     if (viewName === 'galaxy2d') galaxy2d.resize();
+
+    if (viewName === 'arcade') {
+      loadArcadeDashboard();
+      if (!arcadePollTimer) {
+        arcadePollTimer = setInterval(pollArcadeStatus, 2500);
+      }
+    } else {
+      if (arcadePollTimer) {
+        clearInterval(arcadePollTimer);
+        arcadePollTimer = null;
+      }
+    }
   }
 
   el.tabGalaxy3d.addEventListener('click', () => setView('galaxy3d'));
   el.tabGalaxy2d.addEventListener('click', () => setView('galaxy2d'));
   el.tabGrid.addEventListener('click', () => setView('grid'));
+  if (el.tabArcade) el.tabArcade.addEventListener('click', () => setView('arcade'));
 
   // -------------------------------------------------------------
   // GALLERY GRID RENDERING
@@ -1403,6 +1437,289 @@ document.addEventListener('DOMContentLoaded', () => {
   el.mapZoomIn.addEventListener('click', () => galaxy2d.zoomIn());
   el.mapZoomOut.addEventListener('click', () => galaxy2d.zoomOut());
   el.mapFit.addEventListener('click', () => galaxy2d.fitView());
+
+  // -------------------------------------------------------------
+  // SHADOWBOX ARCADE INTEGRATION & SECRET 'SAM' PROTOCOL
+  // -------------------------------------------------------------
+  let secretBuffer = [];
+  let secretTimer = null;
+  const SECRET_KEY_SEQUENCE = ['s', 'a', 'm'];
+
+  function initArcadeSecretListener() {
+    window.addEventListener('keydown', e => {
+      // Ignore keystrokes when typing in search bar, text inputs, textareas, etc.
+      const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      // Only record valid alphanumeric characters
+      if (key.length === 1 && key >= 'a' && key <= 'z') {
+        secretBuffer.push(key);
+        if (secretBuffer.length > SECRET_KEY_SEQUENCE.length) {
+          secretBuffer.shift();
+        }
+
+        clearTimeout(secretTimer);
+        secretTimer = setTimeout(() => {
+          secretBuffer = [];
+        }, 2000); // Reset buffer after 2 seconds of inactivity
+
+        if (secretBuffer.join('') === 'sam') {
+          secretBuffer = [];
+          unlockArcadeMode();
+        }
+      }
+    });
+  }
+
+  function unlockArcadeMode() {
+    if (el.tabArcade) {
+      el.tabArcade.style.display = 'inline-flex';
+      el.tabArcade.classList.remove('hidden');
+    }
+    if (el.arcadeUnlockBanner) {
+      el.arcadeUnlockBanner.style.display = 'flex';
+      el.arcadeUnlockBanner.classList.remove('hidden');
+      el.arcadeUnlockBanner.classList.add('glow-pulse');
+      setTimeout(() => {
+        if (el.arcadeUnlockBanner) {
+          el.arcadeUnlockBanner.classList.remove('glow-pulse');
+        }
+      }, 5000);
+    }
+    showToast('⚡ SHADOWBOX ARCADE UNLOCKED!');
+    setView('arcade');
+  }
+
+  if (el.btnCloseArcadeBanner) {
+    el.btnCloseArcadeBanner.addEventListener('click', () => {
+      if (el.arcadeUnlockBanner) {
+        el.arcadeUnlockBanner.style.display = 'none';
+      }
+    });
+  }
+
+  async function pollArcadeStatus() {
+    try {
+      const res = await fetch('/api/arcade/status');
+      if (!res.ok) return;
+      const status = await res.json();
+      updateArcadeStatusUI(status);
+    } catch (err) {
+      console.warn('Arcade status poll failed:', err);
+    }
+  }
+
+  function updateArcadeStatusUI(status) {
+    if (!el.arcadeStatusDot) return;
+
+    if (status.running) {
+      el.arcadeStatusDot.className = 'status-dot running';
+      el.arcadeStatusText.textContent = `Running: ${status.game.toUpperCase()} (PID ${status.pid})`;
+      if (el.arcadeActiveProcess) {
+        el.arcadeActiveProcess.style.display = 'inline-block';
+        el.arcadeGameName.textContent = status.game;
+        el.arcadePidVal.textContent = status.pid;
+      }
+      if (el.btnArcadeStop) el.btnArcadeStop.style.display = 'inline-flex';
+    } else {
+      el.arcadeStatusDot.className = 'status-dot ready';
+      el.arcadeStatusText.textContent = 'System Ready';
+      if (el.arcadeActiveProcess) el.arcadeActiveProcess.style.display = 'none';
+      if (el.btnArcadeStop) el.btnArcadeStop.style.display = 'none';
+    }
+
+    if (status.active_player && el.arcadeActivePlayer) {
+      el.arcadeActivePlayer.textContent = status.active_player.name || status.active_player.id || 'None';
+    }
+
+    // Missing dependencies alert box
+    if (el.arcadeDepsAlert) {
+      if (status.missing_dependencies && status.missing_dependencies.length > 0) {
+        el.arcadeDepsAlert.style.display = 'flex';
+        if (el.arcadeMissingList) {
+          el.arcadeMissingList.textContent = `Missing: ${status.missing_dependencies.join(', ')}`;
+        }
+      } else {
+        el.arcadeDepsAlert.style.display = 'none';
+      }
+    }
+  }
+
+  async function loadArcadeDashboard() {
+    try {
+      const [statusRes, profilesRes] = await Promise.all([
+        fetch('/api/arcade/status'),
+        fetch('/api/arcade/profiles')
+      ]);
+
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        updateArcadeStatusUI(status);
+      }
+
+      if (profilesRes.ok) {
+        const data = await profilesRes.json();
+        renderArcadeLeaderboard(data);
+      }
+    } catch (err) {
+      console.error('Failed to load arcade dashboard:', err);
+    }
+  }
+
+  function renderArcadeLeaderboard(data) {
+    const wrap = el.arcadeLeaderboardWrap;
+    if (!wrap) return;
+
+    const lb = data.leaderboard || [];
+    if (!lb.length) {
+      wrap.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No player records found. Play a game to create your profile!</div>';
+      return;
+    }
+
+    let rowsHtml = lb.map((p, idx) => {
+      const rank = idx + 1;
+      const rankBadge = rank === 1 ? '🥇 1st' : rank === 2 ? '🥈 2nd' : rank === 3 ? '🥉 3rd' : `#${rank}`;
+      const activeClass = p.is_active ? 'active-player-row' : '';
+      const activeBadge = p.is_active ? '<span class="player-active-tag">ACTIVE</span>' : '';
+
+      return `
+        <tr class="${activeClass}">
+          <td class="col-rank"><strong>${rankBadge}</strong></td>
+          <td class="col-player">
+            <span class="player-name">${escapeHtml(p.name)}</span>
+            ${activeBadge}
+          </td>
+          <td class="col-score highlight"><strong>${p.best_score}</strong></td>
+          <td><span class="score-pill boxer">${p.boxer_high}</span></td>
+          <td>${p.boxer_punches}</td>
+          <td>${p.boxer_combo}x</td>
+          <td><span class="score-pill fruit">${p.fruit_high}</span></td>
+          <td>${p.fruit_sliced}</td>
+          <td>${p.fruit_combo}x</td>
+          <td>
+            ${!p.is_active ? `<button class="btn btn-sm btn-set-player" data-player-id="${p.id}" title="Set as Active Player">Select</button>` : '<span style="color:var(--accent-cyan);font-size:12px">Current</span>'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table class="arcade-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Best Score</th>
+            <th>🥊 Boxer Best</th>
+            <th>Punches</th>
+            <th>Max Combo</th>
+            <th>🍉 Fruit Best</th>
+            <th>Fruit Sliced</th>
+            <th>Max Slice</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+
+    // Hook Select Player buttons
+    wrap.querySelectorAll('.btn-set-player').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pid = btn.dataset.playerId;
+        try {
+          btn.textContent = '...';
+          const res = await fetch('/api/arcade/player/active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player_id: pid })
+          });
+          if (res.ok) {
+            showToast(`Active player set to ${pid}`);
+            loadArcadeDashboard();
+          } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to set active player');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to change player');
+        }
+      });
+    });
+  }
+
+  // Launch buttons
+  document.querySelectorAll('.btn-arcade-launch').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const game = btn.dataset.game || 'launcher';
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span> Initializing...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/arcade/launch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.status === 'already_running') {
+            showToast(`⚠️ Already running: ${data.game} (PID ${data.pid})`);
+          } else {
+            showToast(`🚀 Launched ${game.toUpperCase()} (PID ${data.pid})!`);
+          }
+        } else {
+          showToast(`Launch failed: ${data.detail || 'Error'}`);
+        }
+      } catch (err) {
+        console.error('Launch request error:', err);
+        showToast('Failed to send launch request.');
+      } finally {
+        setTimeout(() => {
+          btn.innerHTML = origText;
+          btn.disabled = false;
+          pollArcadeStatus();
+        }, 1000);
+      }
+    });
+  });
+
+  // Stop button
+  if (el.btnArcadeStop) {
+    el.btnArcadeStop.addEventListener('click', async () => {
+      if (!confirm('Close the active arcade game window?')) return;
+      el.btnArcadeStop.textContent = 'Terminating...';
+      try {
+        const res = await fetch('/api/arcade/stop', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || 'Terminated');
+      } catch (err) {
+        console.error('Stop request error:', err);
+        showToast('Failed to stop arcade process');
+      } finally {
+        el.btnArcadeStop.textContent = '🛑 Emergency Exit';
+        pollArcadeStatus();
+      }
+    });
+  }
+
+  // Refresh button
+  if (el.btnArcadeRefresh) {
+    el.btnArcadeRefresh.addEventListener('click', () => {
+      loadArcadeDashboard();
+      showToast('Arcade telemetry refreshed');
+    });
+  }
+
+  initArcadeSecretListener();
 
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

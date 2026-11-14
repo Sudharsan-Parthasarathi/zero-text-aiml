@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from PIL import Image
 
 from pipeline import BASE_DIR, DATA_DIR, SAMPLE_DIR, SKETCHES_DIR, get_engine
+from arcade_manager import arcade_manager
 
 app = FastAPI(
     title="ZERO-TEXT API",
@@ -96,6 +97,15 @@ class FeedbackRequest(BaseModel):
     score: Optional[float] = None
     cluster: Optional[int] = None
     session_id: Optional[str] = None
+
+
+class ArcadeLaunchRequest(BaseModel):
+    game: str = "launcher"
+    player_id: Optional[str] = None
+
+
+class ArcadePlayerRequest(BaseModel):
+    player_id: str
 
 
 # -----------------------------------------------------------------
@@ -327,6 +337,43 @@ def get_sample_sketch_file(filename: str):
         raise HTTPException(status_code=404, detail="Sketch not found.")
     mime_type, _ = mimetypes.guess_type(str(p))
     return FileResponse(p, media_type=mime_type or "image/jpeg")
+
+
+# -----------------------------------------------------------------
+# SHADOWBOX ARCADE API
+# -----------------------------------------------------------------
+
+@app.get("/api/arcade/status")
+def get_arcade_status():
+    return arcade_manager.get_status()
+
+
+@app.post("/api/arcade/launch")
+def launch_arcade(req: ArcadeLaunchRequest = ArcadeLaunchRequest()):
+    try:
+        return arcade_manager.launch(game=req.game, player_id=req.player_id)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/arcade/stop")
+def stop_arcade():
+    return arcade_manager.stop()
+
+
+@app.get("/api/arcade/profiles")
+def get_arcade_profiles():
+    return arcade_manager.get_profiles_and_leaderboard()
+
+
+@app.post("/api/arcade/player/active")
+def set_active_player(req: ArcadePlayerRequest):
+    res = arcade_manager.set_active_player(req.player_id)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("message", "Error updating active player"))
+    return res
 
 
 # -----------------------------------------------------------------

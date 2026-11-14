@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "last_active_player_id": "abinivesh",
+  "players": {
+    "abinivesh": {
+      "id": "abinivesh",
+      "name": "Abinivesh",
+      "created_at": 1794409982.8232446,
+      "preferences": {
+        "glove_size": "Normal",
+        "glove_skin": "Electric Blue",
+        "blade_color": "Cyan/Amber",
+        "music_volume": 0.0,
+        "sfx_volume": 1.0,
+        "master_mute": false,
+        "mic_sensitivity": 1.0,
+        "camera_blend": 0.35,
+        "fullscreen": false,
+        "completed_tutorial": true,
+        "difficulty": "EXPERT",
+        "auto_grip": false
+      },
+      "shadow_boxing": {
+        "high_score": 765,
+        "total_matches": 5,
+        "max_combo": 116,
+        "total_punches": 376,
+        "kiai_strikes": 1,
+        "bosses_defeated": 8,
+        "dodges_completed": 12,
+        "shields_deflected": 9,
+        "best_session_score": 765
+      },
+      "fruit_ninja": {
+        "classic_high_score": 156,
+        "zen_high_score": 0,
+        "arcade_high_score": 254,
+        "total_sliced": 68,
+        "max_combo": 3,
+        "bombs_hit": 25,
+        "total_matches": 24
+      }
+    },
+    "muskaan": {
+      "id": "muskaan",
+      "name": "Muskaan",
+      "created_at": 1794561301.003422,
+      "preferences": {
+        "glove_size": "Large",
+        "glove_skin": "Classic Red",
+        "blade_color": "Cyan/Amber",
+        "music_volume": 2.7755575615628914e-17,
+        "sfx_volume": 1.0,
+        "master_mute": false,
+        "mic_sensitivity": 1.0,
+        "camera_blend": 0.35,
+        "fullscreen": false,
+        "completed_tutorial": true
+      },
+      "shadow_boxing": {
+        "high_score": 294,
+        "total_matches": 2,
+        "max_combo": 26,
+        "total_punches": 43,
+        "kiai_strikes": 0,
+        "bosses_defeated": 3,
+        "dodges_completed": 5,
+        "shields_deflected": 4,
+        "best_session_score": 294
+      },
+      "fruit_ninja": {
+        "classic_high_score": 122,
+        "zen_high_score": 0,
+        "arcade_high_score": 0,
+        "total_sliced": 22,
+        "max_combo": 2,
+        "bombs_hit": 1,
+        "total_matches": 3
+      }
+    }
+  }
+}
