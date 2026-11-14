@@ -193,5 +193,57 @@
         "cluster": -1,
         "timestamp": "2026-11-14T19:04:43Z",
         "validated": true
+    },
+    {
+        "id": "sketch_b01deabafe0a",
+        "sketch_hash": "b01deabafe0a7545",
+        "sketch_file": "user_validated/sketch_b01deabafe0a7545.png",
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
+        "category": "Nasa Rocket",
+        "text_hint": "",
+        "score": 0.2512,
+        "cluster": 1,
+        "timestamp": "2026-11-14T19:35:20Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_0004f2ca1d4e",
+        "sketch_hash": "0004f2ca1d4ef332",
+        "sketch_file": "user_validated/sketch_0004f2ca1d4ef332.png",
+        "filename": "red_supercar.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\red_supercar.jpg",
+        "category": "Red Supercar",
+        "text_hint": "",
+        "score": 0.1086,
+        "cluster": -1,
+        "timestamp": "2026-11-14T19:35:35Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_49a82112f94e",
+        "sketch_hash": "49a82112f94eae9b",
+        "sketch_file": "user_validated/sketch_49a82112f94eae9b.png",
+        "filename": "red_supercar.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\red_supercar.jpg",
+        "category": "Red Supercar",
+        "text_hint": "",
+        "score": 0.3489,
+        "cluster": -1,
+        "timestamp": "2026-11-14T19:35:47Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_7bdfd5081067",
+        "sketch_hash": "7bdfd5081067f009",
+        "sketch_file": "user_validated/sketch_7bdfd5081067f009.png",
+        "filename": "golden_sunflower.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\golden_sunflower.jpg",
+        "category": "Golden Sunflower",
+        "text_hint": "",
+        "score": 0.4389,
+        "cluster": 1,
+        "timestamp": "2026-11-14T19:36:01Z",
+        "validated": true
     }
 ]
