@@ -167,5 +167,31 @@
         "cluster": -1,
         "timestamp": "2026-11-13T17:48:02Z",
         "validated": true
+    },
+    {
+        "id": "sketch_be3aa035bdfa",
+        "sketch_hash": "be3aa035bdfa482e",
+        "sketch_file": "user_validated/sketch_be3aa035bdfa482e.png",
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
+        "category": "Coffee",
+        "text_hint": "",
+        "score": 0.3703,
+        "cluster": 1,
+        "timestamp": "2026-11-14T19:04:18Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_1c14682041fa",
+        "sketch_hash": "1c14682041fa9432",
+        "sketch_file": "user_validated/sketch_1c14682041fa9432.png",
+        "filename": "among-us-vicious-smile-512x512.png",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\among-us-vicious-smile-512x512.png",
+        "category": "Among Us Vicious Smile 512X512",
+        "text_hint": "",
+        "score": 0.3048,
+        "cluster": -1,
+        "timestamp": "2026-11-14T19:04:43Z",
+        "validated": true
     }
 ]

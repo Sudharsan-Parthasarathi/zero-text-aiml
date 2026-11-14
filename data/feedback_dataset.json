@@ -590,5 +590,37 @@
         "timestamp": "2026-11-13T17:57:07Z",
         "session_id": "",
         "enriched": false
+    },
+    {
+        "id": "fb_9c5f13a05b",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "coffee.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "be3aa035bdfa482e",
+        "text_hint": "",
+        "score": 0.3703,
+        "cluster": 1,
+        "category": "Coffee",
+        "timestamp": "2026-11-14T19:04:18Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_bdf708167d",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "among-us-vicious-smile-512x512.png",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "1c14682041fa9432",
+        "text_hint": "",
+        "score": 0.3048,
+        "cluster": -1,
+        "category": "Among Us Vicious Smile 512X512",
+        "timestamp": "2026-11-14T19:04:43Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

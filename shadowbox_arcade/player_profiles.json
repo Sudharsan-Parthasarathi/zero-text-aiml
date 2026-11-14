@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "last_active_player_id": "abinivesh",
+  "last_active_player_id": "sudharsan_the_goat",
   "players": {
     "abinivesh": {
       "id": "abinivesh",
@@ -22,12 +22,12 @@
       },
       "shadow_boxing": {
         "high_score": 765,
-        "total_matches": 5,
+        "total_matches": 7,
         "max_combo": 116,
-        "total_punches": 376,
-        "kiai_strikes": 1,
-        "bosses_defeated": 8,
-        "dodges_completed": 12,
+        "total_punches": 483,
+        "kiai_strikes": 36,
+        "bosses_defeated": 12,
+        "dodges_completed": 21,
         "shields_deflected": 9,
         "best_session_score": 765
       },
@@ -75,6 +75,43 @@
         "total_sliced": 22,
         "max_combo": 2,
         "bombs_hit": 1,
+        "total_matches": 3
+      }
+    },
+    "sudharsan_the_goat": {
+      "id": "sudharsan_the_goat",
+      "name": "SUDHARSAN THE GOAT",
+      "created_at": 1794683967.2922707,
+      "preferences": {
+        "glove_size": "Normal",
+        "glove_skin": "Classic Red",
+        "blade_color": "Cyan/Amber",
+        "music_volume": 0.7,
+        "sfx_volume": 0.85,
+        "master_mute": false,
+        "mic_sensitivity": 1.0,
+        "camera_blend": 0.35,
+        "fullscreen": false,
+        "completed_tutorial": true
+      },
+      "shadow_boxing": {
+        "high_score": 440,
+        "total_matches": 2,
+        "max_combo": 72,
+        "total_punches": 113,
+        "kiai_strikes": 36,
+        "bosses_defeated": 4,
+        "dodges_completed": 10,
+        "shields_deflected": 1,
+        "best_session_score": 440
+      },
+      "fruit_ninja": {
+        "classic_high_score": 52,
+        "zen_high_score": 0,
+        "arcade_high_score": 308,
+        "total_sliced": 34,
+        "max_combo": 3,
+        "bombs_hit": 4,
         "total_matches": 3
       }
     }
