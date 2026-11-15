@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "last_active_player_id": "sudharsan",
+  "last_active_player_id": "abinivesh",
   "players": {
     "abinivesh": {
       "id": "abinivesh",
@@ -92,27 +92,28 @@
         "mic_sensitivity": 1.0,
         "camera_blend": 0.35,
         "fullscreen": false,
-        "completed_tutorial": true
+        "completed_tutorial": true,
+        "auto_grip": true
       },
       "shadow_boxing": {
         "high_score": 428,
-        "total_matches": 1,
+        "total_matches": 2,
         "max_combo": 80,
-        "total_punches": 80,
+        "total_punches": 86,
         "kiai_strikes": 38,
         "bosses_defeated": 2,
-        "dodges_completed": 5,
+        "dodges_completed": 8,
         "shields_deflected": 0,
         "best_session_score": 428
       },
       "fruit_ninja": {
-        "classic_high_score": 0,
+        "classic_high_score": 78,
         "zen_high_score": 0,
         "arcade_high_score": 141,
-        "total_sliced": 23,
+        "total_sliced": 30,
         "max_combo": 3,
-        "bombs_hit": 5,
-        "total_matches": 1
+        "bombs_hit": 6,
+        "total_matches": 2
       }
     }
   }
