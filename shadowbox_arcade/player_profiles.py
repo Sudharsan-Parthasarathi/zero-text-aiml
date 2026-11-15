@@ -167,6 +167,13 @@ class ProfileManager:
 
     def migrate_legacy_scores(self):
         """Safely import existing records from high_score.json and fruit_ninja_high_score.json."""
+        if "guest" not in self.data.get("players", {}):
+            has_legacy_boxer = os.path.exists(LEGACY_BOXER_FILE)
+            has_legacy_fruit = os.path.exists(LEGACY_FRUIT_FILE)
+            if not has_legacy_boxer and not has_legacy_fruit:
+                return
+            self.data.setdefault("players", {})["guest"] = make_default_profile("guest", "Guest")
+
         guest = self.data["players"].get("guest")
         if not guest:
             return

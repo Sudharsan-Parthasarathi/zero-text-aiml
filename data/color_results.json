@@ -1120,5 +1120,56 @@
                 "percentage": 3.92
             }
         ]
+    },
+    {
+        "filename": "Iron-Man-featured-image.avif",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\Iron-Man-featured-image.avif",
+        "dominant_colours": [
+            {
+                "hex": "#938883",
+                "rgb": [
+                    147,
+                    136,
+                    131
+                ],
+                "percentage": 28.34
+            },
+            {
+                "hex": "#333031",
+                "rgb": [
+                    51,
+                    48,
+                    49
+                ],
+                "percentage": 21.86
+            },
+            {
+                "hex": "#C2C8CF",
+                "rgb": [
+                    194,
+                    200,
+                    207
+                ],
+                "percentage": 19.41
+            },
+            {
+                "hex": "#B4B4B7",
+                "rgb": [
+                    180,
+                    180,
+                    183
+                ],
+                "percentage": 19.0
+            },
+            {
+                "hex": "#D4D6DB",
+                "rgb": [
+                    212,
+                    214,
+                    219
+                ],
+                "percentage": 11.39
+            }
+        ]
     }
 ]
