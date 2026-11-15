@@ -135,18 +135,18 @@ STOP_WORDS = {
 }
 
 CLUSTER_PALETTE = [
-    "#4cc9f0",  # Neon Cyan
-    "#f72585",  # Neon Pink
-    "#80ed99",  # Mint Green
-    "#ffd166",  # Warm Yellow
-    "#c77dff",  # Soft Violet
-    "#ff7b00",  # Bright Orange
-    "#00b4d8",  # Sky Blue
-    "#b5179e",  # Deep Magenta
-    "#06d6a0",  # Emerald Green
-    "#e76f51",  # Terracotta
-    "#118ab2",  # Ocean Blue
-    "#ef476f",  # Rose Red
+    "#ff2a55",  # Radiant Crimson Ruby
+    "#ffb703",  # Molten Amber Gold
+    "#ff5c8a",  # Vibrant Rose Coral
+    "#ff7b00",  # Fiery Flame Orange
+    "#c77dff",  # Warm Violet Amethyst
+    "#ffd166",  # Sunburst Gold
+    "#e63946",  # Deep Scarlet Red
+    "#ff8fa3",  # Soft Blushing Rose
+    "#d90429",  # Blood Ruby
+    "#f4a261",  # Champagne Sand
+    "#9d4edd",  # Royal Purple
+    "#ff4d6d",  # Neon Berry
 ]
 
 
@@ -1534,7 +1534,7 @@ class ZeroTextEngine:
                 "path": item["path"],
                 "cluster": c_id,
                 "cluster_color": (
-                    "#8b96a8"
+                    "#94a3b8"
                     if c_id == -1
                     else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
                 ),
@@ -1840,7 +1840,7 @@ class ZeroTextEngine:
                 "colour": round(colour_score, 4),
                 "cluster": c_id,
                 "cluster_color": (
-                    "#8b96a8"
+                    "#94a3b8"
                     if c_id == -1
                     else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
                 ),
@@ -1900,7 +1900,7 @@ class ZeroTextEngine:
                 "ocr": 0.0,
                 "cluster": c_id,
                 "cluster_color": (
-                    "#8b96a8"
+                    "#94a3b8"
                     if c_id == -1
                     else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
                 ),
@@ -1953,7 +1953,7 @@ class ZeroTextEngine:
                 "similarity": round(float(s), 4),
                 "cluster": c_id,
                 "cluster_color": (
-                    "#8b96a8"
+                    "#94a3b8"
                     if c_id == -1
                     else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
                 ),
@@ -2161,7 +2161,7 @@ class ZeroTextEngine:
                     "path": item["path"],
                     "cluster": c_id,
                     "cluster_color": (
-                        "#8b96a8"
+                        "#94a3b8"
                         if c_id == -1
                         else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
                     ),

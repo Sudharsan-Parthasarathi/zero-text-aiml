@@ -208,11 +208,11 @@ class Galaxy3D {
 
       const tint = Math.random();
       if (tint > 0.8) {
-        colors[i3] = 0.44; colors[i3 + 1] = 0.88; colors[i3 + 2] = 0.82; // cyan
+        colors[i3] = 1.0; colors[i3 + 1] = 0.16; colors[i3 + 2] = 0.33; // crimson
       } else if (tint > 0.6) {
-        colors[i3] = 0.78; colors[i3 + 1] = 0.49; colors[i3 + 2] = 1.0; // purple
+        colors[i3] = 1.0; colors[i3 + 1] = 0.72; colors[i3 + 2] = 0.01; // gold
       } else {
-        colors[i3] = 0.85; colors[i3 + 1] = 0.90; colors[i3 + 2] = 0.98; // white
+        colors[i3] = 0.95; colors[i3 + 1] = 0.92; colors[i3 + 2] = 0.95; // white
       }
     }
 
@@ -247,7 +247,7 @@ class Galaxy3D {
     const hasSearchMatches = this.normalizedItems.some(it => (it.final || 0) > 0.2);
 
     this.normalizedItems.forEach(item => {
-      const clusterColor = item.cluster_color || '#4cc9f0';
+      const clusterColor = item.cluster_color || '#ff2a55';
       const colorHex = parseInt(clusterColor.replace('#', '0x'));
 
       const isSelected = this.selectedItem && this.selectedItem.filename === item.filename;
@@ -276,7 +276,7 @@ class Galaxy3D {
       // Radiant Halo
       const haloGeo = new THREE.RingGeometry(baseRadius * 1.2, baseRadius * (isSelected ? 2.3 : (isTopMatch ? 2.0 : 1.6)), 32);
       const haloMat = new THREE.MeshBasicMaterial({
-        color: isSelected ? 0x70e1d1 : colorHex,
+        color: isSelected ? 0xff2a55 : colorHex,
         transparent: true,
         opacity: isSelected ? 0.85 : (isTopMatch ? 0.6 : (isDimmed ? 0.08 : 0.25)),
         side: THREE.DoubleSide,
@@ -308,12 +308,12 @@ class Galaxy3D {
 
     Object.entries(clusters).forEach(([cId, group]) => {
       if (group.length < 2) return;
-      const clusterColor = group[0].cluster_color || '#4cc9f0';
+      const clusterColor = group[0].cluster_color || '#ff2a55';
       const colorHex = parseInt(clusterColor.replace('#', '0x'));
       const lineMat = new THREE.LineBasicMaterial({
         color: colorHex,
         transparent: true,
-        opacity: 0.20,
+        opacity: 0.32,
       });
 
       const lineGeo = new THREE.BufferGeometry();

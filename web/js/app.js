@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const count = clustersMap[cId].length;
       const pill = document.createElement('span');
       pill.className = `cluster-pill ${state.activeClusterFilter === cId ? 'active' : ''}`;
-      const color = clustersMap[cId][0].cluster_color || '#4cc9f0';
+      const color = clustersMap[cId][0].cluster_color || '#ff2a55';
       pill.innerHTML = `<span class="cluster-dot" style="background:${color}"></span> Cluster ${cId} (${count})`;
       pill.addEventListener('click', () => filterByCluster(cId));
       container.appendChild(pill);
@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = `image-card ${state.selectedItem && state.selectedItem.filename === item.filename ? 'active' : ''}`;
 
       const clusterLabel = item.cluster === -1 ? 'Noise' : `C${item.cluster}`;
-      const clusterColor = item.cluster_color || '#4cc9f0';
+      const clusterColor = item.cluster_color || '#ff2a55';
       const scorePct = item.final !== undefined && item.final > 0 ? Math.round(item.final * 100) : null;
 
       let paletteHtml = '';
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const clusterLabel = item.cluster === -1 ? 'Noise / Outlier' : `Cluster ${item.cluster}`;
     el.tooltipCluster.textContent = clusterLabel;
-    el.tooltipCluster.style.color = item.cluster_color || '#4cc9f0';
+    el.tooltipCluster.style.color = item.cluster_color || '#ff2a55';
 
     if (item.final !== undefined && item.final > 0) {
       el.tooltipScore.textContent = `${Math.round(item.final * 100)}% match`;
@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cId = item.cluster ?? -1;
     el.drawerClusterTag.textContent = cId === -1 ? 'Noise' : `Cluster ${cId}`;
-    el.drawerClusterTag.style.background = item.cluster_color || '#4cc9f0';
+    el.drawerClusterTag.style.background = item.cluster_color || '#ff2a55';
     el.drawerMembership.textContent = `${Math.round((item.membership_probability ?? 0) * 100)}%`;
 
     const x2 = (item.x ?? 0).toFixed(2);
@@ -687,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cId = item.cluster ?? -1;
     el.lightboxClusterBadge.textContent = cId === -1 ? 'Noise' : `Cluster ${cId}`;
-    el.lightboxClusterBadge.style.background = item.cluster_color || '#4cc9f0';
+    el.lightboxClusterBadge.style.background = item.cluster_color || '#ff2a55';
 
     el.lightboxPath.textContent = item.path || item.filename;
     el.lightboxDims.textContent = 'Loading dimensions...';
