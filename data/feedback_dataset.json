@@ -686,5 +686,21 @@
         "timestamp": "2026-11-14T19:36:01Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_cf56d7c5a2",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "triangle-with-planet_3840x2160_xtrafondos.com.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "87e7a823b3f8add4",
+        "text_hint": "",
+        "score": 0.1921,
+        "cluster": 1,
+        "category": "Triangle With Planet 3840X2160 Xtrafondos.Com",
+        "timestamp": "2026-11-15T09:10:15Z",
+        "session_id": "",
+        "enriched": true
     }
 ]
