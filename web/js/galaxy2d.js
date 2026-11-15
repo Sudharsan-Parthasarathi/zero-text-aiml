@@ -117,7 +117,7 @@ class Galaxy2D {
     ctx.clearRect(0, 0, w, h);
 
     // Subtle background grid
-    ctx.strokeStyle = 'rgba(255, 42, 85, 0.06)';
+    ctx.strokeStyle = 'rgba(112, 225, 209, 0.04)';
     ctx.lineWidth = 1;
     const gridSize = 40;
     for (let x = (this.offsetX % gridSize); x < w; x += gridSize) {
@@ -128,7 +128,7 @@ class Galaxy2D {
     }
 
     if (!this.items.length) {
-      ctx.fillStyle = '#705d64';
+      ctx.fillStyle = '#5a6b85';
       ctx.font = '14px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('No images in view', w / 2, h / 2);
@@ -147,7 +147,7 @@ class Galaxy2D {
       const cId = item.cluster ?? -1;
       if (cId !== -1) {
         if (!clusters[cId]) clusters[cId] = [];
-        clusters[cId].push({ px, py, color: item.cluster_color || '#ff2a55' });
+        clusters[cId].push({ px, py, color: item.cluster_color || '#4cc9f0' });
       }
     });
 
@@ -156,8 +156,8 @@ class Galaxy2D {
       if (group.length < 2) return;
       const color = group[0].color;
 
-      ctx.strokeStyle = color + '40';
-      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = color + '22';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       for (let i = 0; i < group.length; i++) {
         for (let j = i + 1; j < group.length; j++) {
@@ -171,7 +171,7 @@ class Galaxy2D {
       const avgY = group.reduce((acc, p) => acc + p.py, 0) / group.length;
       const radius = 70;
       const grad = ctx.createRadialGradient(avgX, avgY, 5, avgX, avgY, radius);
-      grad.addColorStop(0, color + '22');
+      grad.addColorStop(0, color + '1a');
       grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -186,7 +186,7 @@ class Galaxy2D {
       const isTopMatch = hasMatches && score > 0.4;
       const isDimmed = hasMatches && score <= 0.15 && !isSelected;
 
-      const color = p.cluster_color || '#ff2a55';
+      const color = p.cluster_color || '#4cc9f0';
       const radius = isSelected ? 15 : (isTopMatch ? 12 : 7);
 
       if (isDimmed) {
@@ -196,7 +196,7 @@ class Galaxy2D {
       // Outer glow for matches or selected
       ctx.beginPath();
       ctx.arc(p.px, p.py, radius * (isSelected ? 2.4 : (isTopMatch ? 2.0 : 1.6)), 0, Math.PI * 2);
-      ctx.fillStyle = isSelected ? 'rgba(255, 42, 85, 0.45)' : (isTopMatch ? 'rgba(255, 183, 3, 0.35)' : color + '26');
+      ctx.fillStyle = isSelected ? 'rgba(112, 225, 209, 0.45)' : (isTopMatch ? 'rgba(255, 209, 102, 0.35)' : color + '22');
       ctx.fill();
 
       // Node core
@@ -204,12 +204,12 @@ class Galaxy2D {
       ctx.arc(p.px, p.py, radius, 0, Math.PI * 2);
       ctx.fillStyle = isTopMatch ? '#ffd166' : color;
       ctx.fill();
-      ctx.strokeStyle = isSelected ? '#ff2a55' : (isTopMatch ? '#ffffff' : 'rgba(255, 255, 255, 0.75)');
+      ctx.strokeStyle = isSelected ? '#70e1d1' : (isTopMatch ? '#ffffff' : 'rgba(255, 255, 255, 0.7)');
       ctx.lineWidth = isSelected ? 3 : (isTopMatch ? 2 : 1);
       ctx.stroke();
 
       // Label & Match Badge
-      ctx.fillStyle = isSelected ? '#ff2a55' : (isTopMatch ? '#ffd166' : '#e2eaf5');
+      ctx.fillStyle = isSelected ? '#70e1d1' : (isTopMatch ? '#ffd166' : '#e2eaf5');
       ctx.font = isSelected || isTopMatch ? 'bold 11px Segoe UI, sans-serif' : '10px Segoe UI, sans-serif';
       ctx.textAlign = 'left';
       const labelText = isTopMatch ? `${p.filename.split('.')[0]} (${Math.round(score * 100)}%)` : p.filename.split('.')[0];
