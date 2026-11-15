@@ -4,7 +4,665 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZERO-TEXT | 3D Visual Galaxy & Multimodal Explorer</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css?v=2.6">
+  <link rel="stylesheet" href="/static/css/arcade.css?v=2.6">
+  <style id="arcade-embedded-styles">
+/* ============================================================
+   SHADOWBOX ARCADE & RETRO CYBERPUNK INTEGRATION STYLESHEET
+   ============================================================ */
+
+/* -------------------------------------------------------------
+   0. UNLOCK TOAST BANNER (Triggered on 'SAM')
+   ------------------------------------------------------------- */
+.arcade-unlock-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: linear-gradient(135deg, rgba(10, 15, 30, 0.96), rgba(20, 10, 35, 0.96));
+  border: 1px solid var(--accent-cyan, #70e1d1);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 0 30px rgba(0, 245, 212, 0.35), 0 10px 40px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 12px 24px;
+  max-width: 680px;
+  width: 90%;
+  animation: slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: flex;
+  align-items: center;
+}
+
+@keyframes slideDownBanner {
+  from { opacity: 0; transform: translate(-50%, -30px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.arcade-unlock-banner.glow-pulse {
+  animation: slideDownBanner 0.4s ease forwards, arcadeGlowPulse 2s ease infinite alternate;
+}
+
+@keyframes arcadeGlowPulse {
+  0% { box-shadow: 0 0 25px rgba(0, 245, 212, 0.35), 0 0 45px rgba(247, 37, 133, 0.2); }
+  100% { box-shadow: 0 0 45px rgba(0, 245, 212, 0.65), 0 0 70px rgba(247, 37, 133, 0.4); }
+}
+
+.arcade-unlock-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.arcade-unlock-icon {
+  font-size: 1.8rem;
+  color: #ffd166;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.8));
+  animation: pulseIcon 1.2s infinite alternate;
+}
+
+@keyframes pulseIcon {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+.arcade-unlock-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.arcade-unlock-title {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 0 8px rgba(0, 245, 212, 0.8);
+}
+
+.arcade-unlock-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted, #8b9bb4);
+  letter-spacing: 0.04em;
+}
+
+.arcade-unlock-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #8b9bb4);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.arcade-unlock-close:hover {
+  color: #fff;
+}
+
+/* -------------------------------------------------------------
+   1. VIEW CONTAINER - ARCADE BAY
+   ------------------------------------------------------------- */
+#view-arcade {
+  display: none;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 32px 24px;
+  box-sizing: border-box;
+}
+
+#view-arcade.active {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+.arcade-bay-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* -------------------------------------------------------------
+   2. HERO HEADER SECTION
+   ------------------------------------------------------------- */
+.arcade-hero {
+  text-align: center;
+  position: relative;
+  padding: 28px 24px 24px;
+  background: linear-gradient(180deg, rgba(16, 24, 48, 0.65) 0%, rgba(10, 15, 30, 0.45) 100%);
+  border-radius: var(--radius-lg, 16px);
+  border: 1px solid rgba(0, 245, 212, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 245, 212, 0.05);
+}
+
+.arcade-hero-badge {
+  display: inline-block;
+  padding: 5px 16px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-cyan, #70e1d1);
+  background: rgba(0, 245, 212, 0.12);
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  border-radius: 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.2);
+}
+
+.arcade-hero-title {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #ffffff 20%, #00f5d4 60%, #f72585 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 8px 0;
+  text-shadow: 0 0 25px rgba(0, 245, 212, 0.3);
+}
+
+.arcade-hero-tagline {
+  font-size: 0.92rem;
+  color: var(--text-muted, #8b9bb4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------
+   3. LIVE TELEMETRY STATUS BAR
+   ------------------------------------------------------------- */
+.arcade-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: rgba(13, 19, 36, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 20px;
+  margin-top: 14px;
+  backdrop-filter: blur(8px);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.status-dot.ready {
+  background: #00f5d4;
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.8);
+}
+
+.status-dot.running {
+  background: #f72585;
+  box-shadow: 0 0 16px rgba(247, 37, 133, 0.9);
+  animation: pulseDot 1s infinite alternate;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.3); }
+}
+
+.status-text {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-main, #f0f4fc);
+  letter-spacing: 0.3px;
+}
+
+.status-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.84rem;
+  color: var(--text-muted, #8b9bb4);
+  flex-wrap: wrap;
+}
+
+.telemetry-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: var(--text-muted, #8b9bb4);
+}
+
+.telemetry-item strong {
+  color: var(--accent-cyan, #70e1d1);
+}
+
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-arcade-refresh {
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-main, #f0f4fc);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-arcade-refresh:hover {
+  background: rgba(0, 245, 212, 0.2);
+  border-color: var(--accent-cyan, #70e1d1);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.3);
+}
+
+.btn-arcade-stop, .btn.btn-arcade-stop.danger {
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: rgba(247, 37, 133, 0.2);
+  border: 1px solid rgba(247, 37, 133, 0.55);
+  border-radius: var(--radius-sm, 6px);
+  color: #ff6b9d;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-arcade-stop:hover, .btn.btn-arcade-stop.danger:hover {
+  background: rgba(247, 37, 133, 0.45);
+  box-shadow: 0 0 16px rgba(247, 37, 133, 0.6);
+  color: #fff;
+}
+
+/* -------------------------------------------------------------
+   4. MISSING DEPENDENCIES ALERT BOX
+   ------------------------------------------------------------- */
+.arcade-alert-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px 20px;
+  border-radius: var(--radius-md, 10px);
+  background: rgba(255, 159, 28, 0.1);
+  border: 1px solid rgba(255, 159, 28, 0.35);
+  color: #ffbe76;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.arcade-alert-box .alert-icon {
+  font-size: 1.6rem;
+}
+
+.arcade-alert-box .alert-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arcade-alert-box .code-pill {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px 10px;
+  border-radius: 4px;
+  color: #00f5d4;
+  font-family: 'Consolas', monospace;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  border: 1px solid rgba(0, 245, 212, 0.25);
+}
+
+/* -------------------------------------------------------------
+   5. INTERACTIVE LAUNCH CARDS GRID
+   ------------------------------------------------------------- */
+.arcade-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.arcade-card {
+  position: relative;
+  background: linear-gradient(170deg, rgba(18, 26, 48, 0.85) 0%, rgba(10, 14, 28, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 16px);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.arcade-card-glow {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(112, 225, 209, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.launcher-card .arcade-card-glow {
+  background: radial-gradient(circle, rgba(112, 225, 209, 0.22) 0%, transparent 70%);
+}
+
+.boxing-card .arcade-card-glow {
+  background: radial-gradient(circle, rgba(247, 37, 133, 0.25) 0%, transparent 70%);
+}
+
+.fruit-card .arcade-card-glow {
+  background: radial-gradient(circle, rgba(0, 245, 212, 0.25) 0%, transparent 70%);
+}
+
+.arcade-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(0, 245, 212, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 245, 212, 0.2);
+}
+
+.launcher-card:hover {
+  border-color: rgba(112, 225, 209, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(112, 225, 209, 0.25);
+}
+
+.boxing-card:hover {
+  border-color: rgba(247, 37, 133, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(247, 37, 133, 0.3);
+}
+
+.fruit-card:hover {
+  border-color: rgba(0, 245, 212, 0.6);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 245, 212, 0.3);
+}
+
+.arcade-card .card-badge {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.15);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.arcade-card .card-badge.boxing-badge {
+  background: rgba(247, 37, 133, 0.15);
+  color: #f72585;
+  border-color: rgba(247, 37, 133, 0.35);
+}
+
+.arcade-card .card-badge.fruit-badge {
+  background: rgba(0, 245, 212, 0.15);
+  color: #00f5d4;
+  border-color: rgba(0, 245, 212, 0.35);
+}
+
+.arcade-card .card-icon {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+  line-height: 1;
+}
+
+.arcade-card .card-title {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-main, #f0f4fc);
+  margin: 0 0 8px 0;
+  line-height: 1.25;
+}
+
+.arcade-card .card-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted, #8b9bb4);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.arcade-card .card-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.arcade-card .card-specs span {
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-muted, #8b9bb4);
+  font-weight: 500;
+}
+
+.btn-arcade-launch {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.22), rgba(0, 187, 249, 0.32));
+  border: 1px solid var(--accent-cyan, #70e1d1);
+  border-radius: var(--radius-md, 10px);
+  color: #fff;
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(0, 245, 212, 0.18);
+  width: 100%;
+}
+
+.btn-arcade-launch:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.45), rgba(0, 187, 249, 0.55));
+  box-shadow: 0 6px 22px rgba(0, 245, 212, 0.4);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+.boxing-card .btn-arcade-launch {
+  background: linear-gradient(135deg, rgba(247, 37, 133, 0.25), rgba(114, 9, 183, 0.35));
+  border-color: #f72585;
+  box-shadow: 0 4px 15px rgba(247, 37, 133, 0.25);
+}
+
+.boxing-card .btn-arcade-launch:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(247, 37, 133, 0.45), rgba(114, 9, 183, 0.55));
+  box-shadow: 0 6px 22px rgba(247, 37, 133, 0.45);
+}
+
+.fruit-card .btn-arcade-launch {
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.25), rgba(0, 187, 249, 0.35));
+  border-color: #00f5d4;
+  box-shadow: 0 4px 15px rgba(0, 245, 212, 0.25);
+}
+
+.fruit-card .btn-arcade-launch:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.45), rgba(0, 187, 249, 0.55));
+  box-shadow: 0 6px 22px rgba(0, 245, 212, 0.45);
+}
+
+/* -------------------------------------------------------------
+   6. HALL OF FAME LEADERBOARD & STATS SECTION
+   ------------------------------------------------------------- */
+.arcade-leaderboard-section {
+  background: rgba(14, 20, 38, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.leaderboard-header {
+  margin-bottom: 20px;
+}
+
+.leaderboard-title {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main, #f0f4fc);
+  margin: 0 0 4px 0;
+}
+
+.leaderboard-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted, #8b9bb4);
+  margin: 0;
+}
+
+.arcade-stats-container {
+  overflow-x: auto;
+}
+
+.arcade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.arcade-table th {
+  text-align: left;
+  padding: 12px 14px;
+  background: rgba(11, 18, 34, 0.9);
+  color: var(--accent-cyan, #70e1d1);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(112, 225, 209, 0.2);
+}
+
+.arcade-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-main, #f0f4fc);
+}
+
+.arcade-table tr:hover td {
+  background: rgba(112, 225, 209, 0.04);
+}
+
+.arcade-table tr.active-player-row td {
+  background: rgba(0, 245, 212, 0.08);
+  border-bottom-color: rgba(0, 245, 212, 0.2);
+}
+
+.col-rank {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: #ffd166;
+}
+
+.col-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-name {
+  font-weight: 700;
+}
+
+.player-active-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #00f5d4;
+  color: #060913;
+  letter-spacing: 0.05em;
+}
+
+.col-score.highlight {
+  font-weight: 800;
+  color: #ffd166;
+  font-size: 0.95rem;
+}
+
+.score-pill {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.score-pill.boxer {
+  background: rgba(247, 37, 133, 0.15);
+  color: #f72585;
+}
+
+.score-pill.fruit {
+  background: rgba(0, 245, 212, 0.15);
+  color: #00f5d4;
+}
+
+.btn-set-player {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(112, 225, 209, 0.15);
+  border: 1px solid rgba(112, 225, 209, 0.35);
+  color: var(--accent-cyan, #70e1d1);
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-set-player:hover {
+  background: var(--accent-cyan, #70e1d1);
+  color: #060913;
+  box-shadow: 0 0 10px rgba(112, 225, 209, 0.5);
+}
+
+  </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%2370e1d1'/></svg>">
   <!-- Three.js CDN with graceful offline fallback built into Galaxy3D -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
