@@ -1,13 +1,13 @@
 :root {
-  --bg-deep: #0b0206;
-  --bg-surface: #18050e;
-  --bg-card: rgba(38, 10, 20, 0.78);
-  --bg-card-hover: rgba(62, 16, 31, 0.92);
-  --border-subtle: rgba(255, 198, 168, 0.16);
-  --border-glow: rgba(255, 198, 168, 0.48);
-  --text-main: #fff6f0;
-  --text-muted: #e2b7a7;
-  --text-dim: #9c6c74;
+  --bg-deep: #120207;
+  --bg-surface: #24050e;
+  --bg-card: rgba(55, 12, 25, 0.85);
+  --bg-card-hover: rgba(85, 18, 38, 0.95);
+  --border-subtle: rgba(255, 198, 168, 0.26);
+  --border-glow: rgba(255, 198, 168, 0.65);
+  --text-main: #ffffff;
+  --text-muted: #f4cfbf;
+  --text-dim: #b87c88;
   --accent-cyan: #ffc6a8;
   --accent-blue: #f79d7e;
   --accent-pink: #d9294e;
@@ -18,7 +18,7 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-glow: 0 0 20px rgba(255, 198, 168, 0.22);
+  --shadow-glow: 0 0 25px rgba(255, 198, 168, 0.35);
 }
 
 * {
@@ -29,7 +29,10 @@
 
 body {
   font-family: var(--font-family);
-  background: radial-gradient(circle at 50% 18%, #4e1222 0%, #20060f 58%, #0b0205 100%);
+  background: 
+    radial-gradient(circle at 12% 12%, rgba(255, 198, 168, 0.42) 0%, transparent 45%),
+    radial-gradient(circle at 88% 85%, rgba(116, 26, 47, 0.55) 0%, transparent 52%),
+    linear-gradient(135deg, #6e1429 0%, #741a2f 30%, #400a16 65%, #140207 100%);
   color: var(--text-main);
   height: 100vh;
   overflow: hidden;
@@ -58,9 +61,9 @@ body {
    ------------------------------------------------------------- */
 .app-header {
   height: 64px;
-  background: rgba(19, 5, 10, 0.88);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(45, 10, 20, 0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 198, 168, 0.28);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -198,17 +201,17 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #ffc6a8, #c95d4b);
-  color: #24050d;
-  border: none;
+  background: linear-gradient(135deg, #ffc6a8 0%, #c24d55 55%, #741a2f 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 198, 168, 0.45);
   font-weight: 700;
-  box-shadow: 0 0 14px rgba(255, 198, 168, 0.3);
+  box-shadow: 0 4px 16px rgba(116, 26, 47, 0.5), 0 0 14px rgba(255, 198, 168, 0.3);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #ffe2d2, #db6e5b);
-  box-shadow: 0 0 20px rgba(255, 198, 168, 0.5);
-  color: #1a040a;
+  background: linear-gradient(135deg, #ffe5d6 0%, #d65b63 55%, #8e203a 100%);
+  box-shadow: 0 6px 24px rgba(116, 26, 47, 0.7), 0 0 22px rgba(255, 198, 168, 0.5);
+  color: #ffffff;
 }
 
 /* -------------------------------------------------------------
@@ -216,8 +219,9 @@ body {
    ------------------------------------------------------------- */
 .search-hub {
   padding: 12px 24px 8px 24px;
-  background: rgba(19, 5, 10, 0.45);
-  border-bottom: 1px solid rgba(255, 198, 168, 0.08);
+  background: rgba(35, 7, 16, 0.72);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 198, 168, 0.22);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -440,7 +444,7 @@ body {
   position: absolute;
   bottom: 20px;
   left: 24px;
-  background: rgba(19, 5, 10, 0.88);
+  background: rgba(45, 10, 20, 0.90);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -599,8 +603,8 @@ body {
 }
 
 .image-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(175deg, rgba(75, 16, 34, 0.85) 0%, rgba(32, 6, 14, 0.92) 100%);
+  backdrop-filter: blur(14px);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -609,6 +613,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  box-shadow: 0 8px 24px rgba(15, 2, 6, 0.5);
 }
 
 .image-card:hover {
@@ -736,7 +741,7 @@ body {
   right: -480px;
   width: 460px;
   height: calc(100vh - 64px);
-  background: rgba(19, 5, 10, 0.94);
+  background: rgba(45, 10, 20, 0.94);
   backdrop-filter: blur(20px);
   border-left: 1px solid var(--border-subtle);
   z-index: 150;
