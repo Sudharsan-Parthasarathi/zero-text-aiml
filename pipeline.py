@@ -46,6 +46,7 @@ import numpy as np
 import hdbscan
 import umap
 
+import io
 import json
 import re
 import threading
@@ -1969,6 +1970,134 @@ class ZeroTextEngine:
                 "has_text": bool(self.ocr_lookup.get(fn, {}).get("full_text", "").strip()),
             })
         return results
+
+    def image_probe_search(self, image: Image.Image, filename: str = "dropped_image.png", top_k: int = 15) -> Dict:
+        """
+        Instant Drag-and-Drop Image Probe:
+        1. Encodes dropped image into 512-d CLIP photographic visual embedding space.
+        2. Searches FAISS index for closest manifold neighbors.
+        3. Projects coordinates into exact 2D and 3D UMAP galaxy space (with centroid fallback).
+        4. Predicts cluster affinity and generates thumbnail data URL.
+        """
+        self.load_clip()
+        self._ensure_reducers()
+
+        emb = self.compute_image_embedding(image)
+        norm = np.linalg.norm(emb, axis=-1, keepdims=True)
+        if norm > 1e-6:
+            emb = (emb / norm).astype("float32")
+
+        k = min(top_k, self.index.ntotal)
+        scores, indices = self.index.search(emb, k)
+
+        def calibrate_score(raw_cos: float) -> float:
+            scaled = (raw_cos - 0.15) / (0.80 - 0.15)
+            clamped = max(0.0, min(1.0, scaled))
+            return float(clamped ** 1.05)
+
+        results = []
+        for rank, (raw_score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
+            if idx < 0 or idx >= len(self.metadata):
+                continue
+            item = self.metadata[idx]
+            fn = item["filename"]
+            cluster_info = self.cluster_lookup.get(fn, {})
+            c_id = cluster_info.get("cluster", -1)
+            calibrated = calibrate_score(float(raw_score))
+
+            results.append({
+                "rank": rank,
+                "filename": fn,
+                "path": item["path"],
+                "similarity": round(float(raw_score), 4),
+                "final": round(calibrated, 4),
+                "clip": round(calibrated, 4),
+                "ocr": 0.0,
+                "colour": 0.0,
+                "cluster": c_id,
+                "cluster_color": (
+                    "#8b96a8" if c_id == -1 else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
+                ),
+                "x": cluster_info.get("x", 0.0),
+                "y": cluster_info.get("y", 0.0),
+                "z": cluster_info.get("z", 0.0),
+                "x3d": cluster_info.get("x3d", 0.0),
+                "y3d": cluster_info.get("y3d", 0.0),
+                "z3d": cluster_info.get("z3d", 0.0),
+                "membership_probability": cluster_info.get("membership_probability", 0.0),
+                "dominant_colours": self.colour_lookup.get(fn, []),
+                "full_text": self.ocr_lookup.get(fn, {}).get("full_text", ""),
+                "has_text": bool(self.ocr_lookup.get(fn, {}).get("full_text", "").strip()),
+            })
+
+        # Project 2D & 3D Coordinates into Galaxy
+        probe_x = 0.0
+        probe_y = 0.0
+        probe_x3d = 0.0
+        probe_y3d = 0.0
+        probe_z3d = 0.0
+
+        projected = False
+        try:
+            if self.reducer_2d is not None:
+                q2 = self.reducer_2d.transform(emb)
+                probe_x = float(q2[0, 0])
+                probe_y = float(q2[0, 1])
+                projected = True
+            if self.reducer_3d is not None:
+                q3 = self.reducer_3d.transform(emb)
+                probe_x3d = float(q3[0, 0])
+                probe_y3d = float(q3[0, 1])
+                probe_z3d = float(q3[0, 2])
+        except Exception as e:
+            self._log(f"Probe UMAP transform notice: {e}")
+
+        # If transform was not available or gave NaN, interpolate from top 3 nearest neighbors
+        if not projected or np.isnan(probe_x) or np.isnan(probe_x3d):
+            top3 = results[:3] if len(results) >= 3 else results
+            if top3:
+                weights = [max(0.01, r["similarity"]) for r in top3]
+                tot_w = sum(weights)
+                probe_x = sum(r["x"] * w for r, w in zip(top3, weights)) / tot_w
+                probe_y = sum(r["y"] * w for r, w in zip(top3, weights)) / tot_w
+                probe_x3d = sum(r["x3d"] * w for r, w in zip(top3, weights)) / tot_w
+                probe_y3d = sum(r["y3d"] * w for r, w in zip(top3, weights)) / tot_w
+                probe_z3d = sum(r["z3d"] * w for r, w in zip(top3, weights)) / tot_w
+
+        # Predicted cluster based on closest manifold neighbor
+        top_match = results[0] if results else None
+        pred_cluster = top_match["cluster"] if top_match else -1
+        pred_color = top_match["cluster_color"] if top_match else "#ffd166"
+
+        # Generate a small thumbnail data URL of the dropped image
+        thumb_data = ""
+        try:
+            thumb = image.copy()
+            resample_filter = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BILINEAR)
+            thumb.thumbnail((120, 120), resample_filter)
+            buf = io.BytesIO()
+            thumb.convert("RGB").save(buf, format="JPEG", quality=85)
+            thumb_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            thumb_data = f"data:image/jpeg;base64,{thumb_b64}"
+        except Exception as te:
+            self._log(f"Probe thumbnail warning: {te}")
+
+        return {
+            "probe": {
+                "filename": filename,
+                "x": round(probe_x, 4),
+                "y": round(probe_y, 4),
+                "x3d": round(probe_x3d, 4),
+                "y3d": round(probe_y3d, 4),
+                "z3d": round(probe_z3d, 4),
+                "predicted_cluster": pred_cluster,
+                "predicted_cluster_color": pred_color,
+                "top_similarity": top_match["final"] if top_match else 0.0,
+                "thumbnail": thumb_data,
+            },
+            "total_results": len(results),
+            "results": results,
+        }
 
     # -------------------------------------------------------------
     # FULL RE-INDEXING & INGESTION PIPELINE

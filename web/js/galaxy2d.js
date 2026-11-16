@@ -217,6 +217,64 @@ class Galaxy2D {
 
       ctx.globalAlpha = 1.0;
     });
+
+    // Render 2D Test Probe if active
+    if (this.testProbe) {
+      const pr = this.testProbe;
+      const px = this.offsetX + (pr.x ?? 0) * this.scale;
+      const py = this.offsetY - (pr.y ?? 0) * this.scale;
+
+      // 1. Draw dashed energy lines to top 3 neighbors
+      if (pr.neighbors && pr.neighbors.length) {
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#00f5d4';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.85;
+        pr.neighbors.slice(0, 3).forEach(n => {
+          const pt = this.points.find(p => p.filename === n.filename);
+          if (pt) {
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(pt.px, pt.py);
+            ctx.stroke();
+          }
+        });
+        ctx.restore();
+      }
+
+      // 2. Glowing Sonar Wave
+      ctx.beginPath();
+      ctx.arc(px, py, 28, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.20)';
+      ctx.fill();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 3. Probe Core
+      ctx.beginPath();
+      ctx.arc(px, py, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd166';
+      ctx.fill();
+      ctx.strokeStyle = '#00f5d4';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // 4. Target Crosshairs
+      ctx.strokeStyle = '#00f5d4';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px - 20, py); ctx.lineTo(px + 20, py);
+      ctx.moveTo(px, py - 20); ctx.lineTo(px, py + 20);
+      ctx.stroke();
+
+      // 5. Probe Label
+      ctx.fillStyle = '#ffd166';
+      ctx.font = 'bold 12px Segoe UI, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`🛰️ PROBE: ${pr.filename || 'Dropped Image'}`, px + 22, py + 4);
+    }
   }
 
   bindEvents() {
@@ -339,6 +397,21 @@ class Galaxy2D {
     if (this.options.onSelect) {
       this.options.onSelect(null);
     }
+  }
+
+  setTestProbe(probe, neighbors = []) {
+    this.testProbe = { ...probe, neighbors };
+    // Center 2D map on probe
+    if (probe.x !== undefined && probe.y !== undefined) {
+      this.offsetX = this.width / 2 - probe.x * this.scale;
+      this.offsetY = this.height / 2 + probe.y * this.scale;
+    }
+    this.render();
+  }
+
+  clearTestProbe() {
+    this.testProbe = null;
+    this.render();
   }
 }
 

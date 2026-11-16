@@ -108,6 +108,7 @@ class Galaxy3D {
     const spanZ = maxZ - minZ || 1;
 
     const scale = 260; // Galaxy radius
+    this.coordBounds = { minX, maxX, minY, maxY, minZ, maxZ, spanX, spanY, spanZ, scale };
     this.normalizedItems = this.items.map(it => {
       const origX = it.x3d ?? it.x ?? 0;
       const origY = it.y3d ?? it.y ?? 0;
@@ -206,6 +207,23 @@ class Galaxy3D {
           positions[i] += Math.sin(clock * 1.2 + i * 0.01) * 0.10;
         }
         this.stardustPoints.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // Animate test probe beacon rings & sonar waves
+      if (this.testProbeGroup) {
+        if (this.testProbeRings) {
+          this.testProbeRings[0].rotation.x += 0.035;
+          this.testProbeRings[0].rotation.y += 0.025;
+          this.testProbeRings[1].rotation.z += 0.030;
+          this.testProbeRings[1].rotation.x += 0.020;
+        }
+        if (this.testProbeSonar) {
+          const sonarCycle = (clock * 1.6) % 1.0;
+          const sScale = 1.0 + sonarCycle * 3.8;
+          this.testProbeSonar.scale.set(sScale, sScale, 1);
+          this.testProbeSonar.material.opacity = Math.max(0, 0.85 * (1.0 - sonarCycle));
+          this.testProbeSonar.lookAt(this.threeCamera.position);
+        }
       }
 
       this.threeRenderer.render(this.threeScene, this.threeCamera);
@@ -804,6 +822,130 @@ class Galaxy3D {
     if (this.options.onSelect) {
       this.options.onSelect(null);
     }
+  }
+
+  projectProbeCoords(x3d, y3d, z3d) {
+    if (!this.coordBounds) return { nx: 0, ny: 0, nz: 0 };
+    const b = this.coordBounds;
+    return {
+      nx: ((x3d - b.minX) / b.spanX - 0.5) * b.scale * 2,
+      ny: ((y3d - b.minY) / b.spanY - 0.5) * b.scale * 2,
+      nz: ((z3d - b.minZ) / b.spanZ - 0.5) * b.scale * 2,
+    };
+  }
+
+  setTestProbe(probe, neighbors = []) {
+    this.clearTestProbe();
+    if (!probe) return;
+    this.testProbeData = probe;
+
+    const { nx, ny, nz } = this.projectProbeCoords(probe.x3d, probe.y3d, probe.z3d);
+    probe.nx = nx;
+    probe.ny = ny;
+    probe.nz = nz;
+
+    if (!this.useThree || !this.threeScene) return;
+    const THREE = window.THREE;
+    this.testProbeGroup = new THREE.Group();
+
+    // 1. Core Glowing Test Probe Sphere
+    const probeGeo = new THREE.SphereGeometry(14, 24, 24);
+    const probeMat = new THREE.MeshStandardMaterial({
+      color: 0xffd166,
+      emissive: 0xffa502,
+      emissiveIntensity: 1.8,
+      roughness: 0.1,
+      metalness: 0.9,
+    });
+    const probeMesh = new THREE.Mesh(probeGeo, probeMat);
+    probeMesh.position.set(nx, ny, nz);
+    this.testProbeGroup.add(probeMesh);
+
+    // 2. Concentric Holographic Beacon Gimbal Rings
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x00f5d4,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide
+    });
+    const ring1 = new THREE.Mesh(new THREE.RingGeometry(18, 22, 32), ringMat);
+    const ring2 = new THREE.Mesh(new THREE.RingGeometry(26, 29, 32), ringMat);
+    ring1.position.set(nx, ny, nz);
+    ring2.position.set(nx, ny, nz);
+    this.testProbeGroup.add(ring1);
+    this.testProbeGroup.add(ring2);
+    this.testProbeRings = [ring1, ring2];
+
+    // 3. Vertical Projection Light Pillar (Laser Beam)
+    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.2, 160, 16);
+    const pillarMat = new THREE.MeshBasicMaterial({
+      color: 0xffd166,
+      transparent: true,
+      opacity: 0.45,
+      blending: THREE.AdditiveBlending
+    });
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    pillar.position.set(nx, ny, nz);
+    this.testProbeGroup.add(pillar);
+
+    // 4. Glowing Sonar Ping Wave (Expands outward in animation loop)
+    const sonarGeo = new THREE.RingGeometry(16, 20, 32);
+    const sonarMat = new THREE.MeshBasicMaterial({
+      color: 0xffd166,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending
+    });
+    const sonarMesh = new THREE.Mesh(sonarGeo, sonarMat);
+    sonarMesh.position.set(nx, ny, nz);
+    this.testProbeGroup.add(sonarMesh);
+    this.testProbeSonar = sonarMesh;
+
+    // 5. Connective Laser Energy Beams to Closest Neighbors
+    if (neighbors && neighbors.length) {
+      const top3 = neighbors.slice(0, 3);
+      const lineMat = new THREE.LineDashedMaterial({
+        color: 0x00f5d4,
+        dashSize: 6,
+        gapSize: 3,
+        transparent: true,
+        opacity: 0.80,
+        blending: THREE.AdditiveBlending
+      });
+      const points = [];
+      top3.forEach(neighbor => {
+        const targetNode = this.normalizedItems.find(it => it.filename === neighbor.filename);
+        if (targetNode) {
+          points.push(new THREE.Vector3(nx, ny, nz));
+          points.push(new THREE.Vector3(targetNode.nx, targetNode.ny, targetNode.nz));
+        }
+      });
+      if (points.length) {
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const energyLines = new THREE.LineSegments(lineGeo, lineMat);
+        energyLines.computeLineDistances();
+        this.testProbeGroup.add(energyLines);
+      }
+    }
+
+    this.threeScene.add(this.testProbeGroup);
+
+    // Smooth camera fly-to to focus directly on the probe & its neighbors
+    if (this.threeCamera) {
+      this.targetCameraPos = new THREE.Vector3(nx, ny + 35, nz + 210);
+      this.autoRotate = false;
+    }
+  }
+
+  clearTestProbe() {
+    if (this.testProbeGroup && this.threeScene) {
+      this.threeScene.remove(this.testProbeGroup);
+      this.testProbeGroup = null;
+    }
+    this.testProbeRings = null;
+    this.testProbeSonar = null;
+    this.testProbeData = null;
   }
 
   resetCamera() {

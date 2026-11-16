@@ -1135,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.activeSearch = null;
     if (el.feedbackCard) el.feedbackCard.style.display = 'none';
     deselectItem();
+    dismissTestProbe();
     filterByCluster(state.activeClusterFilter);
   }
 
@@ -1379,6 +1380,148 @@ document.addEventListener('DOMContentLoaded', () => {
       el.btnSearchSketch.textContent = 'Search Galaxy by Sketch';
     }
   });
+
+  // -------------------------------------------------------------
+  // DRAG AND DROP INSTANT IMAGE SEARCH & TEST PROBE
+  // -------------------------------------------------------------
+  const dropZone = document.getElementById('galaxy-drop-zone');
+  const probeHud = document.getElementById('probe-telemetry-hud');
+  const probeThumb = document.getElementById('probe-hud-thumb');
+  const probeFilename = document.getElementById('probe-hud-filename');
+  const probeCluster = document.getElementById('probe-hud-cluster');
+  const probeNeighbor = document.getElementById('probe-hud-neighbor');
+  const probeSim = document.getElementById('probe-hud-sim');
+  const btnDismissProbe = document.getElementById('btn-dismiss-probe');
+
+  let activeProbeData = null;
+
+  function dismissTestProbe() {
+    activeProbeData = null;
+    if (probeHud) probeHud.style.display = 'none';
+    if (galaxy3d && galaxy3d.clearTestProbe) galaxy3d.clearTestProbe();
+    if (galaxy2d && galaxy2d.clearTestProbe) galaxy2d.clearTestProbe();
+  }
+
+  if (btnDismissProbe) {
+    btnDismissProbe.addEventListener('click', dismissTestProbe);
+  }
+
+  // Window drag events to show the high-tech drop zone overlay
+  let dragCounter = 0;
+
+  window.addEventListener('dragenter', e => {
+    if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+      dragCounter++;
+      if (['galaxy3d', 'galaxy2d', 'grid'].includes(state.activeView)) {
+        if (dropZone) dropZone.classList.add('active');
+      }
+    }
+  });
+
+  window.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      if (dropZone) dropZone.classList.remove('active');
+    }
+  });
+
+  window.addEventListener('dragover', e => {
+    e.preventDefault();
+  });
+
+  window.addEventListener('drop', async e => {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dropZone) dropZone.classList.remove('active');
+
+    const files = e.dataTransfer ? e.dataTransfer.files : null;
+    if (!files || !files.length) return;
+
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      showToast('⚠️ Please drop an image file (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+
+    await handleImageFileDrop(file);
+  });
+
+  async function handleImageFileDrop(file) {
+    showToast(`🛰️ Scanning ${file.name} — computing CLIP visual embedding...`, 4000);
+    const reader = new FileReader();
+
+    reader.onload = async evt => {
+      const dataUrl = evt.target.result;
+      try {
+        const res = await fetch('/api/search/image_probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_data: dataUrl,
+            filename: file.name,
+            top_k: 15
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showToast(`Image probe failed: ${err.detail || 'Error'}`);
+          return;
+        }
+
+        const data = await res.json();
+        const probe = data.probe;
+        activeProbeData = probe;
+
+        // Display results in views
+        state.displayedImages = data.results;
+        state.activeSearch = {
+          type: 'image_probe',
+          query: `Probe: ${file.name}`,
+          timestamp: Date.now()
+        };
+        updateAllViews();
+
+        // Project glowing test probe in 3D Galaxy & 2D Star Map
+        if (galaxy3d && galaxy3d.setTestProbe) {
+          galaxy3d.setTestProbe(probe, data.results);
+        }
+        if (galaxy2d && galaxy2d.setTestProbe) {
+          galaxy2d.setTestProbe(probe, data.results);
+        }
+
+        // Spotlight the top neighbor match
+        if (data.results && data.results.length > 0) {
+          updateSpotlightHUD(data.results[0], data.results.length);
+        }
+
+        // Update Probe Telemetry HUD
+        if (probeHud) {
+          if (probeThumb) probeThumb.src = probe.thumbnail || dataUrl;
+          if (probeFilename) probeFilename.textContent = probe.filename || file.name;
+          if (probeCluster) {
+            probeCluster.textContent = probe.predicted_cluster === -1 ? 'Outlier / Noise' : `Cluster ${probe.predicted_cluster}`;
+            probeCluster.style.color = probe.predicted_cluster_color || '#ffd166';
+          }
+          if (probeNeighbor && data.results.length > 0) {
+            probeNeighbor.textContent = data.results[0].filename;
+          }
+          if (probeSim && data.results.length > 0) {
+            probeSim.textContent = `${Math.round(data.results[0].final * 100)}% match`;
+          }
+          probeHud.style.display = 'flex';
+        }
+
+        showToast(`✨ Probe landed near Cluster ${probe.predicted_cluster}! Top match: ${data.results[0]?.filename}`);
+      } catch (err) {
+        console.error('Image probe error:', err);
+        showToast('Image probe failed. Check console for details.');
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
 
   // -------------------------------------------------------------
   // INGESTION & INDEXING PIPELINE MODAL

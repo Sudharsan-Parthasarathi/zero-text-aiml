@@ -1014,6 +1014,203 @@
   box-shadow: 0 0 10px rgba(112, 225, 209, 0.5);
 }
 
+/* -------------------------------------------------------------
+   7. DRAG AND DROP PROBE OVERLAY & TELEMETRY HUD
+   ------------------------------------------------------------- */
+.galaxy-drop-zone {
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(6, 10, 22, 0.88);
+  backdrop-filter: blur(8px);
+  border: 3px dashed var(--accent-cyan, #70e1d1);
+  margin: 12px;
+  border-radius: var(--radius-lg, 16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  box-shadow: inset 0 0 50px rgba(0, 245, 212, 0.25), 0 0 30px rgba(0, 245, 212, 0.3);
+}
+
+.galaxy-drop-zone.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+}
+
+.drop-zone-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.drop-zone-radar {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 245, 212, 0.5);
+  background: rgba(0, 245, 212, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(0, 245, 212, 0.35);
+  overflow: hidden;
+}
+
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(0, 245, 212, 0.4) 60deg, transparent 90deg);
+  animation: radarSpin 1.8s linear infinite;
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.drop-icon {
+  font-size: 2.2rem;
+  z-index: 2;
+  animation: dropFloat 2s ease-in-out infinite;
+}
+
+@keyframes dropFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.drop-title {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 16px rgba(0, 245, 212, 0.5);
+  margin: 0;
+}
+
+.drop-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted, #8b9bb4);
+  max-width: 480px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Floating Probe Telemetry HUD */
+.probe-telemetry-hud {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1050;
+  background: linear-gradient(135deg, rgba(14, 20, 38, 0.94) 0%, rgba(8, 12, 24, 0.98) 100%);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 209, 102, 0.2);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  backdrop-filter: blur(10px);
+  animation: probeHudPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90%;
+}
+
+@keyframes probeHudPop {
+  from { opacity: 0; transform: translate(-50%, 20px) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.probe-hud-thumb-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  flex-shrink: 0;
+  background: #000;
+}
+
+.probe-hud-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.probe-hud-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.probe-hud-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.probe-hud-tag {
+  color: #ffd166;
+  letter-spacing: 0.5px;
+  font-weight: 800;
+}
+
+.probe-hud-filename {
+  color: var(--text-muted, #8b9bb4);
+  font-size: 0.8rem;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.probe-hud-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-main, #f0f4fc);
+  flex-wrap: wrap;
+}
+
+.probe-hud-details strong {
+  color: var(--accent-cyan, #70e1d1);
+}
+
+.probe-hud-divider {
+  color: var(--text-dim, #637b99);
+}
+
+.btn-dismiss-probe {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  color: var(--text-muted, #8b9bb4);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-dismiss-probe:hover {
+  background: rgba(239, 71, 111, 0.25);
+  border-color: #ef476f;
+  color: #fff;
+}
+
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%2370e1d1'/></svg>">
   <!-- Three.js CDN with graceful offline fallback built into Galaxy3D -->
@@ -1192,6 +1389,38 @@
        MAIN INTERACTIVE VIEWPORTS
        ============================================================ -->
   <main class="main-viewport">
+
+    <!-- DRAG AND DROP PROBE HUD OVERLAY -->
+    <div class="galaxy-drop-zone" id="galaxy-drop-zone">
+      <div class="drop-zone-content">
+        <div class="drop-zone-radar">
+          <div class="radar-sweep"></div>
+          <span class="drop-icon">🛰️</span>
+        </div>
+        <h2 class="drop-title">DROP IMAGE TO PROBE GALAXY</h2>
+        <p class="drop-desc">Real-time CLIP visual embedding projection • Instant cluster positioning & neighbor spotlight</p>
+      </div>
+    </div>
+
+    <!-- FLOATING PROBE TELEMETRY HUD -->
+    <div class="probe-telemetry-hud" id="probe-telemetry-hud" style="display: none;">
+      <div class="probe-hud-thumb-wrap">
+        <img id="probe-hud-thumb" src="" alt="Probe thumbnail" />
+      </div>
+      <div class="probe-hud-info">
+        <div class="probe-hud-header">
+          <span class="pulse-optic"></span>
+          <strong class="probe-hud-tag">TEST PROBE PROJECTED</strong>
+          <span class="probe-hud-filename" id="probe-hud-filename">image.jpg</span>
+        </div>
+        <div class="probe-hud-details">
+          <span>Predicted Manifold: <strong id="probe-hud-cluster">Cluster 0</strong></span>
+          <span class="probe-hud-divider">•</span>
+          <span>Nearest Neighbor: <strong id="probe-hud-neighbor">item.jpg</strong> (<span id="probe-hud-sim">94%</span>)</span>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-dismiss-probe" id="btn-dismiss-probe" title="Dismiss Test Probe">✕ Dismiss Probe</button>
+    </div>
 
     <!-- 1. 3D VISUAL GALAXY -->
     <div class="view-container active" id="view-galaxy3d">

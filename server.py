@@ -73,6 +73,12 @@ class SimilarSearchRequest(BaseModel):
     top_k: int = 15
 
 
+class ImageProbeRequest(BaseModel):
+    image_data: str  # Base64 data URL
+    filename: Optional[str] = "dropped_image.png"
+    top_k: int = 15
+
+
 class DirectoryIndexRequest(BaseModel):
     directory_path: str
     recursive: bool = True
@@ -230,6 +236,30 @@ def search_similar(req: SimilarSearchRequest):
         "total_results": len(results),
         "results": results,
     }
+
+
+@app.post("/api/search/image_probe")
+def search_image_probe(req: ImageProbeRequest):
+    try:
+        data_str = req.image_data
+        if "," in data_str:
+            data_str = data_str.split(",", 1)[1]
+        img_bytes = base64.b64decode(data_str)
+        raw_img = Image.open(io.BytesIO(img_bytes))
+        if raw_img.mode in ("RGBA", "LA") or (raw_img.mode == "P" and "transparency" in raw_img.info):
+            bg = Image.new("RGBA", raw_img.size, (255, 255, 255, 255))
+            bg.alpha_composite(raw_img.convert("RGBA"))
+            img = bg.convert("RGB")
+        else:
+            img = raw_img.convert("RGB")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image data: {e}")
+
+    return engine.image_probe_search(
+        img,
+        filename=req.filename or "dropped_image.png",
+        top_k=req.top_k,
+    )
 
 
 @app.post("/api/feedback")
