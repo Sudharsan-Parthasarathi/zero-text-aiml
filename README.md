@@ -12,27 +12,32 @@
 4. [Installation (Step‑by‑Step)](#installation-step-by-step)
 5. [Running the Application](#running-the-application)
 6. [How to Use the App](#how-to-use-the-app)
-   - [Text Search](#1-text-search)
-   - [Sketch Search (Draw to Find)](#2-sketch-search-draw-to-find)
-   - [Colour Search](#3-colour-search)
-   - [Upload / Photo Search](#4-upload--photo-search)
-   - [Find Similar Images](#5-find-similar-images)
-   - [Adding Images to the Gallery](#6-adding-images-to-the-gallery)
-   - [Deleting Images](#7-deleting-images)
-   - [Search Result Feedback & Dataset Collection](#8-search-result-feedback--dataset-collection)
-   - [3D Visual Galaxy](#9-3d-visual-galaxy)
-   - [2D Semantic Star Map](#10-2d-star-map)
-   - [Gallery Grid](#11-gallery-grid)
-   - [Reclustering](#12-reclustering)
-   - [AI Auto‑Weight Decider](#13-ai-auto-weight-decider)
+   - [Drag-and-Drop Instant Image Probe Search](#1-drag-and-drop-instant-image-probe-search)
+   - [In-Galaxy Smart Vocab Suggestions](#2-in-galaxy-smart-vocab-suggestions)
+   - [Text Search](#3-text-search)
+   - [Sketch Search (Draw to Find)](#4-sketch-search-draw-to-find)
+   - [Colour Search](#5-colour-search)
+   - [Upload / Photo Search](#6-upload--photo-search)
+   - [Find Similar Images](#7-find-similar-images)
+   - [Adding Images to the Gallery](#8-adding-images-to-the-gallery)
+   - [Deleting Images](#9-deleting-images)
+   - [Search Result Feedback & Dataset Collection](#10-search-result-feedback--dataset-collection)
+   - [3D Visual Galaxy & Cosmic Volumetrics](#11-3d-visual-galaxy--cosmic-volumetrics)
+   - [2D Semantic Star Map](#12-2d-star-map)
+   - [Gallery Grid & Persistent Inspector Drawer](#13-gallery-grid--persistent-inspector-drawer)
+   - [Reclustering](#14-reclustering)
+   - [AI Auto‑Weight Decider](#15-ai-auto-weight-decider)
 7. [🕹️ Shadowbox Arcade Suite (Secret "SAM" Unlock)](#-shadowbox-arcade-suite-secret-sam-unlock)
    - [Activating the Secret Arcade Portal](#activating-the-secret-arcade-portal)
    - [Included Native Games](#included-native-games)
+   - [Live Camera & Mic Diagnostic Mirror](#live-camera--mic-diagnostic-mirror)
    - [Hardware Concurrency & Process Lifecycle](#hardware-concurrency--process-lifecycle)
    - [Live Telemetry & Hall of Fame Leaderboard](#live-telemetry--hall-of-fame-leaderboard)
 8. [Architecture & Technical Details](#architecture--technical-details)
    - [Structural Sketch‑to‑Photo Pipeline](#structural-sketch-to-photo-pipeline)
    - [Frozen SketchProjection Head](#frozen-sketchprojection-head)
+   - [Real-Time Barycentric Manifold Coordinate Projection](#real-time-barycentric-manifold-coordinate-projection)
+   - [Dataset-Driven Smart Vocabulary Index](#dataset-driven-smart-vocabulary-index)
    - [Zero Runtime Training Guarantee](#zero-runtime-training-guarantee)
    - [Offline Training Utility](#offline-training-utility)
    - [Colour‑Aware Sketch Search](#colour-aware-sketch-search)
@@ -66,6 +71,8 @@ All images are visualised in an interactive **3D Visual Galaxy** (WebGL) and a *
 
 | Feature | Category | Description |
 |---------|----------|-------------|
+| 🚀 **Drag‑and‑Drop Image Probe** | Visual Search / Manifold | Drop any photo directly onto the 3D/2D canvas. Computes 512‑D CLIP embedding, projects manifold coordinates in `<1ms`, drops a 3D laser probe with rotating gimbal rings & laser beams, and locks onto the nearest neighbor. |
+| 💡 **In‑Galaxy Smart Vocab** | Visual Search / UX | Real-time autocomplete discovery track under the search bar extracted from dataset OCR text, visual concepts, and dominant colors, featuring dynamic `<mark>` filtering and 1-click execution. |
 | 🔍 **Hybrid Text Search** | Visual Search | Combines CLIP semantic understanding + OCR text matching + dominant colour scoring with intelligent auto‑weights. |
 | ✏️ **Structural Sketch Search** | Visual Search | Draw strokes or shapes and retrieve matching photos via multi-scale contour + distance-field silhouettes and a frozen projection head (0 startup/runtime training). |
 | 🎨 **Multi‑Colour Drawing** | Studio | 12 preset colour swatches + custom colour picker for coloured sketches. |
@@ -76,10 +83,11 @@ All images are visualised in an interactive **3D Visual Galaxy** (WebGL) and a *
 | 🌈 **Colour‑Based Search** | Visual Search | Search by hex colour code or colour name — finds images whose dominant palette matches. |
 | 📝 **OCR Text Extraction** | Visual Search | RapidOCR automatically reads text from every indexed image (code screenshots, handwritten notes, invoices, etc.). |
 | 👍 **Feedback & Dataset Curation** | AI Pipeline | Upvote/downvote search results to curate versioned training and evaluation datasets without modifying live model parameters. |
-| 🪐 **3D Visual Galaxy** | Visualisation | Interactive WebGL 3D space where each image is a floating point, clustered by visual similarity. Orbit, zoom, spin. |
+| 🪐 **3D Visual Galaxy & Cosmic Volumetrics** | Visualisation | Interactive WebGL 3D space with procedural breathing nebulae, 1,200+ particle twinkling stardust drift, and orbital constellations. |
 | 🗺️ **2D Semantic Star Map** | Visualisation | A 2D UMAP projection showing how all images relate to each other spatially. |
-| 🗂️ **Gallery Grid** | Visualisation | Traditional card grid with fixed‑size thumbnails (260 px), score badges, cluster labels, and OCR tags. |
+| 🗂️ **Gallery Grid & Persistent Drawer** | Visualisation / UX | Traditional card grid with fixed‑size thumbnails (260 px), cluster chips, and a persistent Slide-Over Inspector Drawer that stays open until dismissed. |
 | 🕹️ **Arcade Portal** | Kinetic Gaming | Hidden easter-egg portal unlocked via secret `SAM` keystroke sequence. |
+| 🪞 **Live Sensor Diagnostic Mirror** | Kinetic Gaming / UX | Integrated 60 FPS camera mirror with real-time lumen estimation, body framing guides, and audio VU meter for voice calibration. |
 | 🥊 **Shadow Boxing AR** | Kinetic Gaming | 33-point BlazePose skeleton tracking, $1\text{€}$ filter stabilization, 6-stage punch state machine, acoustic Kiai battle cries. |
 | 🍉 **Fruit Ninja 2.0** | Kinetic Gaming | Dual fist-gripped laser energy swords, swept-capsule anti-tunneling physics, combo multipliers, bomb hazards. |
 | 🏆 **Hall of Fame Leaderboard** | Kinetic Gaming | Live per-player statistics, profile selector, ranking medals, and atomic persistence. |
@@ -189,7 +197,30 @@ python main.py --legacy-gui        # Classic Tkinter desktop GUI
 
 ## How to Use the App
 
-### 1. Text Search
+### 1. Drag‑and‑Drop Instant Image Probe Search
+Drag and drop any image file (`JPG`, `PNG`, `WEBP`, `GIF`, `BMP`, `TIFF`, `AVIF`, `ICO`) directly onto the **3D Galaxy** or **2D Star Map** canvas:
+1. **Radar Target Dropzone**: Dragging a file over the canvas triggers an animated full-screen HUD radar targeting reticle (`#galaxy-drop-zone`).
+2. **Auto-Switch to 3D Space**: Dropping the image automatically focuses the **🪐 3D Galaxy** cluster view.
+3. **Instant Manifold Projection (`< 1ms`)**: The system computes the image's 512‑D CLIP photographic visual embedding and instantly projects its spatial $(X, Y, Z)$ coordinates via fast exponential distance-weighted manifold projection (avoiding UMAP numerical iteration delays).
+4. **3D Glowing Test Probe**:
+   - **Central Beacon Core**: Vibrant glowing orb at the exact projected manifold location.
+   - **Vertical Light Beam Pillar**: Cyan light column spanning through the coordinate space.
+   - **Dual Rotating Gimbal Rings**: Outer pitch and inner yaw orbital rings spinning continuously in real time.
+   - **Expanding Sonar Radar Pulses**: Dynamic expanding rings broadcasting similarity waves.
+   - **Connective Laser Beams**: Cyan dashed energy beams drawn directly between the probe and its closest $k$-nearest neighbors in cluster space.
+5. **Telemetry HUD**: Displays the probe thumbnail, 3D coordinates, closest match filename, cosine similarity %, and a one-click **✕ Dismiss Probe** button.
+6. **Nearest Neighbor Focus & Auto-Select**: Automatically selects the closest image in the library and opens its details in the **Image Inspector Drawer**.
+7. **Clean Dismissal**: Clicking **✕ Dismiss Probe** clears all 3D probe visuals, unselects the active card, closes the inspector drawer, and smoothly restores the camera view.
+
+### 2. In‑Galaxy Smart Vocab Suggestions
+Directly underneath the main search bar is the **In‑Galaxy Smart Vocab** track:
+- **Dataset‑Driven Autocomplete**: Tokens are extracted directly from your image index: OCR text snippets (e.g. `numpy`, `login`, `invoice`), visual tags (e.g. `landscape`, `portrait`, `car`), and dominant color keywords.
+- **Dynamic Real-Time Filtering**: Typing into the search bar automatically filters suggestions in real time, highlighting matching substrings with `<mark>`.
+- **Category Color-Coded Chips**: Chips display their origin type (`OCR`, `Tag`, `Color`) for instant semantic clarity.
+- **1-Click Instant Search**: Clicking any chip immediately inputs the term and executes a search across the visual universe.
+- **Horizontal Mouse-Wheel Scrolling**: Easily browse hundreds of dataset tokens with smooth horizontal scroll navigation.
+
+### 3. Text Search
 Type any natural language query into the search bar and press Enter:
 - `sunset` — finds images with sunset visual content.
 - `golden retriever` — finds dog photos.
@@ -198,7 +229,7 @@ Type any natural language query into the search bar and press Enter:
 - `red car` — combines semantic concept ("car") + colour ("red") matching.
 - `import numpy` — finds images containing that exact OCR text.
 
-### 2. Sketch Search (Draw to Find)
+### 4. Sketch Search (Draw to Find)
 1. Click the **✏️ Sketch Search** button in the header.
 2. Draw your target on the canvas:
    - **🖊️ Pen** — free-draw strokes.
@@ -209,30 +240,30 @@ Type any natural language query into the search bar and press Enter:
 4. Optionally provide an inline **text hint** (e.g. "car", "cat") to boost precision.
 5. Click **🚀 Search Galaxy by Sketch**.
 
-### 3. Colour Search
+### 5. Colour Search
 Search by colour keywords (e.g. `red`, `blue`, `golden`, `teal`, `neon`). The engine extracts dominant palettes and applies colour histogram matching.
 
-### 4. Upload / Photo Search
+### 6. Upload / Photo Search
 Click **📁 Upload Image** inside the Sketch Studio to load an existing image onto the canvas and search directly using CLIP photographic embeddings.
 
-### 5. Find Similar Images
+### 7. Find Similar Images
 Click any image card or galaxy node to open the **Image Inspector** drawer, then click **🔍 Find Visually Similar**.
 
-### 6. Adding Images to the Gallery
+### 8. Adding Images to the Gallery
 Click **➕ Add Images / Folder**:
 - **Upload Files**: Drag & drop image files (JPG, PNG, WEBP) directly into the dropzone.
 - **Index Local Directory**: Specify an absolute directory path to recursively ingest folders.
 
-### 7. Deleting Images
+### 9. Deleting Images
 Open the Image Inspector and click **🗑️ Delete Image**. The system cleans up the image file from disk, drops its embedding from FAISS, and re-indexes metadata.
 
-### 8. Search Result Feedback & Dataset Collection
+### 10. Search Result Feedback & Dataset Collection
 Every search card features positive (👍) and negative (👎) feedback buttons:
 - **Positive Feedback**: Confirms query-target pairs and saves validation samples to `data/text_search_dataset.json` and `data/sketch_dataset.json`.
 - **Negative Feedback**: Records false positives to `data/feedback_dataset.json` for contrastive evaluation.
 - **Zero Runtime Weight Mutation**: User feedback never mutates live weights during inference, preventing model drift.
 
-### 9. 3D Visual Galaxy
+### 11. 3D Visual Galaxy & Cosmic Volumetrics
 Click the **🪐 3D Galaxy** tab:
 - **Click & drag**: Orbit camera in 3D WebGL space.
 - **Scroll wheel**: Zoom in and out.
@@ -240,17 +271,20 @@ Click the **🪐 3D Galaxy** tab:
 - **Click point**: Opens detailed Image Inspector.
 - **Orbit Spin**: Toggles celestial auto-rotation.
 - **Constellations**: Toggles cluster connection lines.
+- **Procedural Volumetric Nebulae**: Sinusoidal breathing nebula dust clouds with dynamic scale, opacity, and ambient celestial colors.
+- **Twinkling Stardust Field**: 1,200+ particle stardust galaxy drift with procedural opacity scintillation.
 
-### 10. 2D Semantic Star Map
-Click the **🗺️ 2D Star Map** tab for a continuous 2D planar projection of cluster groupings with pan, zoom, and fit-to-screen controls.
+### 12. 2D Semantic Star Map
+Click the **🗺️ 2D Star Map** tab for a continuous 2D planar projection of cluster groupings with pan, zoom, and fit-to-screen controls. Supports Drag-and-Drop Image Probe searches directly onto the canvas.
 
-### 11. Gallery Grid
+### 13. Gallery Grid & Persistent Inspector Drawer
 Click the **🗂️ Gallery Grid** tab for a structured card grid displaying fixed-size thumbnails, match percentage badges, cluster chips, OCR text snippets, and dominant palette strips.
+- **Persistent Slide-Over Inspector**: Opening an image card keeps the inspection drawer open persistently so you can examine high-resolution details and metadata without arbitrary timeouts. The drawer stays open until you explicitly close it or unselect the item.
 
-### 12. Reclustering
+### 14. Reclustering
 Click **🔄 Recluster** at any time to re-run 2D/3D UMAP projections and HDBSCAN density clustering over newly added images.
 
-### 13. AI Auto‑Weight Decider
+### 15. AI Auto‑Weight Decider
 The decider analyzes query intent and automatically balances weights:
 - **Visual concept** ("mountain landscape"): 75% CLIP, 15% OCR, 10% Colour.
 - **Code / document** ("python code"): 25% CLIP, 65% OCR, 10% Colour.
@@ -312,6 +346,13 @@ ZERO-ARCADE integrates a complete motion-controlled AR arcade suite directly int
 - **Swept-Capsule Continuous Physics**: Prevents tunneling artifacts on fast-moving fruit slices.
 - **Dynamic Combo Multipliers**: Slicing multiple fruits in a single blade stroke triggers cascading score multipliers.
 - **Bomb Hazards & Extra-Life Heart Fruits**: Strategic hazards and health recoveries.
+
+### Live Camera & Mic Diagnostic Mirror
+Built directly into the web Arcade tab, this pre-flight sensor test HUD ensures optimal gaming conditions before launching heavy desktop subprocesses:
+- **60 FPS Real-Time Video Mirror**: Low-latency video mirror stream to verify webcam field-of-view and positioning.
+- **Lighting Lumen Estimator**: Automatic luminance meter calculating ambient room lux (warns if lighting is too dim or washed out for MediaPipe landmarking).
+- **Body Framing & Stance Guide**: Visual silhouette overlay to help players step into optimal tracking distance (~1.5–2.5 meters from webcam).
+- **Acoustic Audio VU Meter**: Real-time decibel (dB) bar displaying microphone responsiveness and sensitivity thresholds for Kiai martial arts shouts.
 
 ### Hardware Concurrency & Process Lifecycle
 - Managed by `arcade_manager.py` using thread-safe synchronization locks.
@@ -386,6 +427,29 @@ The structural sketch representation is projected into the photographic embeddin
 - **L2 Normalization**: Output vectors are unit-normalized for exact cosine ranking in FAISS.
 - **Checkpoint**: Loaded directly from static weights file [`data/sketch_projection.pt`](file:///e:/Zero%20text%20AIML/data/sketch_projection.pt).
 
+### Real-Time Barycentric Manifold Coordinate Projection
+
+Traditional out-of-sample projection into UMAP manifolds (e.g. `reducer.transform(embedding)`) executes iterative numerical gradient descent, taking **60–70 seconds on CPU** and hanging interactive web threads.
+
+ZERO-ARCADE eliminates this bottleneck with an **instant ($< 1\text{ ms}$) exponential distance-weighted barycentric coordinate projection**:
+$$\mathbf{p}_{\text{probe}} = \frac{\sum_{i=1}^k w_i \cdot \mathbf{y}_i}{\sum_{i=1}^k w_i}, \quad w_i = \exp\left(-\frac{1 - s_i}{\tau}\right)$$
+
+Where:
+- $\mathbf{y}_i \in \mathbb{R}^3$ (or $\mathbb{R}^2$): Precomputed manifold coordinates of nearest neighbors already embedded in the galaxy.
+- $s_i \in [-1, 1]$: Cosine similarity between query image embedding and nearest neighbor in FAISS.
+- $\tau \approx 0.15$: Temperature constant sharpening focus toward the closest visual neighbors.
+
+This enables immediate drag-and-drop feedback at 60 FPS without touching gradient descent routines or freezing the server event loop.
+
+### Dataset-Driven Smart Vocabulary Index
+
+The smart autocomplete engine indexes active dataset tokens via non-blocking tokenization across:
+1. **OCR Texts**: Terms mined directly from `ocr_results.json` (RapidOCR extractions across screenshots, slides, documents).
+2. **Visual Cluster Tags**: Semantic cluster topics and categories generated during indexing.
+3. **Dominant Palette Descriptors**: Primary color names extracted from image color histograms.
+
+Tokens are cleaned, deduplicated, sorted by corpus frequency, and served via `/api/vocabulary`. The frontend performs instant debounced matching with substring `<mark>` highlights and single-click query execution.
+
 ### Zero Runtime Training Guarantee
 - **Instant Startup**: Cold boots load model weights in **~1.5 seconds**.
 - **Deterministic Search**: Zero runtime gradient updates; live model weights never mutate during application execution.
@@ -426,10 +490,12 @@ All endpoints are served from `http://127.0.0.1:8000/api/`.
 | `/api/image/{filename}` | GET | Gallery | Serve an image file. | `filename` |
 | `/api/image/{filename}` | DELETE | Gallery | Permanently delete image from disk and FAISS. | `filename` |
 | `/api/search/hybrid` | POST | Search | Hybrid text + OCR + colour search. | `query`, `clip_weight`, `ocr_weight`, `colour_weight`, `auto_weights` |
+| `/api/search/image_probe` | POST | Search / Manifold | Drag-and-drop image probe search: extracts CLIP embedding, computes real-time manifold coordinates via barycentric projection, and finds nearest neighbors. | `file` (multipart image upload), `top_k` |
 | `/api/search/sketch` | POST | Search | Sketch-to-photo search with structural matching. | `sketch_data` (base64), `top_k`, `text_hint` |
 | `/api/search/color` | POST | Search | Dominant colour search. | `hex` (e.g. "#FF0000"), `top_k` |
 | `/api/search/similar` | POST | Search | Visual similarity search from photo embedding. | `filename`, `top_k` |
 | `/api/search/recommend_weights` | GET | Search | AI-recommended scoring weights for query. | `query` |
+| `/api/vocabulary` | GET | Search / Vocab | Dynamic dataset vocabulary tokens for autocomplete discovery (OCR terms, visual cluster tags, color names). | `limit` (optional, default 250) |
 | `/api/feedback` | POST | Feedback | Record user feedback (positive/negative). | `search_type`, `feedback`, `filename`, `query` |
 | `/api/feedback/stats` | GET | Feedback | Summary statistics of collected feedback datasets. | — |
 | `/api/index/upload` | POST | Indexing | Upload and index new images. | `files` (array of base64 data) |
@@ -552,6 +618,9 @@ python scripts/train_sketch_projection.py --help
 | **Arcade missing packages alert** | `pygame`, `mediapipe`, or `sounddevice` not installed | Run `pip install pygame mediapipe sounddevice` in your virtual environment. |
 | **Secret arcade tab not opening** | Keystrokes typed while focusing search input | Click anywhere on the background to unfocus inputs, then type **`SAM`** within 2 seconds. |
 | **Game fails to access webcam** | Another application is using the camera | Close other apps using the webcam. If a previous game crashed, click **🛑 Emergency Exit** in the status bar to release the hardware lock. |
+| **Image probe failed: Not Found** | Outdated server process running without new probe endpoints | Terminate stale background Python/Uvicorn instances and restart with `python main.py`. |
+| **Drag & Drop radar not activating** | Non-image file dragged or dropzone events blocked | Drop any standard image (`JPG`, `PNG`, `WEBP`, `GIF`, `BMP`, `TIFF`, `AVIF`, `ICO`). |
+| **Camera Diagnostic Mirror pitch black** | Browser permission blocked or webcam in use | Grant camera and microphone permissions in browser site settings and close background camera apps. |
 | **"paging file too small" on Windows** | SafeTensors memory mapping | Handled automatically in code by forcing pread file reading. No manual action needed. |
 | **First startup is slow (~30s)** | CLIP model loading into memory | Expected on first boot. Subsequent starts are fast as weights reside in OS cache. |
 | **3D Galaxy is blank** | Three.js CDN blocked or offline | Three.js falls back to local simulation; check browser console or network permissions. |
