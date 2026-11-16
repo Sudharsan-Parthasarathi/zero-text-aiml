@@ -1409,8 +1409,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // Window drag events to show the high-tech drop zone overlay
   let dragCounter = 0;
 
+  function isFileDrag(e) {
+    if (!e.dataTransfer) return false;
+    const types = Array.from(e.dataTransfer.types || []);
+    return types.includes('Files') || types.includes('application/x-moz-file');
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
   window.addEventListener('dragenter', e => {
-    if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+    if (isFileDrag(e)) {
       dragCounter++;
       if (['galaxy3d', 'galaxy2d', 'grid'].includes(state.activeView)) {
         if (dropZone) dropZone.classList.add('active');
@@ -1426,26 +1439,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  window.addEventListener('dragover', e => {
-    e.preventDefault();
-  });
+  window.addEventListener('dragover', handleDragOver);
+  if (dropZone) {
+    dropZone.addEventListener('dragover', handleDragOver);
+  }
 
-  window.addEventListener('drop', async e => {
+  async function handleDroppedFiles(e) {
     e.preventDefault();
+    e.stopPropagation();
     dragCounter = 0;
     if (dropZone) dropZone.classList.remove('active');
 
-    const files = e.dataTransfer ? e.dataTransfer.files : null;
+    // If ingestion modal is open, let its local dropzone handle it
+    if (el.modalAdd && el.modalAdd.classList.contains('open')) {
+      return;
+    }
+
+    const dt = e.dataTransfer;
+    const files = dt ? dt.files : null;
     if (!files || !files.length) return;
 
     const file = files[0];
-    if (!file.type.startsWith('image/')) {
+    const isImage = (file.type && file.type.startsWith('image/')) ||
+                    /\.(jpe?g|png|webp|gif|bmp|tiff?|avif|ico)$/i.test(file.name || '');
+    if (!isImage) {
       showToast('⚠️ Please drop an image file (PNG, JPG, WEBP, etc.)');
       return;
     }
 
     await handleImageFileDrop(file);
-  });
+  }
+
+  window.addEventListener('drop', handleDroppedFiles);
+  if (dropZone) {
+    dropZone.addEventListener('drop', handleDroppedFiles);
+  }
 
   async function handleImageFileDrop(file) {
     showToast(`🛰️ Scanning ${file.name} — computing CLIP visual embedding...`, 4000);
@@ -1465,8 +1493,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!res.ok) {
-          const err = await res.json();
-          showToast(`Image probe failed: ${err.detail || 'Error'}`);
+          const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: ${res.statusText}` }));
+          showToast(`Image probe failed: ${err.detail || 'Server error'}`);
           return;
         }
 

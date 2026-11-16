@@ -1039,7 +1039,11 @@
 .galaxy-drop-zone.active {
   opacity: 1;
   visibility: visible;
-  pointer-events: all;
+  pointer-events: auto !important;
+}
+
+.galaxy-drop-zone * {
+  pointer-events: none !important;
 }
 
 .drop-zone-content {
