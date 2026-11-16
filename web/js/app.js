@@ -387,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         arcadePollTimer = setInterval(pollArcadeStatus, 2500);
       }
     } else {
+      stopArcadeMirror();
       if (previousSearchVisibleState !== null) {
         setFullGalaxyMode(!previousSearchVisibleState);
         previousSearchVisibleState = null;
@@ -1798,6 +1799,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Launch buttons
   document.querySelectorAll('.btn-arcade-launch').forEach(btn => {
     btn.addEventListener('click', async () => {
+      stopArcadeMirror(); // Release webcam and mic before launching hardware game
       const game = btn.dataset.game || 'launcher';
       const origText = btn.innerHTML;
       btn.innerHTML = '<span>⏳</span> Initializing...';
@@ -1857,6 +1859,225 @@ document.addEventListener('DOMContentLoaded', () => {
     el.btnArcadeRefresh.addEventListener('click', () => {
       loadArcadeDashboard();
       showToast('Arcade telemetry refreshed');
+    });
+  }
+
+  // -------------------------------------------------------------
+  // LIVE SENSOR DIAGNOSTIC & CALIBRATION MIRROR
+  // -------------------------------------------------------------
+  let mirrorStream = null;
+  let mirrorAudioCtx = null;
+  let mirrorAnalyser = null;
+  let mirrorAnimId = null;
+  let mirrorSampleCanvas = null;
+  let mirrorSampleCtx = null;
+  let mirrorFrameCount = 0;
+  let mirrorLastFpsTime = performance.now();
+  let mirrorCurrentFps = 60;
+
+  const mirrorEls = {
+    panel: document.getElementById('arcade-mirror-panel'),
+    btnOpen: document.getElementById('btn-arcade-mirror'),
+    btnClose: document.getElementById('btn-close-mirror'),
+    btnToggle: document.getElementById('btn-toggle-camera-stream'),
+    video: document.getElementById('arcade-mirror-video'),
+    fps: document.getElementById('mirror-fps-display'),
+    lightingVal: document.getElementById('mirror-lighting-val'),
+    lightingPill: document.getElementById('mirror-lighting-pill'),
+    lightingBar: document.getElementById('mirror-lighting-bar'),
+    micDb: document.getElementById('mirror-mic-db'),
+    micBar: document.getElementById('mirror-mic-bar'),
+    kiaiMarker: document.getElementById('mirror-kiai-marker'),
+    framingStatus: document.getElementById('mirror-framing-status'),
+  };
+
+  async function startArcadeMirror() {
+    if (mirrorStream) return;
+    try {
+      if (mirrorEls.btnToggle) mirrorEls.btnToggle.textContent = '⏳ Initializing...';
+
+      mirrorStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 360 }, facingMode: 'user' },
+        audio: true
+      });
+
+      if (mirrorEls.video) {
+        mirrorEls.video.srcObject = mirrorStream;
+        await mirrorEls.video.play().catch(() => {});
+      }
+
+      // Initialize Web Audio API Analyser
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          mirrorAudioCtx = new AudioContextClass();
+          const source = mirrorAudioCtx.createMediaStreamSource(mirrorStream);
+          mirrorAnalyser = mirrorAudioCtx.createAnalyser();
+          mirrorAnalyser.fftSize = 256;
+          mirrorAnalyser.smoothingTimeConstant = 0.5;
+          source.connect(mirrorAnalyser);
+        }
+      } catch (ae) {
+        console.warn('Audio analyser init error:', ae);
+      }
+
+      // Prepare offscreen luminance sampler canvas
+      if (!mirrorSampleCanvas) {
+        mirrorSampleCanvas = document.createElement('canvas');
+        mirrorSampleCanvas.width = 64;
+        mirrorSampleCanvas.height = 36;
+        mirrorSampleCtx = mirrorSampleCanvas.getContext('2d', { willReadFrequently: true });
+      }
+
+      mirrorFrameCount = 0;
+      mirrorLastFpsTime = performance.now();
+      runMirrorDiagnosticLoop();
+
+      if (mirrorEls.btnToggle) mirrorEls.btnToggle.textContent = '⏹️ Stop Camera';
+      showToast('Optic & Acoustic sensors online');
+    } catch (err) {
+      console.error('Failed to open sensor mirror:', err);
+      showToast('Camera/Mic permission needed for sensor mirror');
+      stopArcadeMirror();
+    }
+  }
+
+  function stopArcadeMirror() {
+    if (mirrorAnimId) {
+      cancelAnimationFrame(mirrorAnimId);
+      mirrorAnimId = null;
+    }
+
+    if (mirrorStream) {
+      mirrorStream.getTracks().forEach(track => track.stop());
+      mirrorStream = null;
+    }
+
+    if (mirrorAudioCtx) {
+      try { mirrorAudioCtx.close(); } catch (e) {}
+      mirrorAudioCtx = null;
+      mirrorAnalyser = null;
+    }
+
+    if (mirrorEls.video) {
+      mirrorEls.video.pause();
+      mirrorEls.video.srcObject = null;
+    }
+
+    if (mirrorEls.btnToggle) {
+      mirrorEls.btnToggle.textContent = '▶️ Start Camera';
+    }
+
+    if (mirrorEls.micBar) mirrorEls.micBar.style.width = '0%';
+    if (mirrorEls.micDb) mirrorEls.micDb.textContent = '0%';
+    if (mirrorEls.kiaiMarker) mirrorEls.kiaiMarker.classList.remove('kiai-active');
+  }
+
+  function runMirrorDiagnosticLoop() {
+    if (!mirrorStream) return;
+    mirrorAnimId = requestAnimationFrame(runMirrorDiagnosticLoop);
+
+    // 1. Calculate FPS
+    mirrorFrameCount++;
+    const now = performance.now();
+    const elapsed = now - mirrorLastFpsTime;
+    if (elapsed >= 1000) {
+      mirrorCurrentFps = Math.round((mirrorFrameCount * 1000) / elapsed);
+      if (mirrorEls.fps) {
+        mirrorEls.fps.textContent = `${mirrorCurrentFps} FPS`;
+      }
+      mirrorFrameCount = 0;
+      mirrorLastFpsTime = now;
+    }
+
+    // 2. Sample Lighting (every 10 frames)
+    if (mirrorFrameCount % 10 === 0 && mirrorSampleCtx && mirrorEls.video && mirrorEls.video.videoWidth) {
+      try {
+        mirrorSampleCtx.drawImage(mirrorEls.video, 0, 0, 64, 36);
+        const imgData = mirrorSampleCtx.getImageData(0, 0, 64, 36).data;
+        let sum = 0;
+        for (let i = 0; i < imgData.length; i += 4) {
+          sum += 0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2];
+        }
+        const avgLum = Math.round(sum / (imgData.length / 4));
+        const lumPct = Math.min(100, Math.round((avgLum / 255) * 100));
+
+        if (mirrorEls.lightingBar) mirrorEls.lightingBar.style.width = `${lumPct}%`;
+        if (mirrorEls.lightingVal) mirrorEls.lightingVal.textContent = `${lumPct}% (${avgLum} lx)`;
+
+        if (mirrorEls.lightingPill) {
+          if (avgLum < 50) {
+            mirrorEls.lightingPill.textContent = 'TOO DIM';
+            mirrorEls.lightingPill.style.color = '#ffbe76';
+            mirrorEls.lightingPill.style.borderColor = '#ffbe76';
+            mirrorEls.lightingPill.style.background = 'rgba(255, 190, 118, 0.2)';
+          } else if (avgLum > 200) {
+            mirrorEls.lightingPill.textContent = 'OVEREXPOSED';
+            mirrorEls.lightingPill.style.color = '#ef476f';
+            mirrorEls.lightingPill.style.borderColor = '#ef476f';
+            mirrorEls.lightingPill.style.background = 'rgba(239, 71, 111, 0.2)';
+          } else {
+            mirrorEls.lightingPill.textContent = 'OPTIMAL';
+            mirrorEls.lightingPill.style.color = '#06d6a0';
+            mirrorEls.lightingPill.style.borderColor = '#06d6a0';
+            mirrorEls.lightingPill.style.background = 'rgba(6, 214, 160, 0.2)';
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Sample Acoustic Mic / Kiai Battle Cry Level
+    if (mirrorAnalyser) {
+      const dataArray = new Uint8Array(mirrorAnalyser.frequencyBinCount);
+      mirrorAnalyser.getByteFrequencyData(dataArray);
+      let total = 0;
+      for (let i = 0; i < dataArray.length; i++) total += dataArray[i];
+      const avgVol = total / dataArray.length;
+      const volPct = Math.min(100, Math.round((avgVol / 128) * 100));
+
+      if (mirrorEls.micBar) mirrorEls.micBar.style.width = `${volPct}%`;
+      if (mirrorEls.micDb) mirrorEls.micDb.textContent = `${volPct}%`;
+
+      // Kiai threshold: > 70% volume burst
+      if (volPct >= 70) {
+        if (mirrorEls.kiaiMarker) mirrorEls.kiaiMarker.classList.add('kiai-active');
+      } else {
+        if (mirrorEls.kiaiMarker) mirrorEls.kiaiMarker.classList.remove('kiai-active');
+      }
+    }
+  }
+
+  // Hook Mirror Open/Close/Toggle buttons
+  if (mirrorEls.btnOpen && mirrorEls.panel) {
+    mirrorEls.btnOpen.addEventListener('click', () => {
+      const isHidden = mirrorEls.panel.style.display === 'none';
+      if (isHidden) {
+        mirrorEls.panel.style.display = 'block';
+        mirrorEls.btnOpen.innerHTML = '<span>📹</span> Close Mirror';
+        startArcadeMirror();
+      } else {
+        mirrorEls.panel.style.display = 'none';
+        mirrorEls.btnOpen.innerHTML = '<span>📹</span> Sensor Mirror';
+        stopArcadeMirror();
+      }
+    });
+  }
+
+  if (mirrorEls.btnClose && mirrorEls.panel) {
+    mirrorEls.btnClose.addEventListener('click', () => {
+      mirrorEls.panel.style.display = 'none';
+      if (mirrorEls.btnOpen) mirrorEls.btnOpen.innerHTML = '<span>📹</span> Sensor Mirror';
+      stopArcadeMirror();
+    });
+  }
+
+  if (mirrorEls.btnToggle) {
+    mirrorEls.btnToggle.addEventListener('click', () => {
+      if (mirrorStream) {
+        stopArcadeMirror();
+      } else {
+        startArcadeMirror();
+      }
     });
   }
 

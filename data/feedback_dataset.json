@@ -702,5 +702,53 @@
         "timestamp": "2026-11-15T09:10:15Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_ac0f310eee",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "golden_retriever.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "c169834b7633f3b9",
+        "text_hint": "",
+        "score": 0.3659,
+        "cluster": 1,
+        "category": "Golden Retriever",
+        "timestamp": "2026-11-16T11:17:34Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_7b50c748c5",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "Iron-Man-featured-image.avif",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "100eb7b6097006fb",
+        "text_hint": "",
+        "score": 0.0,
+        "cluster": -1,
+        "category": "Iron Man Featured Image",
+        "timestamp": "2026-11-16T11:18:08Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_e1f5b9a0ad",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "Iron-Man-featured-image.avif",
+        "query": "iron man",
+        "query_normalized": "iron man",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.4452,
+        "cluster": -1,
+        "category": "Iron Man Featured Image",
+        "timestamp": "2026-11-16T11:18:24Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

@@ -346,6 +346,358 @@
 }
 
 /* -------------------------------------------------------------
+   4B. LIVE SENSOR DIAGNOSTIC & CALIBRATION MIRROR
+   ------------------------------------------------------------- */
+.btn-arcade-mirror {
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.15) 0%, rgba(112, 225, 209, 0.25) 100%);
+  border: 1px solid rgba(0, 245, 212, 0.4);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--accent-cyan, #70e1d1);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-arcade-mirror:hover {
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.3) 0%, rgba(112, 225, 209, 0.45) 100%);
+  border-color: #00f5d4;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 245, 212, 0.35);
+  transform: translateY(-1px);
+}
+
+.arcade-mirror-panel {
+  background: linear-gradient(170deg, rgba(14, 20, 38, 0.95) 0%, rgba(8, 12, 24, 0.98) 100%);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  border-radius: var(--radius-lg, 16px);
+  padding: 22px;
+  margin-bottom: 28px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 245, 212, 0.12);
+  animation: mirrorFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mirrorFadeIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mirror-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mirror-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--text-main, #f0f4fc);
+  letter-spacing: 0.5px;
+}
+
+.pulse-optic {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00f5d4;
+  box-shadow: 0 0 10px #00f5d4;
+  animation: opticPulse 1.6s infinite;
+}
+
+@keyframes opticPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.mirror-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 245, 212, 0.15);
+  color: #00f5d4;
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  letter-spacing: 1px;
+}
+
+.btn-close-mirror {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted, #8b9bb4);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.btn-close-mirror:hover {
+  background: rgba(239, 71, 111, 0.2);
+  border-color: #ef476f;
+  color: #fff;
+}
+
+.mirror-body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 22px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .mirror-body { grid-template-columns: 1fr; }
+}
+
+.mirror-video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 380px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  box-shadow: inset 0 0 20px rgba(0, 245, 212, 0.15);
+}
+
+.mirror-video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+.mirror-hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: #00f5d4;
+  border-style: solid;
+}
+
+.hud-corner.top-left { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+.hud-corner.top-right { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+.hud-corner.bottom-left { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+.hud-corner.bottom-right { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+.hud-pose-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.guide-head {
+  width: 74px;
+  height: 88px;
+  border: 2px dashed rgba(0, 245, 212, 0.55);
+  border-radius: 50%;
+  margin-top: 10px;
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.2);
+}
+
+.guide-torso {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guide-shoulder-line {
+  position: absolute;
+  top: 24px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 212, 0.4), transparent);
+}
+
+.guide-strike-zone {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 209, 102, 0.6);
+  background: rgba(255, 209, 102, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #ffd166;
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.25);
+  animation: strikePulse 2s infinite ease-in-out;
+}
+
+@keyframes strikePulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.hud-fps-pill {
+  position: absolute;
+  top: 12px;
+  left: 36px;
+  font-family: 'Consolas', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #00f5d4;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 245, 212, 0.25);
+}
+
+.hud-feed-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 36px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-muted, #8b9bb4);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.mirror-telemetry-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sensor-metric-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #8b9bb4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.metric-value-row, .metric-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.lighting-pill {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(6, 214, 160, 0.2);
+  color: #06d6a0;
+  border: 1px solid rgba(6, 214, 160, 0.4);
+}
+
+.metric-bar-bg {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metric-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5d4, #70e1d1);
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+}
+
+.mic-meter-bg {
+  height: 12px;
+  border-radius: 6px;
+  overflow: visible;
+}
+
+.mic-meter-fill {
+  background: linear-gradient(90deg, #06d6a0 0%, #ffd166 65%, #ef476f 100%);
+  transition: width 0.06s ease;
+}
+
+.kiai-marker {
+  position: absolute;
+  top: -18px;
+  right: 20%;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #ffbe76;
+  letter-spacing: 0.5px;
+}
+
+.kiai-active {
+  color: #ff3838 !important;
+  text-shadow: 0 0 8px rgba(255, 56, 56, 0.8);
+}
+
+.metric-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-dim, #637b99);
+  margin-top: 6px;
+}
+
+.framing-status {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-main, #f0f4fc);
+}
+
+.mirror-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mirror-note {
+  font-size: 0.72rem;
+  color: var(--text-dim, #637b99);
+  line-height: 1.3;
+}
+
+/* -------------------------------------------------------------
    5. INTERACTIVE LAUNCH CARDS GRID
    ------------------------------------------------------------- */
 .arcade-cards-grid {
@@ -919,6 +1271,7 @@
               <span class="telemetry-item" id="arcade-active-process" style="display:none">Running: <strong id="arcade-game-name">-</strong> (PID: <strong id="arcade-pid-val">-</strong>)</span>
             </div>
             <div class="status-actions">
+              <button class="btn btn-arcade-mirror" id="btn-arcade-mirror" title="Launch Camera & Microphone Pre-Flight Calibration Mirror">📹 Sensor Mirror</button>
               <button class="btn btn-arcade-refresh" id="btn-arcade-refresh" title="Refresh Live Stats">🔄 Refresh</button>
               <button class="btn btn-arcade-stop danger" id="btn-arcade-stop" style="display: none;" title="Emergency Exit">🛑 Emergency Exit</button>
             </div>
@@ -931,6 +1284,78 @@
               <strong>Native Hardware Packages Not Yet Detected:</strong>
               <div id="arcade-missing-list" style="margin: 4px 0 6px 0; color: #ffbe76;"></div>
               <div>Run in your terminal to enable native camera and audio: <code class="code-pill">pip install pygame mediapipe sounddevice</code></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Camera & Mic Diagnostic Mirror -->
+        <div class="arcade-mirror-panel" id="arcade-mirror-panel" style="display: none;">
+          <div class="mirror-panel-header">
+            <div class="mirror-panel-title">
+              <span class="pulse-optic"></span>
+              <strong>SENSOR DIAGNOSTIC & CALIBRATION MIRROR</strong>
+              <span class="mirror-badge">LIVE WEBCAM & MIC PRE-FLIGHT</span>
+            </div>
+            <button class="btn btn-sm btn-close-mirror" id="btn-close-mirror" title="Close Sensor Mirror">✕ Close Mirror</button>
+          </div>
+
+          <div class="mirror-body">
+            <!-- Video & HUD Reticle -->
+            <div class="mirror-video-container">
+              <video id="arcade-mirror-video" autoplay playsinline muted></video>
+              <canvas id="arcade-mirror-overlay" style="display:none"></canvas>
+              <div class="mirror-hud-overlay">
+                <div class="hud-corner top-left"></div>
+                <div class="hud-corner top-right"></div>
+                <div class="hud-corner bottom-left"></div>
+                <div class="hud-corner bottom-right"></div>
+                <div class="hud-pose-guide">
+                  <div class="guide-head" title="Align your head inside this reticle"></div>
+                  <div class="guide-torso">
+                    <div class="guide-shoulder-line"></div>
+                    <div class="guide-strike-zone left" title="Left punch / blade strike zone">🥊 L</div>
+                    <div class="guide-strike-zone right" title="Right punch / blade strike zone">R 🥊</div>
+                  </div>
+                </div>
+                <div class="hud-fps-pill" id="mirror-fps-display">60 FPS</div>
+                <div class="hud-feed-badge">LIVE OPTIC FEED (MIRRORED)</div>
+              </div>
+            </div>
+
+            <!-- Sensor Metrics & VU Meter -->
+            <div class="mirror-telemetry-col">
+              <div class="sensor-metric-card">
+                <span class="metric-label">💡 Environment Lighting</span>
+                <div class="metric-value-row">
+                  <strong id="mirror-lighting-val">Analyzing...</strong>
+                  <span class="lighting-pill" id="mirror-lighting-pill">OPTIMAL</span>
+                </div>
+                <div class="metric-bar-bg"><div class="metric-bar-fill" id="mirror-lighting-bar" style="width: 75%"></div></div>
+              </div>
+
+              <div class="sensor-metric-card">
+                <div class="metric-label-row">
+                  <span class="metric-label">🎤 Acoustic Mic / Battle Cry Level</span>
+                  <span class="mic-db" id="mirror-mic-db">0%</span>
+                </div>
+                <div class="metric-bar-bg mic-meter-bg">
+                  <div class="metric-bar-fill mic-meter-fill" id="mirror-mic-bar" style="width: 0%"></div>
+                  <div class="kiai-marker" id="mirror-kiai-marker" title="Kiai shout / clap trigger threshold">⚡ KIAI TRIGGER</div>
+                </div>
+                <span class="metric-hint">Shout "KIAI!" or clap hands to test burst detection.</span>
+              </div>
+
+              <div class="sensor-metric-card">
+                <span class="metric-label">📐 Framing & Distance Guidance</span>
+                <div class="framing-status" id="mirror-framing-status">
+                  <span>🧍 Stand 5–7 feet back until your upper torso and fists align inside the glowing strike zones.</span>
+                </div>
+              </div>
+
+              <div class="mirror-actions-row">
+                <button class="btn btn-secondary" id="btn-toggle-camera-stream">⏹️ Stop Camera</button>
+                <span class="mirror-note">Camera auto-releases upon game launch to prevent hardware lock.</span>
+              </div>
             </div>
           </div>
         </div>

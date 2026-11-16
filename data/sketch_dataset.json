@@ -258,5 +258,31 @@
         "cluster": 1,
         "timestamp": "2026-11-15T09:10:15Z",
         "validated": true
+    },
+    {
+        "id": "sketch_c169834b7633",
+        "sketch_hash": "c169834b7633f3b9",
+        "sketch_file": "user_validated/sketch_c169834b7633f3b9.png",
+        "filename": "golden_retriever.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\golden_retriever.jpg",
+        "category": "Golden Retriever",
+        "text_hint": "",
+        "score": 0.3659,
+        "cluster": 1,
+        "timestamp": "2026-11-16T11:17:34Z",
+        "validated": true
+    },
+    {
+        "id": "sketch_100eb7b60970",
+        "sketch_hash": "100eb7b6097006fb",
+        "sketch_file": "user_validated/sketch_100eb7b6097006fb.png",
+        "filename": "Iron-Man-featured-image.avif",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\Iron-Man-featured-image.avif",
+        "category": "Iron Man Featured Image",
+        "text_hint": "",
+        "score": 0.0,
+        "cluster": -1,
+        "timestamp": "2026-11-16T11:18:08Z",
+        "validated": true
     }
 ]

@@ -189,6 +189,25 @@ class Galaxy3D {
         });
       }
 
+      // Animate breathing volumetric nebula clouds
+      if (this.nebulaMeshes && this.nebulaMeshes.length) {
+        this.nebulaMeshes.forEach((neb, idx) => {
+          const breath = 1.0 + Math.sin(clock * 0.9 + idx * 0.8) * 0.08;
+          neb.scale.set(neb.userData.baseScale * breath, neb.userData.baseScale * breath, 1);
+          neb.rotation.z += neb.userData.rotSpeed;
+          neb.lookAt(this.threeCamera.position);
+        });
+      }
+
+      // Animate cosmic stardust drift & twinkle
+      if (this.stardustPoints && this.stardustPoints.geometry) {
+        const positions = this.stardustPoints.geometry.attributes.position.array;
+        for (let i = 1; i < positions.length; i += 3) {
+          positions[i] += Math.sin(clock * 1.2 + i * 0.01) * 0.10;
+        }
+        this.stardustPoints.geometry.attributes.position.needsUpdate = true;
+      }
+
       this.threeRenderer.render(this.threeScene, this.threeCamera);
     };
     animate();
@@ -299,7 +318,146 @@ class Galaxy3D {
       this.buildConstellationLines();
     }
 
+    this.buildCosmicStardust();
+    this.buildNebulaClouds();
+
     this.threeScene.add(this.galaxyGroup);
+  }
+
+  getNebulaTexture() {
+    if (this._nebulaTexture) return this._nebulaTexture;
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+    grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.50)');
+    grad.addColorStop(0.55, 'rgba(255, 255, 255, 0.16)');
+    grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.03)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+    const THREE = window.THREE;
+    this._nebulaTexture = new THREE.CanvasTexture(canvas);
+    return this._nebulaTexture;
+  }
+
+  buildCosmicStardust() {
+    const THREE = window.THREE;
+    const dustCount = 2000;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(dustCount * 3);
+    const col = new Float32Array(dustCount * 3);
+
+    for (let i = 0; i < dustCount; i++) {
+      const i3 = i * 3;
+      // Scatter throughout the active galaxy core
+      pos[i3] = (Math.random() - 0.5) * 720;
+      pos[i3 + 1] = (Math.random() - 0.5) * 720;
+      pos[i3 + 2] = (Math.random() - 0.5) * 720;
+
+      const pick = Math.random();
+      if (pick > 0.7) {
+        // Cyan stardust
+        col[i3] = 0.44; col[i3 + 1] = 0.88; col[i3 + 2] = 0.85;
+      } else if (pick > 0.4) {
+        // Magenta / Rose stardust
+        col[i3] = 0.85; col[i3 + 1] = 0.35; col[i3 + 2] = 0.65;
+      } else if (pick > 0.2) {
+        // Electric Gold stardust
+        col[i3] = 1.0; col[i3 + 1] = 0.82; col[i3 + 2] = 0.45;
+      } else {
+        // Soft white starlight
+        col[i3] = 0.9; col[i3 + 1] = 0.95; col[i3 + 2] = 1.0;
+      }
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size: 1.8,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.60,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    this.stardustPoints = new THREE.Points(geo, mat);
+    this.galaxyGroup.add(this.stardustPoints);
+  }
+
+  buildNebulaClouds() {
+    const THREE = window.THREE;
+    this.nebulaMeshes = [];
+    if (!this.normalizedItems || !this.normalizedItems.length) return;
+
+    // Group items by cluster
+    const clusters = {};
+    this.normalizedItems.forEach(it => {
+      const c = it.cluster ?? -1;
+      if (c === -1) return;
+      if (!clusters[c]) clusters[c] = [];
+      clusters[c].push(it);
+    });
+
+    const texture = this.getNebulaTexture();
+    const planeGeo = new THREE.PlaneGeometry(1, 1);
+
+    Object.entries(clusters).forEach(([cId, items]) => {
+      if (!items.length) return;
+      // Calculate cluster centroid & radius
+      let sumX = 0, sumY = 0, sumZ = 0;
+      items.forEach(it => {
+        sumX += it.nx; sumY += it.ny; sumZ += it.nz;
+      });
+      const cx = sumX / items.length;
+      const cy = sumY / items.length;
+      const cz = sumZ / items.length;
+
+      let maxDist = 70;
+      items.forEach(it => {
+        const dx = it.nx - cx, dy = it.ny - cy, dz = it.nz - cz;
+        const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (d > maxDist) maxDist = d;
+      });
+
+      const clusterColor = items[0].cluster_color || '#4cc9f0';
+      const colorHex = parseInt(clusterColor.replace('#', '0x'), 16);
+
+      // Create overlapping volumetric nebula clouds
+      const puffCount = Math.min(3, Math.max(2, Math.floor(items.length / 3) + 1));
+      for (let p = 0; p < puffCount; p++) {
+        const mat = new THREE.MeshBasicMaterial({
+          map: texture,
+          color: colorHex,
+          transparent: true,
+          opacity: 0.12 + (p === 0 ? 0.05 : 0),
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(planeGeo, mat);
+        const offsetX = (Math.random() - 0.5) * (maxDist * 0.4);
+        const offsetY = (Math.random() - 0.5) * (maxDist * 0.4);
+        const offsetZ = (Math.random() - 0.5) * (maxDist * 0.4);
+        mesh.position.set(cx + offsetX, cy + offsetY, cz + offsetZ);
+
+        const baseScale = maxDist * (1.8 + Math.random() * 0.6);
+        mesh.scale.set(baseScale, baseScale, 1);
+        mesh.rotation.z = Math.random() * Math.PI * 2;
+        mesh.userData = {
+          baseScale,
+          rotSpeed: (Math.random() - 0.5) * 0.0010
+        };
+
+        this.galaxyGroup.add(mesh);
+        this.nebulaMeshes.push(mesh);
+      }
+    });
   }
 
   buildConstellationLines() {

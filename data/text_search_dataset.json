@@ -118,5 +118,17 @@
         "cluster": -1,
         "timestamp": "2026-11-13T17:56:54Z",
         "validated": true
+    },
+    {
+        "id": "text_a5693e88fa2d",
+        "query": "iron man",
+        "query_normalized": "iron man",
+        "filename": "Iron-Man-featured-image.avif",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\Iron-Man-featured-image.avif",
+        "category": "Iron Man Featured Image",
+        "score": 0.4452,
+        "cluster": -1,
+        "timestamp": "2026-11-16T11:18:24Z",
+        "validated": true
     }
 ]
