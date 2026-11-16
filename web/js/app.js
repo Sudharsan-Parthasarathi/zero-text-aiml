@@ -507,11 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function scheduleSearchAutoUnselect(delay = 2500) {
+    // Disabled: User requested right inspector drawer & selected item remain open
+    // until explicitly unselected by the user.
     clearSearchAutoUnselect();
-    searchAutoUnselectTimer = setTimeout(() => {
-      // Once search focus / fly-to is done, cleanly unselect the ball
-      deselectItem();
-    }, delay);
   }
 
   function deselectItem() {
@@ -1014,15 +1012,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update 3D spotlight HUD & fly camera
         updateSpotlightHUD(topItem, data.results.length);
         if (state.activeView === 'galaxy3d') {
-          galaxy3d.flyToItem(topItem, () => {
-            scheduleSearchAutoUnselect(2000);
-          });
-          scheduleSearchAutoUnselect(3500);
+          galaxy3d.flyToItem(topItem);
         } else if (state.activeView === 'galaxy2d') {
           galaxy2d.focusItem(topItem);
-          scheduleSearchAutoUnselect(2500);
-        } else {
-          scheduleSearchAutoUnselect(2500);
         }
       } else {
         hideSpotlightHUD();
@@ -1066,10 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = state.displayedImages[state.currentMatchIndex];
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
-      galaxy3d.flyToItem(target, () => {
-        scheduleSearchAutoUnselect(2000);
-      });
-      scheduleSearchAutoUnselect(3500);
+      galaxy3d.flyToItem(target);
     });
   }
 
@@ -1080,10 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = state.displayedImages[state.currentMatchIndex];
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
-      galaxy3d.flyToItem(target, () => {
-        scheduleSearchAutoUnselect(2000);
-      });
-      scheduleSearchAutoUnselect(3500);
+      galaxy3d.flyToItem(target);
     });
   }
 
@@ -1095,7 +1081,6 @@ document.addEventListener('DOMContentLoaded', () => {
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
       galaxy2d.focusItem(target);
-      scheduleSearchAutoUnselect(2500);
     });
   }
 
@@ -1194,15 +1179,9 @@ document.addEventListener('DOMContentLoaded', () => {
         selectItem(data.results[0]);
         updateSpotlightHUD(data.results[0], data.results.length);
         if (state.activeView === 'galaxy3d') {
-          galaxy3d.flyToItem(data.results[0], () => {
-            scheduleSearchAutoUnselect(2000);
-          });
-          scheduleSearchAutoUnselect(3500);
+          galaxy3d.flyToItem(data.results[0]);
         } else if (state.activeView === 'galaxy2d') {
           galaxy2d.focusItem(data.results[0]);
-          scheduleSearchAutoUnselect(2500);
-        } else {
-          scheduleSearchAutoUnselect(2500);
         }
       }
       showToast(`Showing images matching color ${hexCode}`);
@@ -1361,15 +1340,9 @@ document.addEventListener('DOMContentLoaded', () => {
         selectItem(data.results[0]);
         updateSpotlightHUD(data.results[0], data.results.length);
         if (state.activeView === 'galaxy3d') {
-          galaxy3d.flyToItem(data.results[0], () => {
-            scheduleSearchAutoUnselect(2000);
-          });
-          scheduleSearchAutoUnselect(3500);
+          galaxy3d.flyToItem(data.results[0]);
         } else if (state.activeView === 'galaxy2d') {
           galaxy2d.focusItem(data.results[0]);
-          scheduleSearchAutoUnselect(2500);
-        } else {
-          scheduleSearchAutoUnselect(2500);
         }
       }
       showToast(`Sketch search complete: ${data.total_results} matches found.`);
@@ -1502,7 +1475,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const probe = data.probe;
         activeProbeData = probe;
 
-        // Display results in views
+        // 1. Automatically switch to 3D Galaxy view
+        setView('galaxy3d');
+
+        // 2. Display results in views
         state.displayedImages = data.results;
         state.activeSearch = {
           type: 'image_probe',
@@ -1511,7 +1487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         updateAllViews();
 
-        // Project glowing test probe in 3D Galaxy & 2D Star Map
+        // 3. Project glowing test probe in 3D Galaxy & 2D Star Map
         if (galaxy3d && galaxy3d.setTestProbe) {
           galaxy3d.setTestProbe(probe, data.results);
         }
@@ -1519,9 +1495,11 @@ document.addEventListener('DOMContentLoaded', () => {
           galaxy2d.setTestProbe(probe, data.results);
         }
 
-        // Spotlight the top neighbor match
+        // 4. Open right inspector popup for nearest neighbor (like usual search)
         if (data.results && data.results.length > 0) {
-          updateSpotlightHUD(data.results[0], data.results.length);
+          const topNeighbor = data.results[0];
+          selectItem(topNeighbor);
+          updateSpotlightHUD(topNeighbor, data.results.length);
         }
 
         // Update Probe Telemetry HUD
