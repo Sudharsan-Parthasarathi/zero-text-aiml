@@ -53,7 +53,7 @@ import threading
 import time
 import base64
 import hashlib
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from PIL import Image
 
 # Enable UTF-8 terminal encoding
@@ -240,6 +240,7 @@ class ZeroTextEngine:
         self.sketch_adapter: Optional[SketchProjection] = None
         self.reducer_2d: Optional[umap.UMAP] = None
         self.reducer_3d: Optional[umap.UMAP] = None
+        self._smart_vocab_cache: Optional[Dict[str, Any]] = None
 
         self.indexing_state = {
             "status": "idle",
@@ -2087,6 +2088,114 @@ class ZeroTextEngine:
             "total_results": len(results),
             "results": results,
         }
+
+    # -------------------------------------------------------------
+    # IN-GALAXY SMART VOCABULARY SUGGESTIONS
+    # -------------------------------------------------------------
+
+    def get_smart_vocabulary(self) -> Dict[str, Any]:
+        """
+        Extracts dynamic In-Galaxy Smart Vocabulary from active image dataset:
+        1. Visual objects & concept tags derived from image filenames and metadata.
+        2. Clean in-image OCR vocabulary words & technical terms.
+        3. Dominant colour keywords with corresponding palette swatches.
+        Returns a curated, ranked list of suggestion chips with categories and counts.
+        """
+        if hasattr(self, "_smart_vocab_cache") and self._smart_vocab_cache:
+            return self._smart_vocab_cache
+
+        stopwords = {
+            "the", "and", "for", "with", "this", "that", "from", "are", "was",
+            "not", "you", "all", "any", "can", "has", "have", "imgflip", "com",
+            "www", "http", "https", "jpg", "png", "jpeg", "webp", "html", "pdf",
+            "our", "they", "will", "been", "one", "two", "see", "get", "its", "via"
+        }
+
+        chips = []
+        seen_texts = set()
+
+        # 1. Visual Object & Concept Tags (from filenames)
+        for item in self.metadata:
+            fn = item.get("filename", "")
+            clean_name = re.sub(r'_[0-9]{10,}', '', fn)
+            clean_name = re.sub(r'\.(jpg|png|jpeg|webp|bmp|gif)$', '', clean_name, flags=re.I)
+            words = [w for w in re.split(r'[-_ ]+', clean_name) if w.lower() not in stopwords and len(w) > 1]
+            if words:
+                concept_title = " ".join(w.capitalize() for w in words)
+                if concept_title.lower() not in seen_texts:
+                    seen_texts.add(concept_title.lower())
+                    chips.append({
+                        "text": concept_title,
+                        "category": "visual",
+                        "icon": "🎯",
+                        "count": 1
+                    })
+
+        # 2. In-Image OCR Vocabulary Words
+        ocr_word_counts = {}
+        for fn, ocr in self.ocr_lookup.items():
+            txt = ocr.get("full_text", "")
+            if not txt:
+                continue
+            tokens = re.findall(r'[A-Za-z]{3,}', txt)
+            for token in tokens:
+                tl = token.lower()
+                if tl in stopwords or len(tl) < 3 or tl in seen_texts:
+                    continue
+                word_display = token.upper() if len(token) <= 4 and token.isupper() else token.capitalize()
+                ocr_word_counts[word_display] = ocr_word_counts.get(word_display, 0) + 1
+
+        sorted_ocr = sorted(ocr_word_counts.items(), key=lambda x: x[1], reverse=True)
+        for word, count in sorted_ocr[:20]:
+            if word.lower() not in seen_texts:
+                seen_texts.add(word.lower())
+                chips.append({
+                    "text": word,
+                    "category": "ocr",
+                    "icon": "📝",
+                    "count": count
+                })
+
+        # 3. Dominant Colour Keywords (with representative hex)
+        color_rules = [
+            ("Neon Cyan", "#00f5d4", lambda r, g, b: g > 170 and b > 170 and r < 140),
+            ("Deep Blue", "#1d3557", lambda r, g, b: b > 120 and r < 80 and g < 120),
+            ("Golden Amber", "#ffd166", lambda r, g, b: r > 180 and g > 150 and b < 100),
+            ("Crimson Red", "#ef476f", lambda r, g, b: r > 170 and g < 90 and b < 100),
+            ("Emerald Green", "#06d6a0", lambda r, g, b: g > 150 and r < 100 and b < 120),
+            ("Violet Purple", "#7209b7", lambda r, g, b: r > 130 and b > 140 and g < 100),
+            ("Monochrome Dark", "#1a1e29", lambda r, g, b: r < 50 and g < 50 and b < 50),
+        ]
+
+        found_colors = set()
+        for fn, palette in self.colour_lookup.items():
+            for c in palette:
+                h = c.get("hex", "")
+                if len(h) == 7 and h.startswith("#"):
+                    try:
+                        r = int(h[1:3], 16)
+                        g = int(h[3:5], 16)
+                        b = int(h[5:7], 16)
+                        for c_name, c_hex, c_fn in color_rules:
+                            if c_fn(r, g, b) and c_name not in found_colors:
+                                found_colors.add(c_name)
+                                chips.append({
+                                    "text": c_name,
+                                    "category": "colour",
+                                    "icon": "🎨",
+                                    "hex": c_hex,
+                                    "count": 1
+                                })
+                    except ValueError:
+                        pass
+
+        result = {
+            "total_terms": len(chips),
+            "chips": chips,
+            "categories": ["all", "visual", "ocr", "colour"]
+        }
+        self._smart_vocab_cache = result
+        return result
 
     # -------------------------------------------------------------
     # FULL RE-INDEXING & INGESTION PIPELINE

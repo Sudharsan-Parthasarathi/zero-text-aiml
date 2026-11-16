@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lightboxZoom: 1.0,
     activeSearch: null, // { type: 'text'|'sketch', query: string, sketchData: string, textHint: string, timestamp: number }
     feedbackHistory: {}, // searchKey -> { feedback: 'positive'|'negative', message: string, enriched: boolean, already_exists: boolean }
+    smartVocab: [], // In-Galaxy dynamic dataset vocabulary chips
   };
 
   // UI Elements
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     weightColourVal: document.getElementById('val-colour'),
     clusterPillsContainer: document.getElementById('cluster-pills'),
     queryInsights: document.getElementById('query-insights'),
+    smartVocabBar: document.getElementById('smart-vocab-bar'),
+    smartVocabTrack: document.getElementById('smart-vocab-track'),
 
     // AI Decider & Presets
     deciderLabel: document.getElementById('decider-label'),
@@ -266,17 +269,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   async function loadInitialData() {
     try {
-      const [statusRes, imagesRes] = await Promise.all([
+      const [statusRes, imagesRes, vocabRes] = await Promise.all([
         fetch('/api/status').then(r => r.json()),
         fetch('/api/images').then(r => r.json()),
+        fetch('/api/vocabulary').then(r => r.json()).catch(() => ({ chips: [] })),
       ]);
 
       updateStats(statusRes);
       state.allImages = imagesRes;
       state.displayedImages = [...imagesRes];
+      state.smartVocab = (vocabRes && vocabRes.chips) ? vocabRes.chips : [];
 
       if (el.loadingBanner) el.loadingBanner.style.display = 'none';
       buildClusterPills();
+      renderSmartVocabChips();
       updateAllViews();
     } catch (err) {
       console.error('Failed to load initial data:', err);
@@ -352,6 +358,93 @@ document.addEventListener('DOMContentLoaded', () => {
       state.displayedImages = state.allImages.filter(it => it.cluster === cId);
     }
     updateAllViews();
+  }
+
+  // -------------------------------------------------------------
+  // IN-GALAXY SMART VOCABULARY SUGGESTIONS
+  // -------------------------------------------------------------
+  function renderSmartVocabChips(filterQuery = '') {
+    const track = el.smartVocabTrack;
+    if (!track) return;
+
+    track.innerHTML = '';
+    const query = (filterQuery || '').trim().toLowerCase();
+
+    let candidateChips = state.smartVocab || [];
+
+    if (query) {
+      candidateChips = candidateChips.filter(chip =>
+        chip.text.toLowerCase().includes(query)
+      );
+      // Sort matches: startsWith first, then contains
+      candidateChips.sort((a, b) => {
+        const aStarts = a.text.toLowerCase().startsWith(query);
+        const bStarts = b.text.toLowerCase().startsWith(query);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return a.text.localeCompare(b.text);
+      });
+    }
+
+    if (!candidateChips.length) {
+      track.innerHTML = `<span style="font-size:0.75rem;color:var(--text-dim);padding:3px 10px;">No dataset vocabulary matches "${escapeHtml(filterQuery)}"</span>`;
+      return;
+    }
+
+    // Limit to top 24 visible chips for clean horizontal layout
+    const visibleChips = candidateChips.slice(0, 24);
+
+    visibleChips.forEach(chip => {
+      const chipEl = document.createElement('div');
+      chipEl.className = 'vocab-chip';
+      chipEl.dataset.category = chip.category || 'visual';
+      chipEl.dataset.term = chip.text;
+
+      // Active state if matching search input exactly
+      if (el.searchInput && el.searchInput.value.trim().toLowerCase() === chip.text.toLowerCase()) {
+        chipEl.classList.add('active');
+      }
+
+      // Icon or Color Dot
+      let iconHtml = '';
+      if (chip.category === 'colour' && chip.hex) {
+        iconHtml = `<span class="vocab-color-dot" style="background:${chip.hex};"></span>`;
+      } else {
+        iconHtml = `<span class="vocab-chip-icon">${chip.icon || '✦'}</span>`;
+      }
+
+      // Highlight matched letters if user is typing
+      let textHtml = escapeHtml(chip.text);
+      if (query && textHtml.toLowerCase().includes(query)) {
+        const idx = textHtml.toLowerCase().indexOf(query);
+        const match = textHtml.substr(idx, query.length);
+        textHtml = `${textHtml.substring(0, idx)}<mark>${match}</mark>${textHtml.substring(idx + query.length)}`;
+      }
+
+      // Badge (category / count)
+      let badgeHtml = '';
+      if (chip.category === 'ocr') {
+        badgeHtml = `<span class="vocab-chip-badge" title="${chip.count} OCR occurrences">${chip.count > 1 ? chip.count : 'OCR'}</span>`;
+      } else if (chip.category === 'colour') {
+        badgeHtml = `<span class="vocab-chip-badge">Color</span>`;
+      }
+
+      chipEl.innerHTML = `
+        ${iconHtml}
+        <span class="vocab-chip-text">${textHtml}</span>
+        ${badgeHtml}
+      `;
+
+      // 1-Click Search Trigger
+      chipEl.addEventListener('click', () => {
+        el.searchInput.value = chip.text;
+        track.querySelectorAll('.vocab-chip').forEach(c => c.classList.remove('active'));
+        chipEl.classList.add('active');
+        performHybridSearch();
+      });
+
+      track.appendChild(chipEl);
+    });
   }
 
   // -------------------------------------------------------------
@@ -1121,14 +1214,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.feedbackCard) el.feedbackCard.style.display = 'none';
     deselectItem();
     dismissTestProbe();
+    renderSmartVocabChips('');
     filterByCluster(state.activeClusterFilter);
   }
+
+  el.searchInput.addEventListener('input', () => {
+    const val = el.searchInput.value;
+    el.searchClearBtn.style.display = val ? 'block' : 'none';
+    renderSmartVocabChips(val);
+  });
 
   el.searchInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') performHybridSearch();
   });
   if (el.searchBtn) el.searchBtn.addEventListener('click', performHybridSearch);
   el.searchClearBtn.addEventListener('click', clearSearch);
+
+  if (el.smartVocabTrack) {
+    el.smartVocabTrack.addEventListener('wheel', e => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.smartVocabTrack.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
 
   // Manual Slider Adjustments
   if (el.weightsToggleBtn) {

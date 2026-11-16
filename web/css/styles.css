@@ -285,6 +285,153 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* -------------------------------------------------------------
+   IN-GALAXY SMART VOCABULARY SUGGESTIONS BAR
+   ------------------------------------------------------------- */
+.smart-vocab-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(13, 20, 38, 0.65);
+  border: 1px solid rgba(112, 225, 209, 0.14);
+  border-radius: var(--radius-md, 10px);
+  padding: 6px 12px;
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.vocab-lead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-right: 8px;
+  border-right: 1px solid rgba(112, 225, 209, 0.15);
+  user-select: none;
+}
+
+.vocab-sparkle {
+  color: var(--accent-cyan, #00f5d4);
+  font-size: 0.85rem;
+  animation: vocabSparklePulse 2.5s infinite ease-in-out;
+}
+
+@keyframes vocabSparklePulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); text-shadow: 0 0 8px rgba(0, 245, 212, 0.8); }
+}
+
+.vocab-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim, #8b96a8);
+}
+
+.smart-vocab-track {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 2px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(112, 225, 209, 0.2) transparent;
+}
+
+.smart-vocab-track::-webkit-scrollbar {
+  height: 3px;
+}
+
+.smart-vocab-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.smart-vocab-track::-webkit-scrollbar-thumb {
+  background: rgba(112, 225, 209, 0.25);
+  border-radius: 4px;
+}
+
+.vocab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 4px 11px;
+  border-radius: 20px;
+  background: rgba(17, 26, 48, 0.85);
+  border: 1px solid rgba(112, 225, 209, 0.18);
+  color: var(--text-muted, #c8d3e6);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.vocab-chip:hover {
+  background: rgba(0, 245, 212, 0.12);
+  border-color: var(--accent-cyan, #00f5d4);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 245, 212, 0.18);
+}
+
+.vocab-chip.active {
+  background: rgba(0, 245, 212, 0.22);
+  border-color: var(--accent-cyan, #00f5d4);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.35);
+}
+
+.vocab-chip-icon {
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.vocab-chip-text {
+  font-family: inherit;
+}
+
+.vocab-chip-text mark {
+  background: transparent;
+  color: var(--accent-cyan, #00f5d4);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.vocab-chip-badge {
+  font-size: 0.68rem;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim, #8b96a8);
+}
+
+.vocab-chip[data-category="visual"] .vocab-chip-badge {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.12);
+}
+
+.vocab-chip[data-category="ocr"] .vocab-chip-badge {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.vocab-chip[data-category="colour"] .vocab-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
 .search-filter-pills {
   display: flex;
   align-items: center;

@@ -262,6 +262,12 @@ def search_image_probe(req: ImageProbeRequest):
     )
 
 
+@app.get("/api/vocabulary")
+def get_smart_vocabulary():
+    """Returns dynamic autocomplete and discovery chips pulled from dataset OCR, visual concepts, and dominant colours."""
+    return engine.get_smart_vocabulary()
+
+
 @app.post("/api/feedback")
 def submit_feedback(req: FeedbackRequest):
     res = engine.record_feedback(
@@ -341,6 +347,7 @@ def get_indexing_status():
 def recluster_images():
     clusters = engine.run_clustering()
     engine._save_data()
+    engine._smart_vocab_cache = None
     return {
         "message": "Reclustering completed successfully.",
         "clusters": clusters,
