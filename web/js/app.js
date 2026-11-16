@@ -1501,12 +1501,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // -------------------------------------------------------------
+  // HTML ESCAPING UTILITY
+  // -------------------------------------------------------------
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  let wasArcadeRunning = false;
+  let arcadePollCounter = 0;
+
   async function pollArcadeStatus() {
     try {
+      arcadePollCounter++;
       const res = await fetch('/api/arcade/status');
       if (!res.ok) return;
       const status = await res.json();
       updateArcadeStatusUI(status);
+
+      // If a game just finished, or every 4 poll ticks (~10s), sync the leaderboard records as well
+      if ((wasArcadeRunning && !status.running) || arcadePollCounter % 4 === 0) {
+        try {
+          const profilesRes = await fetch('/api/arcade/profiles');
+          if (profilesRes.ok) {
+            const data = await profilesRes.json();
+            renderArcadeLeaderboard(data);
+          }
+        } catch (e) {
+          // ignore background profile fetch errors
+        }
+      }
+      wasArcadeRunning = !!status.running;
     } catch (err) {
       console.warn('Arcade status poll failed:', err);
     }
@@ -1558,14 +1589,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (statusRes.ok) {
         const status = await statusRes.json();
         updateArcadeStatusUI(status);
+        wasArcadeRunning = !!status.running;
       }
 
       if (profilesRes.ok) {
         const data = await profilesRes.json();
         renderArcadeLeaderboard(data);
+      } else {
+        if (el.arcadeLeaderboardWrap && !el.arcadeLeaderboardWrap.innerHTML.trim()) {
+          el.arcadeLeaderboardWrap.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">Failed to load leaderboard data. Click Refresh to retry.</div>';
+        }
       }
     } catch (err) {
       console.error('Failed to load arcade dashboard:', err);
+      if (el.arcadeLeaderboardWrap && !el.arcadeLeaderboardWrap.innerHTML.trim()) {
+        el.arcadeLeaderboardWrap.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">Leaderboard sync paused. Check connection and click Refresh.</div>';
+      }
     }
   }
 
@@ -1575,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const lb = data.leaderboard || [];
     if (!lb.length) {
-      wrap.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No player records found. Play a game to create your profile!</div>';
+      wrap.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No player records found yet. Play a game to create your profile!</div>';
       return;
     }
 
@@ -1592,15 +1631,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="player-name">${escapeHtml(p.name)}</span>
             ${activeBadge}
           </td>
-          <td class="col-score highlight"><strong>${p.best_score}</strong></td>
-          <td><span class="score-pill boxer">${p.boxer_high}</span></td>
-          <td>${p.boxer_punches}</td>
-          <td>${p.boxer_combo}x</td>
-          <td><span class="score-pill fruit">${p.fruit_high}</span></td>
-          <td>${p.fruit_sliced}</td>
-          <td>${p.fruit_combo}x</td>
+          <td class="col-score highlight"><strong>${p.best_score || 0}</strong></td>
+          <td><span class="score-pill boxer">${p.boxer_high || 0}</span></td>
+          <td>${p.boxer_punches || 0}</td>
+          <td>${p.boxer_combo || 0}x</td>
+          <td><span class="score-pill fruit">${p.fruit_high || 0}</span></td>
+          <td>${p.fruit_sliced || 0}</td>
+          <td>${p.fruit_combo || 0}x</td>
           <td>
-            ${!p.is_active ? `<button class="btn btn-sm btn-set-player" data-player-id="${p.id}" title="Set as Active Player">Select</button>` : '<span style="color:var(--accent-cyan);font-size:12px">Current</span>'}
+            ${!p.is_active ? `<button class="btn btn-sm btn-set-player" data-player-id="${escapeHtml(p.id)}" title="Set as Active Player">Select</button>` : '<span style="color:var(--accent-cyan);font-size:12px;font-weight:600;">Current</span>'}
           </td>
         </tr>
       `;

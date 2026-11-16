@@ -10,3 +10,9 @@ env/
 *.zip
 *.exe
 tools/
+
+# Offline Local Game Data (Persisted locally on device)
+player_profiles.json
+player_profiles.json.bak
+fruit_ninja_high_score.json
+high_score.json

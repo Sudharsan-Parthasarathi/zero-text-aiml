@@ -145,6 +145,16 @@ class ArcadeManager:
 
     def get_profiles_and_leaderboard(self) -> Dict[str, Any]:
         if not PROFILES_PATH.exists():
+            try:
+                import sys
+                if str(ARCADE_DIR) not in sys.path:
+                    sys.path.insert(0, str(ARCADE_DIR))
+                from player_profiles import get_profile_manager
+                get_profile_manager()
+            except Exception:
+                pass
+
+        if not PROFILES_PATH.exists():
             return {
                 "active_player_id": None,
                 "players": {},

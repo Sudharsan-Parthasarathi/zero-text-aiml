@@ -3,3 +3,17 @@ model_cache/
 __pycache__/
 *.py[cod]
 .env
+
+# Offline Local Game Data (Persisted strictly on local device, never pushed to GitHub)
+shadowbox_arcade/player_profiles.json
+shadowbox_arcade/player_profiles.json.bak
+shadowbox_arcade/fruit_ninja_high_score.json
+shadowbox_arcade/high_score.json
+shadowbox_arcade/*.bak
+shadowbox_arcade/**/player_profiles.json
+shadowbox_arcade/**/high_score.json
+shadowbox_arcade/**/fruit_ninja_high_score.json
+
+# Local static & temporary folders
+data/static/
+zero-text-aiml/
