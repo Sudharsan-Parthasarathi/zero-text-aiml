@@ -239,14 +239,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // FULL GALAXY VIEW TOGGLE
   // -------------------------------------------------------------
-  if (el.btnToggleSearchBar && el.searchHub) {
-    let isSearchVisible = true;
-    el.btnToggleSearchBar.addEventListener('click', () => {
-      isSearchVisible = !isSearchVisible;
+  let isSearchVisible = true;
+  let previousSearchVisibleState = null;
+
+  function setFullGalaxyMode(enableFullMode) {
+    isSearchVisible = !enableFullMode;
+    if (el.searchHub) {
       el.searchHub.style.display = isSearchVisible ? 'block' : 'none';
+    }
+    if (el.btnToggleSearchBar) {
       el.btnToggleSearchBar.innerHTML = isSearchVisible ? '<span>🌌</span> Full Galaxy Mode' : '<span>🔍</span> Show Search Bar';
-      galaxy3d.resize();
-      galaxy2d.resize();
+    }
+    if (galaxy3d && typeof galaxy3d.resize === 'function') galaxy3d.resize();
+    if (galaxy2d && typeof galaxy2d.resize === 'function') galaxy2d.resize();
+  }
+
+  if (el.btnToggleSearchBar && el.searchHub) {
+    el.btnToggleSearchBar.addEventListener('click', () => {
+      setFullGalaxyMode(isSearchVisible);
+      previousSearchVisibleState = null;
     });
   }
 
@@ -365,11 +376,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewName === 'galaxy2d') galaxy2d.resize();
 
     if (viewName === 'arcade') {
+      // Automatically activate Full Galaxy Mode as soon as entering the Arcade bay
+      if (previousSearchVisibleState === null) {
+        previousSearchVisibleState = isSearchVisible;
+      }
+      setFullGalaxyMode(true);
+
       loadArcadeDashboard();
       if (!arcadePollTimer) {
         arcadePollTimer = setInterval(pollArcadeStatus, 2500);
       }
     } else {
+      if (previousSearchVisibleState !== null) {
+        setFullGalaxyMode(!previousSearchVisibleState);
+        previousSearchVisibleState = null;
+      }
       if (arcadePollTimer) {
         clearInterval(arcadePollTimer);
         arcadePollTimer = null;
