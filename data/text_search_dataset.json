@@ -130,5 +130,29 @@
         "cluster": -1,
         "timestamp": "2026-11-16T11:18:24Z",
         "validated": true
+    },
+    {
+        "id": "text_0b73b305e85f",
+        "query": "cup",
+        "query_normalized": "cup",
+        "filename": "coffee.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
+        "category": "Coffee",
+        "score": 0.6896,
+        "cluster": 1,
+        "timestamp": "2026-11-16T16:03:59Z",
+        "validated": true
+    },
+    {
+        "id": "text_51f5bc658f49",
+        "query": "cats",
+        "query_normalized": "cats",
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "category": "Cat",
+        "score": 0.4479,
+        "cluster": -1,
+        "timestamp": "2026-11-16T16:04:15Z",
+        "validated": true
     }
 ]

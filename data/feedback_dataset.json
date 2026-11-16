@@ -750,5 +750,37 @@
         "timestamp": "2026-11-16T11:18:24Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_937f8d62f0",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "coffee.jpg",
+        "query": "cup",
+        "query_normalized": "cup",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.6896,
+        "cluster": 1,
+        "category": "Coffee",
+        "timestamp": "2026-11-16T16:03:59Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_dfcc41045c",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "cat.jpg",
+        "query": "cats",
+        "query_normalized": "cats",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.4479,
+        "cluster": -1,
+        "category": "Cat",
+        "timestamp": "2026-11-16T16:04:15Z",
+        "session_id": "",
+        "enriched": true
     }
 ]
