@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "last_active_player_id": "abinivesh",
+  "last_active_player_id": "sudharsan",
   "players": {
     "abinivesh": {
       "id": "abinivesh",
@@ -35,10 +35,10 @@
         "classic_high_score": 156,
         "zen_high_score": 0,
         "arcade_high_score": 254,
-        "total_sliced": 68,
+        "total_sliced": 72,
         "max_combo": 3,
         "bombs_hit": 25,
-        "total_matches": 24
+        "total_matches": 25
       }
     },
     "muskaan": {
