@@ -282,7 +282,17 @@ class Galaxy2D {
         }
       }
       if (closest) {
-        this.selectItem(closest);
+        if (this.selectedItem && this.selectedItem.filename === closest.filename) {
+          // Toggle selection off if clicking the already selected item
+          this.deselectItem();
+        } else {
+          this.selectItem(closest);
+        }
+      } else {
+        // Clicking empty space on canvas deselects
+        if (this.selectedItem) {
+          this.deselectItem();
+        }
       }
     });
 
@@ -320,6 +330,14 @@ class Galaxy2D {
     this.render();
     if (this.options.onSelect) {
       this.options.onSelect(item);
+    }
+  }
+
+  deselectItem() {
+    this.selectedItem = null;
+    this.render();
+    if (this.options.onSelect) {
+      this.options.onSelect(null);
     }
   }
 }

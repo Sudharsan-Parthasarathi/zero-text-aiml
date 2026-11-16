@@ -213,12 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // INITIALIZE GALAXY ENGINES
   // -------------------------------------------------------------
   const galaxy3d = new Galaxy3D('galaxy3d-canvas', {
-    onSelect: item => selectItem(item),
+    onSelect: item => item ? selectItem(item) : deselectItem(),
     onHover: (item, x, y) => showTooltip(item, x, y),
   });
 
   const galaxy2d = new Galaxy2D('galaxy2d-canvas', {
-    onSelect: item => selectItem(item),
+    onSelect: item => item ? selectItem(item) : deselectItem(),
     onHover: (item, x, y) => showTooltip(item, x, y),
   });
 
@@ -446,7 +446,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      card.addEventListener('click', () => selectItem(item));
+      card.addEventListener('click', () => {
+        if (state.selectedItem && state.selectedItem.filename === item.filename) {
+          deselectItem();
+        } else {
+          selectItem(item);
+        }
+      });
       card.addEventListener('dblclick', () => openFullScreen(item));
       wrapper.appendChild(card);
     });
@@ -488,10 +494,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------------------------
-  // IMAGE INSPECTION DRAWER
+  // SELECTION & IMAGE INSPECTION DRAWER
   // -------------------------------------------------------------
+  let searchAutoUnselectTimer = null;
+
+  function clearSearchAutoUnselect() {
+    if (searchAutoUnselectTimer) {
+      clearTimeout(searchAutoUnselectTimer);
+      searchAutoUnselectTimer = null;
+    }
+  }
+
+  function scheduleSearchAutoUnselect(delay = 2500) {
+    clearSearchAutoUnselect();
+    searchAutoUnselectTimer = setTimeout(() => {
+      // Once search focus / fly-to is done, cleanly unselect the ball
+      deselectItem();
+    }, delay);
+  }
+
+  function deselectItem() {
+    clearSearchAutoUnselect();
+    state.selectedItem = null;
+
+    if (galaxy3d) {
+      galaxy3d.selectedItem = null;
+      if (galaxy3d.useThree) galaxy3d.buildThreeScene();
+      else if (galaxy3d.renderCanvasFallback) galaxy3d.renderCanvasFallback();
+    }
+    if (galaxy2d) {
+      galaxy2d.selectedItem = null;
+      if (galaxy2d.render) galaxy2d.render();
+    }
+
+    document.querySelectorAll('.image-card.active').forEach(c => c.classList.remove('active'));
+    if (el.drawer) el.drawer.classList.remove('open');
+    hideSpotlightHUD();
+  }
+
   function selectItem(item) {
-    if (!item) return;
+    if (!item) {
+      deselectItem();
+      return;
+    }
     state.selectedItem = item;
 
     galaxy3d.selectedItem = item;
@@ -576,6 +621,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateFeedbackUI(item);
 
     el.drawer.classList.add('open');
+  }
+
+  if (el.drawer) {
+    el.drawer.addEventListener('pointerdown', () => clearSearchAutoUnselect());
   }
 
   // -------------------------------------------------------------
@@ -690,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   el.drawerCloseBtn.addEventListener('click', () => {
-    el.drawer.classList.remove('open');
+    deselectItem();
   });
 
   // -------------------------------------------------------------
@@ -964,9 +1013,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update 3D spotlight HUD & fly camera
         updateSpotlightHUD(topItem, data.results.length);
         if (state.activeView === 'galaxy3d') {
-          galaxy3d.flyToItem(topItem);
+          galaxy3d.flyToItem(topItem, () => {
+            scheduleSearchAutoUnselect(2000);
+          });
+          scheduleSearchAutoUnselect(3500);
         } else if (state.activeView === 'galaxy2d') {
           galaxy2d.focusItem(topItem);
+          scheduleSearchAutoUnselect(2500);
+        } else {
+          scheduleSearchAutoUnselect(2500);
         }
       } else {
         hideSpotlightHUD();
@@ -1010,7 +1065,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = state.displayedImages[state.currentMatchIndex];
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
-      galaxy3d.flyToItem(target);
+      galaxy3d.flyToItem(target, () => {
+        scheduleSearchAutoUnselect(2000);
+      });
+      scheduleSearchAutoUnselect(3500);
     });
   }
 
@@ -1021,7 +1079,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = state.displayedImages[state.currentMatchIndex];
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
-      galaxy3d.flyToItem(target);
+      galaxy3d.flyToItem(target, () => {
+        scheduleSearchAutoUnselect(2000);
+      });
+      scheduleSearchAutoUnselect(3500);
     });
   }
 
@@ -1033,6 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectItem(target);
       updateSpotlightHUD(target, state.displayedImages.length);
       galaxy2d.focusItem(target);
+      scheduleSearchAutoUnselect(2500);
     });
   }
 
@@ -1071,6 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideSpotlightHUD();
     state.activeSearch = null;
     if (el.feedbackCard) el.feedbackCard.style.display = 'none';
+    deselectItem();
     filterByCluster(state.activeClusterFilter);
   }
 
@@ -1128,8 +1191,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.results.length > 0) {
         selectItem(data.results[0]);
         updateSpotlightHUD(data.results[0], data.results.length);
-        if (state.activeView === 'galaxy3d') galaxy3d.flyToItem(data.results[0]);
-        if (state.activeView === 'galaxy2d') galaxy2d.focusItem(data.results[0]);
+        if (state.activeView === 'galaxy3d') {
+          galaxy3d.flyToItem(data.results[0], () => {
+            scheduleSearchAutoUnselect(2000);
+          });
+          scheduleSearchAutoUnselect(3500);
+        } else if (state.activeView === 'galaxy2d') {
+          galaxy2d.focusItem(data.results[0]);
+          scheduleSearchAutoUnselect(2500);
+        } else {
+          scheduleSearchAutoUnselect(2500);
+        }
       }
       showToast(`Showing images matching color ${hexCode}`);
     } catch (err) {
@@ -1286,8 +1358,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.results.length > 0) {
         selectItem(data.results[0]);
         updateSpotlightHUD(data.results[0], data.results.length);
-        if (state.activeView === 'galaxy3d') galaxy3d.flyToItem(data.results[0]);
-        if (state.activeView === 'galaxy2d') galaxy2d.focusItem(data.results[0]);
+        if (state.activeView === 'galaxy3d') {
+          galaxy3d.flyToItem(data.results[0], () => {
+            scheduleSearchAutoUnselect(2000);
+          });
+          scheduleSearchAutoUnselect(3500);
+        } else if (state.activeView === 'galaxy2d') {
+          galaxy2d.focusItem(data.results[0]);
+          scheduleSearchAutoUnselect(2500);
+        } else {
+          scheduleSearchAutoUnselect(2500);
+        }
       }
       showToast(`Sketch search complete: ${data.total_results} matches found.`);
     } catch (err) {
@@ -1784,7 +1865,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeFullScreen();
-      el.drawer.classList.remove('open');
+      deselectItem();
       el.modalSketch.classList.remove('open');
       el.modalAdd.classList.remove('open');
     }

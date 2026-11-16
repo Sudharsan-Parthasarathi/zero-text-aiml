@@ -163,6 +163,11 @@ class Galaxy3D {
         this.threeCamera.position.lerp(this.targetCameraPos, 0.06);
         if (this.threeCamera.position.distanceTo(this.targetCameraPos) < 2) {
           this.targetCameraPos = null;
+          if (this.onFlyComplete) {
+            const cb = this.onFlyComplete;
+            this.onFlyComplete = null;
+            cb();
+          }
         }
       }
 
@@ -330,10 +335,18 @@ class Galaxy3D {
     });
   }
 
-  flyToItem(item) {
+  flyToItem(item, onComplete = null) {
     if (!item) return;
+    this.onFlyComplete = typeof onComplete === 'function' ? onComplete : null;
     const targetItem = this.normalizedItems.find(it => it.filename === item.filename);
-    if (!targetItem) return;
+    if (!targetItem) {
+      if (this.onFlyComplete) {
+        const cb = this.onFlyComplete;
+        this.onFlyComplete = null;
+        cb();
+      }
+      return;
+    }
 
     if (this.useThree && this.threeCamera) {
       const THREE = window.THREE;
@@ -349,6 +362,15 @@ class Galaxy3D {
       this.rotY = 0.2;
       this.zoom = 1.6;
       if (this.renderCanvasFallback) this.renderCanvasFallback();
+      if (this.onFlyComplete) {
+        setTimeout(() => {
+          if (this.onFlyComplete) {
+            const cb = this.onFlyComplete;
+            this.onFlyComplete = null;
+            cb();
+          }
+        }, 800);
+      }
     }
   }
 
@@ -588,7 +610,17 @@ class Galaxy3D {
     }
 
     if (hitItem) {
-      this.selectItem(hitItem);
+      if (this.selectedItem && this.selectedItem.filename === hitItem.filename) {
+        // Toggle selection off if clicking the already selected item
+        this.deselectItem();
+      } else {
+        this.selectItem(hitItem);
+      }
+    } else {
+      // Clicking empty 3D space unselects
+      if (this.selectedItem) {
+        this.deselectItem();
+      }
     }
   }
 
@@ -596,9 +628,23 @@ class Galaxy3D {
     this.selectedItem = item;
     if (this.useThree) {
       this.buildThreeScene();
+    } else if (this.renderCanvasFallback) {
+      this.renderCanvasFallback();
     }
     if (this.options.onSelect) {
       this.options.onSelect(item);
+    }
+  }
+
+  deselectItem() {
+    this.selectedItem = null;
+    if (this.useThree) {
+      this.buildThreeScene();
+    } else if (this.renderCanvasFallback) {
+      this.renderCanvasFallback();
+    }
+    if (this.options.onSelect) {
+      this.options.onSelect(null);
     }
   }
 
