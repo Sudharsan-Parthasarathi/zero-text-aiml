@@ -1373,6 +1373,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (probeHud) probeHud.style.display = 'none';
     if (galaxy3d && galaxy3d.clearTestProbe) galaxy3d.clearTestProbe();
     if (galaxy2d && galaxy2d.clearTestProbe) galaxy2d.clearTestProbe();
+    deselectItem();
+    if (state.activeSearch && state.activeSearch.type === 'image_probe') {
+      state.activeSearch = null;
+      filterByCluster(state.activeClusterFilter);
+    }
   }
 
   if (btnDismissProbe) {
