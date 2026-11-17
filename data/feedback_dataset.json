@@ -782,5 +782,37 @@
         "timestamp": "2026-11-16T16:04:15Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_4fc30d6c24",
+        "search_type": "sketch",
+        "feedback": "negative",
+        "filename": "mountain.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "6f06259013cc155b",
+        "text_hint": "",
+        "score": 0.403,
+        "cluster": 1,
+        "category": "Mountain",
+        "timestamp": "2026-11-17T07:46:46Z",
+        "session_id": "",
+        "enriched": false
+    },
+    {
+        "id": "fb_1c3b8bb79b",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "nasa_rocket.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "6f06259013cc155b",
+        "text_hint": "",
+        "score": 0.3493,
+        "cluster": 1,
+        "category": "Nasa Rocket",
+        "timestamp": "2026-11-17T07:46:49Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

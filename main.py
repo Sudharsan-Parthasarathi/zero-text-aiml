@@ -97,10 +97,50 @@ def run_legacy_gui():
     root.mainloop()
 
 
+def ensure_port_available(port: int, host: str = "127.0.0.1") -> int:
+    import socket
+    import subprocess
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        in_use = (s.connect_ex((host, port)) == 0)
+
+    if not in_use:
+        return port
+
+    print(f"[ZERO-TEXT] Port {port} is currently in use. Reclaiming port from stale process...")
+    try:
+        out = subprocess.check_output(f'netstat -ano | findstr :{port}', shell=True, text=True)
+        for line in out.strip().splitlines():
+            if "LISTENING" in line:
+                pid = line.strip().split()[-1]
+                if pid and pid != "0":
+                    print(f"[ZERO-TEXT] Terminating stale process (PID {pid})...")
+                    subprocess.call(f"taskkill /F /PID {pid}", shell=True)
+                    time.sleep(1.0)
+    except Exception as e:
+        print(f"[ZERO-TEXT] Port recovery note: {e}")
+
+    # Check if port is freed
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex((host, port)) != 0:
+            print(f"[ZERO-TEXT] Successfully reclaimed port {port}.")
+            return port
+
+    # Fallback to next available port if port is locked by external system service
+    for candidate in range(port + 1, port + 20):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex((host, candidate)) != 0:
+                print(f"[ZERO-TEXT] Redirecting to next available port {candidate}...")
+                return candidate
+
+    return port
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True):
     import uvicorn
     from server import app
 
+    port = ensure_port_available(port, host=host)
     url = f"http://{host}:{port}"
     print(BANNER)
     print(f" * Server running on: {url}")

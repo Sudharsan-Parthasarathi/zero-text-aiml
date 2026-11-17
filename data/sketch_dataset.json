@@ -284,5 +284,18 @@
         "cluster": -1,
         "timestamp": "2026-11-16T11:18:08Z",
         "validated": true
+    },
+    {
+        "id": "sketch_6f06259013cc",
+        "sketch_hash": "6f06259013cc155b",
+        "sketch_file": "user_validated/sketch_6f06259013cc155b.png",
+        "filename": "nasa_rocket.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\nasa_rocket.jpg",
+        "category": "Nasa Rocket",
+        "text_hint": "",
+        "score": 0.3493,
+        "cluster": 1,
+        "timestamp": "2026-11-17T07:46:49Z",
+        "validated": true
     }
 ]
