@@ -1,3 +1,13 @@
+---
+title: ZERO-ARCADE
+emoji: 🌌
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🌌 ZERO‑ARCADE — Multimodal Visual Galaxy, AI‑Powered Image Search & Kinetic AR Gaming Suite
 
 > **Search your image library by typing text, picking a colour, uploading a photo, or drawing a sketch — powered by CLIP, FAISS, and a frozen, CPU‑efficient Sketch‑to‑Photo structural projection architecture — fused with the SHADOWBOX ARCADE 60 FPS zero‑controller motion gaming platform.**
