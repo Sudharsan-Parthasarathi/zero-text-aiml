@@ -72,6 +72,7 @@ CLUSTER_PATH = DATA_DIR / "cluster_results.json"
 SKETCH_PROJECTION_PATH = DATA_DIR / "sketch_projection.pt"
 SKETCH_ADAPTER_PATH = DATA_DIR / "sketch_adapter.pt"
 VISUAL_PROBE_PROJECTION_PATH = DATA_DIR / "visual_probe_projection.pt"
+CONCEPT_ANCHORS_PATH = DATA_DIR / "concept_anchors.npz"
 FEEDBACK_PATH = DATA_DIR / "feedback_dataset.json"
 TEXT_DATASET_PATH = DATA_DIR / "text_search_dataset.json"
 SKETCH_DATASET_PATH = DATA_DIR / "sketch_dataset.json"
@@ -267,6 +268,7 @@ class ZeroTextEngine:
         self.sketch_projection: Optional[SketchProjection] = None
         self.sketch_adapter: Optional[SketchProjection] = None
         self.visual_probe_projection: Optional[VisualProbeProjection] = None
+        self.concept_anchors: Dict[str, np.ndarray] = {}
         self.reducer_2d: Optional[umap.UMAP] = None
         self.reducer_3d: Optional[umap.UMAP] = None
         self._smart_vocab_cache: Optional[Dict[str, Any]] = None
@@ -375,9 +377,23 @@ class ZeroTextEngine:
                 proj.eval()
                 self.visual_probe_projection = proj
                 self._log(f"Loaded frozen fine-tuned VisualProbeProjection weights from {VISUAL_PROBE_PROJECTION_PATH.name}.")
-                return
             except Exception as e:
                 self._log(f"Notice loading visual probe projection checkpoint: {e}")
+        # Also load concept anchors
+        self._load_concept_anchors()
+
+    def _load_concept_anchors(self):
+        """Load precomputed semantic concept anchor vectors for each indexed image."""
+        if self.concept_anchors:
+            return
+        if CONCEPT_ANCHORS_PATH.exists():
+            try:
+                data = np.load(CONCEPT_ANCHORS_PATH)
+                for key in data.files:
+                    self.concept_anchors[key] = data[key].astype(np.float32)
+                self._log(f"Loaded {len(self.concept_anchors)} semantic concept anchors.")
+            except Exception as e:
+                self._log(f"Notice loading concept anchors: {e}")
 
     def load_ocr(self):
         if self.ocr is not None:
