@@ -71,6 +71,7 @@ COLOUR_PATH = DATA_DIR / "color_results.json"
 CLUSTER_PATH = DATA_DIR / "cluster_results.json"
 SKETCH_PROJECTION_PATH = DATA_DIR / "sketch_projection.pt"
 SKETCH_ADAPTER_PATH = DATA_DIR / "sketch_adapter.pt"
+VISUAL_PROBE_PROJECTION_PATH = DATA_DIR / "visual_probe_projection.pt"
 FEEDBACK_PATH = DATA_DIR / "feedback_dataset.json"
 TEXT_DATASET_PATH = DATA_DIR / "text_search_dataset.json"
 SKETCH_DATASET_PATH = DATA_DIR / "sketch_dataset.json"
@@ -207,6 +208,33 @@ class SketchProjection(torch.nn.Module):
 SketchAdapter = SketchProjection
 
 
+class VisualProbeProjection(torch.nn.Module):
+    """
+    Fine-tuned residual bottleneck manifold projection head for drag-and-drop visual search.
+    Maps test-time visual probes through a calibrated residual offset bottleneck
+    trained with InfoNCE contrastive loss to align external image crops into the clustered manifold.
+    """
+    def __init__(self, dim: int = 512, hidden_dim: int = 768):
+        super().__init__()
+        self.fc1 = torch.nn.Linear(dim, hidden_dim)
+        self.norm1 = torch.nn.LayerNorm(hidden_dim)
+        self.act1 = torch.nn.GELU()
+        self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.norm2 = torch.nn.LayerNorm(hidden_dim)
+        self.act2 = torch.nn.GELU()
+        self.fc3 = torch.nn.Linear(hidden_dim, dim)
+        self.alpha = torch.nn.Parameter(torch.tensor(0.5, dtype=torch.float32))
+
+        # Identity initialization: zero-out final layer
+        torch.nn.init.zeros_(self.fc3.weight)
+        torch.nn.init.zeros_(self.fc3.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        delta = self.fc3(self.act2(self.norm2(self.fc2(self.act1(self.norm1(self.fc1(x)))))))
+        out = x + self.alpha * delta
+        return out / out.norm(dim=-1, keepdim=True)
+
+
 class ZeroTextEngine:
     """
     Unified ZeroText Engine handling multi-modal indexing, searching,
@@ -238,6 +266,7 @@ class ZeroTextEngine:
 
         self.sketch_projection: Optional[SketchProjection] = None
         self.sketch_adapter: Optional[SketchProjection] = None
+        self.visual_probe_projection: Optional[VisualProbeProjection] = None
         self.reducer_2d: Optional[umap.UMAP] = None
         self.reducer_3d: Optional[umap.UMAP] = None
         self._smart_vocab_cache: Optional[Dict[str, Any]] = None
@@ -306,8 +335,9 @@ class ZeroTextEngine:
             self._log(f"CLIP loaded in {elapsed:.2f}s — ready for search!")
             try:
                 self.load_sketch_projection()
+                self.load_visual_probe_projection()
             except Exception as ex:
-                self._log(f"Sketch projection init notice: {ex}")
+                self._log(f"Projection init notice: {ex}")
 
     def load_sketch_projection(self):
         """
@@ -329,6 +359,25 @@ class ZeroTextEngine:
                 return
             except Exception as e:
                 self._log(f"Notice loading sketch projection checkpoint: {e}")
+
+    def load_visual_probe_projection(self):
+        """
+        Loads the frozen fine-tuned VisualProbeProjection weights directly.
+        Zero runtime or startup training is performed.
+        """
+        if self.visual_probe_projection is not None:
+            return
+        if VISUAL_PROBE_PROJECTION_PATH.exists():
+            try:
+                proj = VisualProbeProjection(DIMENSIONS)
+                state_dict = torch.load(VISUAL_PROBE_PROJECTION_PATH, map_location=DEVICE)
+                proj.load_state_dict(state_dict)
+                proj.eval()
+                self.visual_probe_projection = proj
+                self._log(f"Loaded frozen fine-tuned VisualProbeProjection weights from {VISUAL_PROBE_PROJECTION_PATH.name}.")
+                return
+            except Exception as e:
+                self._log(f"Notice loading visual probe projection checkpoint: {e}")
 
     def load_ocr(self):
         if self.ocr is not None:
@@ -935,6 +984,151 @@ class ZeroTextEngine:
             emb = self.model.encode_image(tensor)
             emb = emb / emb.norm(dim=-1, keepdim=True)
         return emb.cpu().numpy().astype("float32")
+
+    def extract_colours_from_image(self, image: Image.Image, count: int = COLOUR_COUNT) -> List[Dict]:
+        """Extract dominant colors from an in-memory PIL Image."""
+        try:
+            img = image.convert("RGB")
+            img.thumbnail((200, 200))
+            quantized = img.quantize(colors=count, method=Image.Quantize.MEDIANCUT)
+            colour_counts = quantized.getcolors(200 * 200)
+            palette = quantized.getpalette()
+            if not colour_counts or not palette:
+                return []
+            colour_counts.sort(reverse=True)
+            total_pixels = sum(c for c, _ in colour_counts)
+            dominant = []
+            for c, idx in colour_counts:
+                pos = idx * 3
+                r, g, b = palette[pos], palette[pos + 1], palette[pos + 2]
+                hex_code = rgb_to_hex(r, g, b)
+                pct = round((c / total_pixels) * 100, 2)
+                dominant.append({
+                    "hex": hex_code,
+                    "rgb": [int(r), int(g), int(b)],
+                    "percentage": pct,
+                })
+            return dominant
+        except Exception as e:
+            self._log(f"In-memory colour extraction notice: {e}")
+            return []
+
+    def extract_ocr_from_image(self, image: Image.Image) -> Dict:
+        """Extract OCR text from an in-memory PIL Image."""
+        self.load_ocr()
+        try:
+            img_np = np.array(image.convert("RGB"))
+            output = self.ocr(img_np)
+            extracted_items = []
+            if hasattr(output, "txts") and output.txts:
+                scores = getattr(output, "scores", [1.0] * len(output.txts))
+                for txt, conf in zip(output.txts, scores):
+                    txt_str = str(txt).strip()
+                    if txt_str and float(conf) >= OCR_CONFIDENCE_THRESHOLD:
+                        extracted_items.append({
+                            "text": txt_str,
+                            "confidence": round(float(conf), 4),
+                        })
+            elif isinstance(output, (list, tuple)) and len(output) > 0:
+                raw_items = output[0] if isinstance(output[0], (list, tuple)) else output
+                for item in raw_items:
+                    if isinstance(item, (list, tuple)) and len(item) >= 3:
+                        txt_str = str(item[1]).strip()
+                        conf = float(item[2])
+                        if txt_str and conf >= OCR_CONFIDENCE_THRESHOLD:
+                            extracted_items.append({
+                                "text": txt_str,
+                                "confidence": round(conf, 4),
+                            })
+            full_text = " ".join(item["text"] for item in extracted_items)
+            return {
+                "extracted_text": extracted_items,
+                "full_text": full_text,
+            }
+        except Exception as e:
+            self._log(f"In-memory OCR extraction notice: {e}")
+            return {"extracted_text": [], "full_text": ""}
+
+    def _compute_probe_image_ensemble(self, image: Image.Image, filename: str = "") -> np.ndarray:
+        """
+        High-precision multi-scale spatial ensemble and manifold projection for dropped probe images:
+        1. Aspect-preserved letterbox canvas view (224x224 with neutral padding) preserving full scene geometry.
+        2. High-resolution center focus crop.
+        3. Multi-scale 85% zoom crop (scale robustness).
+        4. Horizontal flip view (orientation robustness).
+        5. Semantic filename prompt blending (if filename contains descriptive keywords).
+        6. Forward pass through fine-tuned VisualProbeProjection residual bottleneck manifold head.
+        """
+        self.load_clip()
+        self.load_visual_probe_projection()
+
+        img_rgb = image.convert("RGB")
+        w, h = img_rgb.size
+
+        # View 1: Aspect-preserved letterbox view onto standardized 224x224 canvas
+        TARGET_SIZE = 224
+        scale = min(TARGET_SIZE / max(w, 1), TARGET_SIZE / max(h, 1))
+        nw = max(1, int(w * scale))
+        nh = max(1, int(h * scale))
+        resample_filter = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BILINEAR)
+        resized_img = img_rgb.resize((nw, nh), resample_filter)
+        letterbox = Image.new("RGB", (TARGET_SIZE, TARGET_SIZE), (128, 128, 128))
+        letterbox.paste(resized_img, ((TARGET_SIZE - nw) // 2, (TARGET_SIZE - nh) // 2))
+
+        # View 2: Direct original (processed through CLIP's center-crop transform)
+        view_direct = img_rgb
+
+        # View 3: Central 85% zoom crop
+        cx1 = int(w * 0.075)
+        cy1 = int(h * 0.075)
+        cx2 = max(cx1 + 10, int(w * 0.925))
+        cy2 = max(cy1 + 10, int(h * 0.925))
+        view_zoom = img_rgb.crop((cx1, cy1, cx2, cy2))
+
+        # View 4: Horizontal flip
+        view_flip = img_rgb.transpose(Image.FLIP_LEFT_RIGHT)
+
+        views = [letterbox, view_direct, view_zoom, view_flip]
+        weights = [1.3, 1.0, 0.9, 0.7]
+
+        tensors = torch.stack([self.preprocess(v) for v in views]).to(DEVICE)
+        with torch.inference_mode():
+            batch_emb = self.model.encode_image(tensors)
+            batch_emb = batch_emb / batch_emb.norm(dim=-1, keepdim=True)
+
+        weights_t = torch.tensor(weights, dtype=torch.float32, device=DEVICE).unsqueeze(1)
+        pooled = (batch_emb * weights_t).sum(dim=0, keepdim=True) / weights_t.sum()
+        pooled = pooled / pooled.norm(dim=-1, keepdim=True)
+
+        # Optional semantic filename prior (if user drops a file like "golden_retriever.jpg" or "sports_car.png")
+        if filename:
+            stem = Path(filename).stem
+            clean_words = re.findall(r"[a-zA-Z]{3,}", stem)
+            ignored_tokens = {"image", "img", "screenshot", "photo", "picture", "download", "dropped", "canvas", "file", "upload"}
+            meaningful = [w.lower() for w in clean_words if w.lower() not in ignored_tokens]
+            if meaningful:
+                hint_str = " ".join(meaningful)
+                try:
+                    tokens = self.tokenizer([hint_str, f"a photo of {hint_str}"]).to(DEVICE)
+                    with torch.inference_mode():
+                        t_emb = self.model.encode_text(tokens)
+                        t_emb = t_emb / t_emb.norm(dim=-1, keepdim=True)
+                        t_vec = t_emb.mean(dim=0, keepdim=True)
+                        t_vec = t_vec / t_vec.norm(dim=-1, keepdim=True)
+                    # Blend subtle 15% semantic filename prior
+                    pooled = 0.85 * pooled + 0.15 * t_vec
+                    pooled = pooled / pooled.norm(dim=-1, keepdim=True)
+                except Exception:
+                    pass
+
+        # Project through fine-tuned VisualProbeProjection if available
+        if self.visual_probe_projection is not None:
+            with torch.inference_mode():
+                projected = self.visual_probe_projection(pooled)
+                projected = projected / projected.norm(dim=-1, keepdim=True)
+                return projected.cpu().numpy().astype("float32")
+
+        return pooled.cpu().numpy().astype("float32")
 
     # -----------------------------------------------------------------
     #  SKETCH-SPECIFIC PREPROCESSING & EMBEDDING (High-Precision)
@@ -1974,46 +2168,108 @@ class ZeroTextEngine:
 
     def image_probe_search(self, image: Image.Image, filename: str = "dropped_image.png", top_k: int = 15) -> Dict:
         """
-        Instant Drag-and-Drop Image Probe:
-        1. Encodes dropped image into 512-d CLIP photographic visual embedding space.
-        2. Searches FAISS index for closest manifold neighbors.
-        3. Projects coordinates into exact 2D and 3D UMAP galaxy space (with centroid fallback).
-        4. Predicts cluster affinity and generates thumbnail data URL.
+        High-Accuracy Drag-and-Drop Image Probe with Fine-Tuned Manifold Adaptation:
+        1. Encodes dropped image using Multi-View Spatial Ensemble (Letterbox + Center + Zoom + Flip).
+        2. Projects through fine-tuned VisualProbeProjection residual bottleneck manifold head.
+        3. Real-time in-memory OCR token extraction and Dominant Color palette analysis.
+        4. Fuses adapted Visual CLIP similarity + Color palette match + OCR text match + Cluster Consensus.
+        5. Performs Contextual Re-Ranking and Barycentric Manifold Galaxy projection (< 1 ms).
         """
         self.load_clip()
+        self.load_visual_probe_projection()
 
-        emb = self.compute_image_embedding(image)
+        # 1. Multi-scale test-time augmented visual embedding
+        emb = self._compute_probe_image_ensemble(image, filename=filename)
         norm = np.linalg.norm(emb, axis=-1, keepdims=True)
         if norm > 1e-6:
             emb = (emb / norm).astype("float32")
 
-        k = min(top_k, self.index.ntotal)
-        scores, indices = self.index.search(emb, k)
+        # 2. In-memory multimodal feature extraction from dropped probe
+        dropped_colours = self.extract_colours_from_image(image)
+        dropped_ocr = self.extract_ocr_from_image(image)
+        dropped_text = dropped_ocr.get("full_text", "").strip()
+        ocr_words = [w.lower() for w in re.findall(r"[a-zA-Z0-9]{3,}", dropped_text)]
 
-        def calibrate_score(raw_cos: float) -> float:
-            scaled = (raw_cos - 0.15) / (0.80 - 0.15)
+        # 3. Retrieve candidates from FAISS index
+        k_search = min(max(top_k * 2, 25), self.index.ntotal if self.index else 0)
+        if not self.index or k_search == 0:
+            return {"probe": {}, "total_results": 0, "results": []}
+
+        scores, indices = self.index.search(emb, k_search)
+
+        def calibrate_visual_sim(raw_cos: float) -> float:
+            scaled = (raw_cos - 0.18) / (0.75 - 0.18)
             clamped = max(0.0, min(1.0, scaled))
-            return float(clamped ** 1.05)
+            return float(clamped ** 0.90)
 
-        results = []
-        for rank, (raw_score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
+        # 4. Color Palette Distance Comparator
+        def compute_palette_match(p_query: List[Dict], p_target: List[Dict]) -> float:
+            if not p_query or not p_target:
+                return 0.0
+            max_dist = (3 * (255 ** 2)) ** 0.5
+            total_w = sum(float(c.get("percentage", 10)) for c in p_query) or 100.0
+            sim_sum = 0.0
+            for c1 in p_query:
+                rgb1 = np.array(c1["rgb"], dtype=float)
+                w1 = float(c1.get("percentage", 10)) / total_w
+                best_match = 0.0
+                for c2 in p_target:
+                    rgb2 = np.array(c2["rgb"], dtype=float)
+                    dist = np.linalg.norm(rgb1 - rgb2)
+                    match = max(0.0, 1.0 - (dist / max_dist)) ** 2
+                    if match > best_match:
+                        best_match = match
+                sim_sum += w1 * best_match
+            return float(min(1.0, sim_sum))
+
+        # Detect consensus cluster among top 3 raw visual matches
+        top_raw_clusters = []
+        for idx in indices[0][:3]:
+            if 0 <= idx < len(self.metadata):
+                fn = self.metadata[idx]["filename"]
+                c_id = self.cluster_lookup.get(fn, {}).get("cluster", -1)
+                if c_id != -1:
+                    top_raw_clusters.append(c_id)
+        consensus_cluster = max(set(top_raw_clusters), key=top_raw_clusters.count) if top_raw_clusters else None
+
+        raw_candidates = []
+        for raw_score, idx in zip(scores[0], indices[0]):
             if idx < 0 or idx >= len(self.metadata):
                 continue
             item = self.metadata[idx]
             fn = item["filename"]
             cluster_info = self.cluster_lookup.get(fn, {})
             c_id = cluster_info.get("cluster", -1)
-            calibrated = calibrate_score(float(raw_score))
 
-            results.append({
-                "rank": rank,
+            # Sub-scores
+            clip_calib = calibrate_visual_sim(float(raw_score))
+            col_score = compute_palette_match(dropped_colours, self.colour_lookup.get(fn, []))
+            ocr_score = self.get_ocr_score(fn, ocr_words) if ocr_words else 0.0
+
+            # Dynamic multimodal weighting
+            has_text = bool(ocr_words)
+            has_color = bool(dropped_colours)
+            if has_text and has_color:
+                w_clip, w_col, w_ocr = 0.60, 0.22, 0.18
+            elif has_color:
+                w_clip, w_col, w_ocr = 0.72, 0.28, 0.0
+            elif has_text:
+                w_clip, w_col, w_ocr = 0.68, 0.0, 0.32
+            else:
+                w_clip, w_col, w_ocr = 1.0, 0.0, 0.0
+
+            cluster_bonus = 0.035 if (consensus_cluster is not None and c_id == consensus_cluster) else 0.0
+            combined = (w_clip * clip_calib) + (w_col * col_score) + (w_ocr * ocr_score) + cluster_bonus
+            final_score = round(float(min(0.9999, max(0.01, combined))), 4)
+
+            raw_candidates.append({
                 "filename": fn,
                 "path": item["path"],
                 "similarity": round(float(raw_score), 4),
-                "final": round(calibrated, 4),
-                "clip": round(calibrated, 4),
-                "ocr": 0.0,
-                "colour": 0.0,
+                "final": final_score,
+                "clip": round(clip_calib, 4),
+                "ocr": round(ocr_score, 4),
+                "colour": round(col_score, 4),
                 "cluster": c_id,
                 "cluster_color": (
                     "#8b96a8" if c_id == -1 else CLUSTER_PALETTE[c_id % len(CLUSTER_PALETTE)]
@@ -2030,11 +2286,13 @@ class ZeroTextEngine:
                 "has_text": bool(self.ocr_lookup.get(fn, {}).get("full_text", "").strip()),
             })
 
-        # High-speed Manifold Coordinate Projection
-        # Projects coordinates directly into the exact 2D & 3D cluster manifold
-        # using exponential distance weighting over the closest visual neighbors.
-        # This executes in < 1ms (avoiding the 65-second CPU hang of iterative UMAP transforms)
-        # and guarantees the probe lands directly inside its predicted cluster nebula.
+        # 5. Contextual Re-Ranking by combined multimodal score
+        raw_candidates.sort(key=lambda x: x["final"], reverse=True)
+        results = raw_candidates[:top_k]
+        for rank, r in enumerate(results, start=1):
+            r["rank"] = rank
+
+        # 6. High-speed Barycentric Manifold Coordinate Projection
         probe_x = 0.0
         probe_y = 0.0
         probe_x3d = 0.0
@@ -2054,12 +2312,12 @@ class ZeroTextEngine:
             probe_y3d = float(sum(r["y3d"] * w for r, w in zip(top_neighbors, norm_w)))
             probe_z3d = float(sum(r["z3d"] * w for r, w in zip(top_neighbors, norm_w)))
 
-        # Predicted cluster based on closest manifold neighbor
+        # Predicted cluster based on highest re-ranked neighbor
         top_match = results[0] if results else None
         pred_cluster = top_match["cluster"] if top_match else -1
         pred_color = top_match["cluster_color"] if top_match else "#ffd166"
 
-        # Generate a small thumbnail data URL of the dropped image
+        # 7. Generate thumbnail data URL of the dropped image
         thumb_data = ""
         try:
             thumb = image.copy()
@@ -2084,6 +2342,8 @@ class ZeroTextEngine:
                 "predicted_cluster_color": pred_color,
                 "top_similarity": top_match["final"] if top_match else 0.0,
                 "thumbnail": thumb_data,
+                "detected_text": dropped_text[:120] if dropped_text else "",
+                "dominant_colours": dropped_colours[:3] if dropped_colours else [],
             },
             "total_results": len(results),
             "results": results,
