@@ -814,5 +814,53 @@
         "timestamp": "2026-11-17T07:46:49Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_22537167bd",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "Screenshot 2026-11-20 013944.png",
+        "query": "mosquito",
+        "query_normalized": "mosquito",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.0,
+        "cluster": -1,
+        "category": "Screenshot 2026 11 20 013944",
+        "timestamp": "2026-11-19T20:15:10Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_dadca10aea",
+        "search_type": "text",
+        "feedback": "negative",
+        "filename": "WIN_20261016_21_52_16_Pro.jpg",
+        "query": "Sin",
+        "query_normalized": "sin",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.4716,
+        "cluster": -1,
+        "category": "Win 20261016 21 52 16 Pro",
+        "timestamp": "2026-11-19T20:29:37Z",
+        "session_id": "",
+        "enriched": false
+    },
+    {
+        "id": "fb_b82c9b13ec",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "among-us-vicious-smile-512x512.png",
+        "query": "among us",
+        "query_normalized": "among us",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.8063,
+        "cluster": -1,
+        "category": "Among Us Vicious Smile 512X512",
+        "timestamp": "2026-11-21T14:06:59Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

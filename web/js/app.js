@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dropzone: document.getElementById('dropzone'),
     fileInput: document.getElementById('file-input'),
     dirInput: document.getElementById('dir-input'),
+    btnBrowseDir: document.getElementById('btn-browse-dir'),
     btnScanDir: document.getElementById('btn-scan-dir'),
     progressContainer: document.getElementById('progress-container'),
     progressFill: document.getElementById('progress-fill'),
@@ -1714,6 +1715,25 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Upload failed:', err);
       showToast('File upload failed.');
     }
+  }
+
+  if (el.btnBrowseDir) {
+    el.btnBrowseDir.addEventListener('click', async () => {
+      try {
+        showToast('Opening folder selection dialog...');
+        const res = await fetch('/api/browse/folder', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'ok' && data.directory) {
+          el.dirInput.value = data.directory;
+          showToast(`Selected folder: ${data.directory}`);
+        } else if (data.status === 'error') {
+          showToast(`Folder picker notice: ${data.message}`);
+        }
+      } catch (err) {
+        console.error('Browse folder failed:', err);
+        showToast('Could not open folder picker.');
+      }
+    });
   }
 
   el.btnScanDir.addEventListener('click', async () => {

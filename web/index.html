@@ -1951,15 +1951,19 @@
           <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">
             Enter an absolute folder path on your computer. ZERO-TEXT will automatically crawl and index every image, extract CLIP embeddings, run RapidOCR, compute color palettes, and re-calculate the 2D/3D visual galaxy.
           </p>
-          <div class="dir-input-row">
+          <div class="dir-input-row" style="display:flex;gap:8px;align-items:center;">
             <input
               type="text"
               id="dir-input"
               class="dir-input"
+              style="flex:1;"
               placeholder="e.g. E:\Zero text AIML\data\sample_images or C:\Users\Username\Pictures"
               value="E:\Zero text AIML\data\sample_images"
             />
-            <button class="btn btn-primary" id="btn-scan-dir">Index Folder</button>
+            <button class="btn btn-secondary" id="btn-browse-dir" style="padding:10px 14px;white-space:nowrap;" title="Open native folder picker">
+              📁 Browse...
+            </button>
+            <button class="btn btn-primary" id="btn-scan-dir" style="white-space:nowrap;">Index Folder</button>
           </div>
         </div>
 

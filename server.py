@@ -122,7 +122,51 @@ class ArcadePlayerRequest(BaseModel):
 def get_status():
     status = engine.get_system_status()
     status["model_ready"] = engine.model_ready
+    status["turbo_mode"] = getattr(engine, "turbo_mode", False)
     return status
+
+
+@app.post("/api/turbo")
+def toggle_turbo_mode(enabled: Optional[bool] = None):
+    new_state = engine.toggle_turbo_mode(enabled)
+    return {
+        "turbo_mode": new_state,
+        "message": f"Turbo Mode (INT8 Quantized Offline Inference) {'enabled' if new_state else 'disabled'}"
+    }
+
+
+@app.post("/api/browse/folder")
+def browse_local_folder():
+    """
+    Opens the native Windows/OS folder picker dialog so the user
+    can click and choose any folder without manual typing.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected_dir = filedialog.askdirectory(title="Select Folder to Index in ZERO-TEXT")
+        root.destroy()
+        if selected_dir:
+            return {"status": "ok", "directory": os.path.normpath(selected_dir)}
+        return {"status": "cancelled", "directory": ""}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "directory": ""}
+
+
+@app.get("/api/benchmark")
+def get_benchmark_results():
+    """Returns the latest benchmark report metrics."""
+    report_path = BASE_DIR / "BENCHMARK_REPORT.json"
+    if report_path.exists():
+        try:
+            with open(report_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "not_run", "message": "Benchmark report not generated yet."}
 
 
 @app.get("/api/images")

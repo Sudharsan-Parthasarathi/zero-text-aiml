@@ -1171,5 +1171,56 @@
                 "percentage": 11.39
             }
         ]
+    },
+    {
+        "filename": "Screenshot 2026-11-20 013944.png",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\Screenshot 2026-11-20 013944.png",
+        "dominant_colours": [
+            {
+                "hex": "#4E6050",
+                "rgb": [
+                    78,
+                    96,
+                    80
+                ],
+                "percentage": 25.94
+            },
+            {
+                "hex": "#628B79",
+                "rgb": [
+                    98,
+                    139,
+                    121
+                ],
+                "percentage": 23.32
+            },
+            {
+                "hex": "#202427",
+                "rgb": [
+                    32,
+                    36,
+                    39
+                ],
+                "percentage": 19.6
+            },
+            {
+                "hex": "#333632",
+                "rgb": [
+                    51,
+                    54,
+                    50
+                ],
+                "percentage": 17.96
+            },
+            {
+                "hex": "#573821",
+                "rgb": [
+                    87,
+                    56,
+                    33
+                ],
+                "percentage": 13.19
+            }
+        ]
     }
 ]
