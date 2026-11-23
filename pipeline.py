@@ -1478,7 +1478,7 @@ class ZeroTextEngine:
                 sample_indices = None
                 sample_emb = embeddings
 
-            min_cluster = max(2, min(50, n_items // 3))
+            min_cluster = 2 if n_items < 20 else max(2, min(25, n_items // 10))
             clusterer = hdbscan.HDBSCAN(
                 min_cluster_size=min_cluster,
                 min_samples=1,

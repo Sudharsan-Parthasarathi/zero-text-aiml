@@ -2,26 +2,26 @@
     {
         "filename": "aiml.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\aiml.jpg",
-        "cluster": -1,
+        "cluster": 0,
         "x": -0.12406542897224426,
         "y": -3.8513967990875244,
         "z": 0.19127202033996582,
         "x3d": 2.6570043563842773,
         "y3d": 7.05569314956665,
         "z3d": 0.19127202033996582,
-        "membership_probability": 0.0
+        "membership_probability": 0.867652111017634
     },
     {
         "filename": "bio notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\bio notes.jpg",
-        "cluster": -1,
+        "cluster": 0,
         "x": -0.42441412806510925,
         "y": -3.358307123184204,
         "z": 0.09876377135515213,
         "x3d": 2.035961627960205,
         "y3d": 7.247608184814453,
         "z3d": 0.09876377135515213,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "cat.jpg",
@@ -38,26 +38,26 @@
     {
         "filename": "code.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\code.jpg",
-        "cluster": -1,
+        "cluster": 0,
         "x": 0.48776936531066895,
         "y": -3.8213515281677246,
         "z": -0.2863529324531555,
         "x3d": 2.929349184036255,
         "y3d": 7.005987167358398,
         "z3d": -0.2863529324531555,
-        "membership_probability": 0.0
+        "membership_probability": 0.9313644218127218
     },
     {
         "filename": "coffee.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\coffee.jpg",
-        "cluster": -1,
+        "cluster": 1,
         "x": 1.2618036270141602,
         "y": -1.397041916847229,
         "z": 0.47141531109809875,
         "x3d": 2.124880790710449,
         "y3d": 7.832906723022461,
         "z3d": 0.47141531109809875,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "football.jpg",
@@ -74,14 +74,14 @@
     {
         "filename": "math_notes.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\math_notes.jpg",
-        "cluster": -1,
+        "cluster": 0,
         "x": -0.8013131618499756,
         "y": -2.9522061347961426,
         "z": -0.26663321256637573,
         "x3d": 2.186474323272705,
         "y3d": 6.971190929412842,
         "z3d": -0.26663321256637573,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "mountain.jpg",
@@ -146,38 +146,38 @@
     {
         "filename": "golden_retriever.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\golden_retriever.jpg",
-        "cluster": -1,
+        "cluster": 2,
         "x": 0.12359680980443954,
         "y": -1.2882401943206787,
         "z": -0.24959973990917206,
         "x3d": 1.651175618171692,
         "y3d": 8.793224334716797,
         "z3d": -0.24959973990917206,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "golden_sunflower.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\golden_sunflower.jpg",
-        "cluster": -1,
+        "cluster": 2,
         "x": 1.23538076877594,
         "y": -2.315528631210327,
         "z": 0.22051234543323517,
         "x3d": 2.1339809894561768,
         "y3d": 8.938946723937988,
         "z3d": 0.22051234543323517,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "neon_cyberpunk.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\neon_cyberpunk.jpg",
-        "cluster": -1,
+        "cluster": 3,
         "x": 0.7219699621200562,
         "y": -3.394821882247925,
         "z": 0.23796842992305756,
         "x3d": 3.3950674533843994,
         "y3d": 7.876748561859131,
         "z3d": 0.23796842992305756,
-        "membership_probability": 0.0
+        "membership_probability": 0.9091805311073548
     },
     {
         "filename": "pepperoni_pizza.jpg",
@@ -194,14 +194,14 @@
     {
         "filename": "purple_nebula.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\purple_nebula.jpg",
-        "cluster": -1,
+        "cluster": 3,
         "x": 1.3371115922927856,
         "y": -2.9660778045654297,
         "z": -0.4067009389400482,
         "x3d": 3.176664113998413,
         "y3d": 8.145150184631348,
         "z3d": -0.4067009389400482,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "red_supercar.jpg",
@@ -218,26 +218,26 @@
     {
         "filename": "vintage_camera.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\vintage_camera.jpg",
-        "cluster": -1,
+        "cluster": 1,
         "x": 1.5607268810272217,
         "y": -1.7357547283172607,
         "z": 0.4484952688217163,
         "x3d": 1.631113052368164,
         "y3d": 8.111905097961426,
         "z3d": 0.4484952688217163,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "spiderman-upside-down_3840x2160_xtrafondos.com (2).jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\spiderman-upside-down_3840x2160_xtrafondos.com (2).jpg",
-        "cluster": -1,
+        "cluster": 3,
         "x": 1.1405742168426514,
         "y": -3.8192059993743896,
         "z": -0.9721066951751709,
         "x3d": 3.754730224609375,
         "y3d": 7.865663051605225,
         "z3d": -0.9721066951751709,
-        "membership_probability": 0.0
+        "membership_probability": 0.9292818871626736
     },
     {
         "filename": "among-us-vicious-smile-512x512.png",
@@ -254,14 +254,14 @@
     {
         "filename": "triangle-with-planet_3840x2160_xtrafondos.com.jpg",
         "path": "E:\\Zero text AIML\\data\\sample_images\\triangle-with-planet_3840x2160_xtrafondos.com.jpg",
-        "cluster": -1,
+        "cluster": 3,
         "x": 1.6507645845413208,
         "y": -3.3472628593444824,
         "z": -0.528978705406189,
         "x3d": 3.5999951362609863,
         "y3d": 7.477070331573486,
         "z3d": -0.528978705406189,
-        "membership_probability": 0.0
+        "membership_probability": 1.0
     },
     {
         "filename": "Iron-Man-featured-image.avif",
