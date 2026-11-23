@@ -577,7 +577,7 @@
       let targetEl = null;
 
       // Clean up body classes
-      document.body.classList.remove('tour-active-header', 'tour-active-search', 'tour-active-modal', 'tour-view-canvas');
+      document.body.classList.remove('tour-active-header', 'tour-active-search', 'tour-active-modal', 'tour-view-canvas', 'tour-view-controls', 'tour-active-viewport');
 
       // 1. If this step is showcasing full-screen visual canvas (3D Galaxy or 2D Star Map)
       if (step.id === 'galaxy3d' || step.id === 'galaxy2d') {
@@ -586,6 +586,10 @@
         this.spotlight.style.display = 'none';
         this.positionCardRelative(null, step.placement || 'overlay-bottom-left');
         return;
+      }
+
+      if (step.id === 'galaxy3d_controls' || step.id === 'probe_drop') {
+        document.body.classList.add('tour-view-controls');
       }
 
       if (step.target) {
@@ -601,7 +605,13 @@
         targetEl.classList.add('tour-highlight-active');
 
         // Check parent context and elevate
-        if (targetEl.closest('.modal-content') || targetEl.closest('.modal-card') || targetEl.closest('.modal-overlay')) {
+        if (targetEl.closest('.app-header')) {
+          document.body.classList.add('tour-active-header');
+        } else if (targetEl.closest('.search-hub')) {
+          document.body.classList.add('tour-active-search');
+        } else if (targetEl.closest('.main-viewport')) {
+          document.body.classList.add('tour-active-viewport');
+        } else if (targetEl.closest('.modal-content') || targetEl.closest('.modal-card') || targetEl.closest('.modal-overlay')) {
           document.body.classList.add('tour-active-modal');
         }
 
@@ -615,18 +625,19 @@
         const width = right - left;
         const height = bottom - top;
 
-        // Polygon cutout that keeps ONLY targetEl 100% visible, unblurred and clear!
+        // Cutout hole in backdrop using evenodd polygon so target is 100% visible
         this.overlay.style.clipPath = `polygon(
-          0% 0%, 
-          0% 100%, 
-          ${left}px 100%, 
+          evenodd,
+          0 0, 
+          0 100%, 
+          100% 100%, 
+          100% 0, 
+          0 0,
           ${left}px ${top}px, 
           ${right}px ${top}px, 
           ${right}px ${bottom}px, 
           ${left}px ${bottom}px, 
-          ${left}px 100%, 
-          100% 100%, 
-          100% 0%
+          ${left}px ${top}px
         )`;
 
         this.spotlight.style.display = 'block';
@@ -669,8 +680,8 @@
           top = targetRect.bottom + gap;
           left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
         } else if (placement === 'top') {
-          top = targetRect.top - cardHeight - gap;
-          left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+          top = targetRect.top - cardHeight - (gap + 8);
+          left = Math.max(16, targetRect.left);
         } else if (placement === 'left') {
           top = targetRect.top;
           left = targetRect.left - cardWidth - gap;

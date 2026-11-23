@@ -5,19 +5,20 @@
 /* 1. Backdrop Overlay:
    Blurs and darkens the entire interface behind the tour.
 */
+/* 1. Backdrop Overlay:
+   Clean semi-transparent backdrop without GPU blur artifacts.
+*/
 .tour-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(4, 7, 16, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(4, 7, 16, 0.82);
   z-index: 99990;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, clip-path 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease, background 0.3s ease;
 }
 
 .tour-backdrop.visible {
@@ -29,14 +30,18 @@
    The 3D celestial universe and 2D map remain completely visible, bright, rotating and interactive!
 */
 body.tour-view-canvas .tour-backdrop {
-  background: rgba(4, 7, 16, 0.12) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(4, 7, 16, 0.08) !important;
+  pointer-events: none !important;
   clip-path: none !important;
 }
 
 body.tour-view-canvas .tour-spotlight {
   display: none !important;
+}
+
+/* For galaxy controls step: soft ambient backdrop so 3D stars are completely visible */
+body.tour-view-controls .tour-backdrop {
+  background: rgba(4, 7, 16, 0.25) !important;
 }
 
 /* 2. Spotlight Frame:
@@ -84,12 +89,18 @@ body.tour-view-canvas .tour-spotlight {
   border-radius: 10px;
 }
 
-/* Elevate header, search-hub, and modals when their children are highlighted */
+/* Elevate header, search-hub, viewport, and modals when their children are highlighted */
 body.tour-active-header .app-header {
   z-index: 99995 !important;
 }
 
 body.tour-active-search .search-hub {
+  z-index: 99995 !important;
+}
+
+body.tour-active-viewport .main-viewport,
+body.tour-view-canvas .main-viewport,
+body.tour-view-controls .main-viewport {
   z-index: 99995 !important;
 }
 
