@@ -159,15 +159,14 @@ def browse_local_folder():
 @app.get("/api/benchmark")
 def get_benchmark_results():
     """Returns the latest benchmark report metrics."""
-    # Check detailed_benchmark.json first, then BENCHMARK_REPORT.json
-    for name in ["detailed_benchmark.json", "BENCHMARK_REPORT.json"]:
+    for name in ["BENCHMARK_REPORT.json", "detailed_benchmark.json"]:
         report_path = BASE_DIR / name
         if report_path.exists():
             try:
                 with open(report_path, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+            except Exception:
+                continue
     return {"status": "not_run", "message": "Benchmark report not generated yet."}
 
 
