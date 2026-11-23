@@ -150,6 +150,12 @@ CONCEPT_PROMPTS = {
         "room ambient photo webcam capture",
         "user webcam frame portrait indoor",
         "selfie webcam face capture"
+    ],
+    "Screenshot 2026-11-20 013944.png": [
+        "arcade game screen snapshot",
+        "retro shadowbox arcade video game UI",
+        "motion gaming camera screen interface",
+        "computer game gameplay screenshot"
     ]
 }
 

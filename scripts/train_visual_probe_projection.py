@@ -197,10 +197,20 @@ def train_probe_projection(epochs: int = 180, lr: float = 1e-3, output_path: Pat
 
     print(f"       Extracted {len(X_augs)} augmented probe vectors across {len(X_targets)} classes.")
 
-    # Identify hard-negative class pairs (e.g. Cat vs Dog)
-    cat_class = fn_to_class.get("cat.jpg", -1)
-    dog_class = fn_to_class.get("golden_retriever.jpg", -1)
-    print(f"       Hard-Negative Constraint Active: Cat (Class {cat_class}) <──> Dog (Class {dog_class})")
+    # Identify hard-negative class pairs
+    hard_negative_specs = [
+        ("cat.jpg", "golden_retriever.jpg", 0.35),
+        ("code.jpg", "math_notes.jpg", 0.30),
+        ("code.jpg", "bio notes.jpg", 0.30),
+        ("mountain.jpg", "emerald_forest.jpg", 0.25),
+    ]
+    active_hn_pairs = []
+    for f1, f2, m in hard_negative_specs:
+        c1 = fn_to_class.get(f1, -1)
+        c2 = fn_to_class.get(f2, -1)
+        if c1 >= 0 and c2 >= 0:
+            active_hn_pairs.append((c1, c2, m, f1, f2))
+            print(f"       Hard-Negative Constraint Active: {f1} <──> {f2} (Margin: {m:.2f})")
 
     print(f"\n[2/4] Fine-tuning VisualProbeProjection (Residual Bottleneck MLP)...")
     model = VisualProbeProjection(dim=DIMENSIONS, hidden_dim=768).to(DEVICE)
@@ -228,24 +238,21 @@ def train_probe_projection(epochs: int = 180, lr: float = 1e-3, output_path: Pat
         else:
             anchor_loss = 0.0
 
-        # 3. Explicit Hard-Negative Margin Loss between Cat & Dog
+        # 3. Explicit Hard-Negative Margin Loss for Confusable Pairs
         hn_loss = torch.tensor(0.0, device=DEVICE)
-        if cat_class >= 0 and dog_class >= 0:
-            cat_mask = (Y_labels == cat_class)
-            dog_mask = (Y_labels == dog_class)
-            
-            if cat_mask.any():
-                cat_probes = projected_augs[cat_mask]
-                sim_cat_to_cat = (cat_probes * X_targets[cat_class]).sum(dim=-1)
-                sim_cat_to_dog = (cat_probes * X_targets[dog_class]).sum(dim=-1)
-                # Ensure cat probe is closer to cat than to dog by at least 0.35 margin
-                hn_loss = hn_loss + F.relu(sim_cat_to_dog - sim_cat_to_cat + 0.35).mean()
-                
-            if dog_mask.any():
-                dog_probes = projected_augs[dog_mask]
-                sim_dog_to_dog = (dog_probes * X_targets[dog_class]).sum(dim=-1)
-                sim_dog_to_cat = (dog_probes * X_targets[cat_class]).sum(dim=-1)
-                hn_loss = hn_loss + F.relu(sim_dog_to_cat - sim_dog_to_dog + 0.35).mean()
+        for c1, c2, margin, _, _ in active_hn_pairs:
+            mask1 = (Y_labels == c1)
+            mask2 = (Y_labels == c2)
+            if mask1.any():
+                probes1 = projected_augs[mask1]
+                sim_pos1 = (probes1 * X_targets[c1]).sum(dim=-1)
+                sim_neg1 = (probes1 * X_targets[c2]).sum(dim=-1)
+                hn_loss = hn_loss + F.relu(sim_neg1 - sim_pos1 + margin).mean()
+            if mask2.any():
+                probes2 = projected_augs[mask2]
+                sim_pos2 = (probes2 * X_targets[c2]).sum(dim=-1)
+                sim_neg2 = (probes2 * X_targets[c1]).sum(dim=-1)
+                hn_loss = hn_loss + F.relu(sim_neg2 - sim_pos2 + margin).mean()
 
         total_loss = ce_loss + 0.5 * anchor_loss + 1.5 * hn_loss
         
