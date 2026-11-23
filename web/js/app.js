@@ -1894,20 +1894,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // RECLUSTER BUTTON
   // -------------------------------------------------------------
-  el.btnRecluster.addEventListener('click', async () => {
-    el.btnRecluster.textContent = 'Re-clustering…';
-    try {
-      const res = await fetch('/api/recluster', { method: 'POST' });
-      await res.json();
-      showToast('Reclustering complete!');
-      await loadInitialData();
-    } catch (err) {
-      console.error('Reclustering failed:', err);
-      showToast('Reclustering failed.');
-    } finally {
-      el.btnRecluster.textContent = '🔄 Recluster';
-    }
-  });
+  if (el.btnRecluster) {
+    el.btnRecluster.addEventListener('click', async () => {
+      el.btnRecluster.textContent = 'Re-clustering…';
+      try {
+        const res = await fetch('/api/recluster', { method: 'POST' });
+        await res.json();
+        showToast('Reclustering complete!');
+        await loadInitialData();
+      } catch (err) {
+        console.error('Reclustering failed:', err);
+        showToast('Reclustering failed.');
+      } finally {
+        el.btnRecluster.textContent = '🔄 Recluster';
+      }
+    });
+  }
 
   // -------------------------------------------------------------
   // 3D HUD & 2D CONTROLS
