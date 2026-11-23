@@ -159,14 +159,25 @@ def browse_local_folder():
 @app.get("/api/benchmark")
 def get_benchmark_results():
     """Returns the latest benchmark report metrics."""
-    report_path = BASE_DIR / "BENCHMARK_REPORT.json"
-    if report_path.exists():
-        try:
-            with open(report_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    # Check detailed_benchmark.json first, then BENCHMARK_REPORT.json
+    for name in ["detailed_benchmark.json", "BENCHMARK_REPORT.json"]:
+        report_path = BASE_DIR / name
+        if report_path.exists():
+            try:
+                with open(report_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
     return {"status": "not_run", "message": "Benchmark report not generated yet."}
+
+
+@app.get("/api/benchmark/pdf")
+def get_benchmark_pdf():
+    """Serves the generated BENCHMARK_REPORT.pdf."""
+    pdf_path = BASE_DIR / "BENCHMARK_REPORT.pdf"
+    if pdf_path.exists():
+        return FileResponse(pdf_path, media_type="application/pdf", filename="BENCHMARK_REPORT.pdf")
+    raise HTTPException(status_code=404, detail="Benchmark PDF not generated yet.")
 
 
 @app.get("/api/images")

@@ -878,5 +878,21 @@
         "timestamp": "2026-11-23T09:34:52Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_67d8d77738",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "cat.jpg",
+        "query": "CAT",
+        "query_normalized": "cat",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.5936,
+        "cluster": -1,
+        "category": "Cat",
+        "timestamp": "2026-11-23T17:26:42Z",
+        "session_id": "",
+        "enriched": true
     }
 ]

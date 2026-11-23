@@ -1306,7 +1306,7 @@
       <button class="btn btn-tour-pulse" id="btn-start-tour" title="Launch Interactive Presentation Tour">
         <span>🎓</span> Demo Tour
       </button>
-      <button class="btn" id="btn-tour-benchmark" title="View Quantized Benchmarks & 100k Scaling Report" onclick="window.open('/api/benchmark', '_blank')">
+      <button class="btn" id="btn-tour-benchmark" title="View Quantized Benchmarks & 100k Scaling Report">
         <span>📊</span> Benchmarks
       </button>
       <button class="btn" id="btn-toggle-search-bar" title="Toggle Search Bar on/off for full-screen 2D/3D visual galaxy exploration">
@@ -1985,6 +1985,178 @@
           </div>
           <div class="progress-logs" id="progress-logs">
             <div>[00:00:00] Initializing ingestion pipeline...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: QUANTITATIVE BENCHMARK & PERFORMANCE SUITE
+       ============================================================ -->
+  <div class="modal-overlay" id="modal-benchmark" style="display: none;">
+    <div class="modal-content" style="max-width: 920px; width: 92%; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,245,212,0.25); padding-bottom: 14px; margin-bottom: 18px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:1.8rem;">📊</span>
+          <div>
+            <h2 style="margin:0; font-size:1.4rem; color:#fff; font-family:'Space Grotesk', sans-serif;">System Benchmarks & Scalability Report</h2>
+            <span style="font-size:0.75rem; color:var(--accent-cyan); letter-spacing:0.1em; text-transform:uppercase;">100,000 Vectors • INT8 Quantization • Multimodal Latency</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="btn btn-sm" id="btn-download-benchmark-pdf" style="background:rgba(0,245,212,0.15); border:1px solid rgba(0,245,212,0.4); color:#00f5d4;" title="Open Generated PDF Report">📄 View PDF</button>
+          <button class="close-btn" id="close-benchmark-btn" title="Close (ESC)">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" id="benchmark-modal-body">
+        <!-- 1. KPI Highlights Grid -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:24px;">
+          <div style="background:rgba(13,20,38,0.7); border:1px solid rgba(0,245,212,0.2); border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:0.72rem; color:#8b9bb4; text-transform:uppercase; letter-spacing:0.08em;">100k FAISS Latency</div>
+            <div style="font-size:1.8rem; font-weight:900; color:#00f5d4; margin:4px 0;" id="bm-faiss-100k">14.94 ms</div>
+            <div style="font-size:0.75rem; color:#ffd166;">⚡ 66.9 QPS Throughput</div>
+          </div>
+          <div style="background:rgba(13,20,38,0.7); border:1px solid rgba(0,245,212,0.2); border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:0.72rem; color:#8b9bb4; text-transform:uppercase; letter-spacing:0.08em;">INT8 Turbo Speedup</div>
+            <div style="font-size:1.8rem; font-weight:900; color:#ffd166; margin:4px 0;" id="bm-speedup">1.79×</div>
+            <div style="font-size:0.75rem; color:#00f5d4;">🚀 104.2ms vs 186.7ms FP32</div>
+          </div>
+          <div style="background:rgba(13,20,38,0.7); border:1px solid rgba(0,245,212,0.2); border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:0.72rem; color:#8b9bb4; text-transform:uppercase; letter-spacing:0.08em;">Cosine Fidelity</div>
+            <div style="font-size:1.8rem; font-weight:900; color:#70e1d1; margin:4px 0;" id="bm-fidelity">0.8284</div>
+            <div style="font-size:0.75rem; color:#8b9bb4;">High semantic retention</div>
+          </div>
+          <div style="background:rgba(13,20,38,0.7); border:1px solid rgba(0,245,212,0.2); border-radius:12px; padding:16px; text-align:center;">
+            <div style="font-size:0.72rem; color:#8b9bb4; text-transform:uppercase; letter-spacing:0.08em;">Multimodal Hybrid Mean</div>
+            <div style="font-size:1.8rem; font-weight:900; color:#f72585; margin:4px 0;" id="bm-hybrid">787 ms</div>
+            <div style="font-size:0.75rem; color:#8b9bb4;">CLIP + OCR + Color + Rerank</div>
+          </div>
+        </div>
+
+        <!-- 2. FAISS Scaling Table -->
+        <div style="margin-bottom:24px;">
+          <h3 style="color:#00f5d4; font-size:1.05rem; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+            <span>📈</span> FAISS Index Search Scalability (100 to 100,000 Vectors)
+          </h3>
+          <div style="overflow-x:auto; background:rgba(10,15,30,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.85rem; text-align:right;">
+              <thead>
+                <tr style="background:rgba(0,245,212,0.08); color:#00f5d4; border-bottom:1px solid rgba(0,245,212,0.2);">
+                  <th style="padding:10px 14px; text-align:left;">Corpus Size</th>
+                  <th style="padding:10px 14px;">Build Time</th>
+                  <th style="padding:10px 14px;">Mean Latency</th>
+                  <th style="padding:10px 14px;">P50</th>
+                  <th style="padding:10px 14px;">P95</th>
+                  <th style="padding:10px 14px;">P99</th>
+                  <th style="padding:10px 14px; color:#ffd166;">QPS</th>
+                  <th style="padding:10px 14px;">RAM</th>
+                </tr>
+              </thead>
+              <tbody id="bm-faiss-tbody">
+                <!-- Dynamically populated or fallback static -->
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 14px; text-align:left; font-weight:bold; color:#fff;">100</td>
+                  <td style="padding:8px 14px;">0.09 ms</td>
+                  <td style="padding:8px 14px; color:#00f5d4;">0.032 ms</td>
+                  <td style="padding:8px 14px;">0.026 ms</td>
+                  <td style="padding:8px 14px;">0.043 ms</td>
+                  <td style="padding:8px 14px;">0.097 ms</td>
+                  <td style="padding:8px 14px; color:#ffd166; font-weight:bold;">31,353</td>
+                  <td style="padding:8px 14px;">0.20 MB</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 14px; text-align:left; font-weight:bold; color:#fff;">1,000</td>
+                  <td style="padding:8px 14px;">1.04 ms</td>
+                  <td style="padding:8px 14px; color:#00f5d4;">0.088 ms</td>
+                  <td style="padding:8px 14px;">0.063 ms</td>
+                  <td style="padding:8px 14px;">0.168 ms</td>
+                  <td style="padding:8px 14px;">0.393 ms</td>
+                  <td style="padding:8px 14px; color:#ffd166; font-weight:bold;">11,340</td>
+                  <td style="padding:8px 14px;">1.95 MB</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 14px; text-align:left; font-weight:bold; color:#fff;">10,000</td>
+                  <td style="padding:8px 14px;">5.75 ms</td>
+                  <td style="padding:8px 14px; color:#00f5d4;">1.710 ms</td>
+                  <td style="padding:8px 14px;">1.529 ms</td>
+                  <td style="padding:8px 14px;">3.842 ms</td>
+                  <td style="padding:8px 14px;">4.590 ms</td>
+                  <td style="padding:8px 14px; color:#ffd166; font-weight:bold;">585</td>
+                  <td style="padding:8px 14px;">19.53 MB</td>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 14px; text-align:left; font-weight:bold; color:#fff;">50,000</td>
+                  <td style="padding:8px 14px;">35.41 ms</td>
+                  <td style="padding:8px 14px; color:#00f5d4;">9.389 ms</td>
+                  <td style="padding:8px 14px;">9.126 ms</td>
+                  <td style="padding:8px 14px;">12.968 ms</td>
+                  <td style="padding:8px 14px;">14.927 ms</td>
+                  <td style="padding:8px 14px; color:#ffd166; font-weight:bold;">107</td>
+                  <td style="padding:8px 14px;">97.66 MB</td>
+                </tr>
+                <tr style="background:rgba(0,245,212,0.05); font-weight:bold;">
+                  <td style="padding:8px 14px; text-align:left; color:#00f5d4;">100,000</td>
+                  <td style="padding:8px 14px;">72.63 ms</td>
+                  <td style="padding:8px 14px; color:#00f5d4;">14.943 ms</td>
+                  <td style="padding:8px 14px;">14.850 ms</td>
+                  <td style="padding:8px 14px;">17.665 ms</td>
+                  <td style="padding:8px 14px;">18.055 ms</td>
+                  <td style="padding:8px 14px; color:#ffd166;">67</td>
+                  <td style="padding:8px 14px;">195.31 MB</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Quantization & Pipeline Latency -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:18px;">
+          <!-- Quantization -->
+          <div style="background:rgba(10,15,30,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:16px;">
+            <h4 style="color:#ffd166; margin:0 0 12px 0; font-size:0.95rem;">⚡ INT8 Quantized Inference (Offline Turbo)</h4>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.85rem;">
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#8b9bb4;">Standard FP32 Latency:</span>
+                <strong>186.72 ms (P95: 227.18 ms)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#00f5d4;">INT8 Quantized Latency:</span>
+                <strong style="color:#00f5d4;">104.20 ms (P95: 148.49 ms)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#8b9bb4;">Inference Speedup Factor:</span>
+                <strong style="color:#ffd166;">1.79× Faster</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#8b9bb4;">Cosine Similarity Fidelity:</span>
+                <strong>0.8284</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline breakdown -->
+          <div style="background:rgba(10,15,30,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:16px;">
+            <h4 style="color:#f72585; margin:0 0 12px 0; font-size:0.95rem;">⏱️ End-to-End Multimodal Pipeline</h4>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.85rem;">
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#8b9bb4;">Hybrid Search (CLIP+OCR+Color):</span>
+                <strong>787.3 ms (P95: 964.1 ms)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#8b9bb4;">Sketch Search (Line Drawing Head):</span>
+                <strong>341.5 ms (P95: 395.3 ms)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+                <span style="color:#8b9bb4;">Image Probe Telemetry:</span>
+                <strong>2,357 ms (P95: 3,018 ms)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#8b9bb4;">Benchmark Suite Duration:</span>
+                <strong style="color:#00f5d4;">40.95 seconds</strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>

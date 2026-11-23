@@ -204,6 +204,11 @@
       action: () => {
         const closeAdd = document.getElementById('close-add-btn');
         if (closeAdd) closeAdd.click();
+        const modal = document.getElementById('modal-benchmark');
+        if (modal) {
+          const btn = document.getElementById('btn-tour-benchmark');
+          if (btn) btn.click();
+        }
       }
     },
     {
@@ -416,6 +421,7 @@
 
     startTour() {
       this.isOpen = true;
+      document.body.classList.add('tour-active');
       this.overlay.classList.add('visible');
       this.spotlight.classList.add('visible');
       this.card.classList.add('visible');
@@ -426,10 +432,14 @@
     stopTour() {
       this.isOpen = false;
       this.pauseAutoPlay();
+      document.body.classList.remove('tour-active');
       this.overlay.classList.remove('visible');
       this.spotlight.classList.remove('visible');
       this.card.classList.remove('visible');
       this.elJumpMenu.style.display = 'none';
+
+      const modalBenchmark = document.getElementById('modal-benchmark');
+      if (modalBenchmark) modalBenchmark.style.display = 'none';
 
       // Remove highlight from any active element
       document.querySelectorAll('.tour-highlight-active').forEach((el) => {

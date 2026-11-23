@@ -1646,13 +1646,93 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------------------------
-  // INTERACTIVE DEMO PRESENTATION TOUR
+  // INTERACTIVE DEMO PRESENTATION TOUR & BENCHMARK MODAL
   // -------------------------------------------------------------
   if (el.btnStartTour) {
     el.btnStartTour.addEventListener('click', () => {
       if (window.demoTour) {
         window.demoTour.startTour();
       }
+    });
+  }
+
+  const btnTourBenchmark = document.getElementById('btn-tour-benchmark');
+  const modalBenchmark = document.getElementById('modal-benchmark');
+  const closeBenchmarkBtn = document.getElementById('close-benchmark-btn');
+  const btnDownloadBenchmarkPdf = document.getElementById('btn-download-benchmark-pdf');
+
+  function openBenchmarkModal() {
+    if (!modalBenchmark) return;
+    modalBenchmark.style.display = 'flex';
+    fetch('/api/benchmark')
+      .then(res => res.json())
+      .then(data => {
+        if (!data || data.status === 'not_run') return;
+        
+        // Update KPIs
+        const faiss100k = data.faiss_scaling?.['100000'];
+        if (faiss100k) {
+          const elF100k = document.getElementById('bm-faiss-100k');
+          if (elF100k) elF100k.textContent = `${faiss100k.mean_latency_ms.toFixed(2)} ms`;
+        }
+        const qi = data.quantization_and_inference;
+        if (qi) {
+          const elSp = document.getElementById('bm-speedup');
+          if (elSp) elSp.textContent = `${qi.speedup_factor}×`;
+          const elFid = document.getElementById('bm-fidelity');
+          if (elFid) elFid.textContent = qi.cosine_similarity_fidelity;
+        }
+        const mp = data.multimodal_pipeline_latency;
+        if (mp) {
+          const elHy = document.getElementById('bm-hybrid');
+          if (elHy) elHy.textContent = `${Math.round(mp.hybrid_search_ms)} ms`;
+        }
+
+        // Populate table if present
+        const tbody = document.getElementById('bm-faiss-tbody');
+        if (tbody && data.faiss_scaling) {
+          tbody.innerHTML = '';
+          const sizes = Object.keys(data.faiss_scaling).sort((a,b) => Number(a) - Number(b));
+          sizes.forEach(size => {
+            const row = data.faiss_scaling[size];
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            if (size === '100000') tr.style.background = 'rgba(0,245,212,0.05)';
+            tr.innerHTML = `
+              <td style="padding:8px 14px; text-align:left; font-weight:bold; color:${size === '100000' ? '#00f5d4' : '#fff'};">${Number(size).toLocaleString()}</td>
+              <td style="padding:8px 14px;">${row.build_time_ms.toFixed(2)} ms</td>
+              <td style="padding:8px 14px; color:#00f5d4;">${row.mean_latency_ms.toFixed(3)} ms</td>
+              <td style="padding:8px 14px;">${row.p50_latency_ms.toFixed(3)} ms</td>
+              <td style="padding:8px 14px;">${row.p95_latency_ms.toFixed(3)} ms</td>
+              <td style="padding:8px 14px;">${row.p99_latency_ms.toFixed(3)} ms</td>
+              <td style="padding:8px 14px; color:#ffd166; font-weight:bold;">${Math.round(row.qps).toLocaleString()}</td>
+              <td style="padding:8px 14px;">${row.memory_mb.toFixed(2)} MB</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      })
+      .catch(err => console.warn('Could not load live benchmark API:', err));
+  }
+
+  function closeBenchmarkModal() {
+    if (modalBenchmark) modalBenchmark.style.display = 'none';
+  }
+
+  if (btnTourBenchmark) {
+    btnTourBenchmark.addEventListener('click', openBenchmarkModal);
+  }
+  if (closeBenchmarkBtn) {
+    closeBenchmarkBtn.addEventListener('click', closeBenchmarkModal);
+  }
+  if (btnDownloadBenchmarkPdf) {
+    btnDownloadBenchmarkPdf.addEventListener('click', () => {
+      window.open('/api/benchmark/pdf', '_blank');
+    });
+  }
+  if (modalBenchmark) {
+    modalBenchmark.addEventListener('click', (e) => {
+      if (e.target === modalBenchmark) closeBenchmarkModal();
     });
   }
 

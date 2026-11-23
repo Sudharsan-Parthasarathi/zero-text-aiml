@@ -178,5 +178,17 @@
         "cluster": -1,
         "timestamp": "2026-11-21T14:06:59Z",
         "validated": true
+    },
+    {
+        "id": "text_f313d3ecd372",
+        "query": "CAT",
+        "query_normalized": "cat",
+        "filename": "cat.jpg",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\cat.jpg",
+        "category": "Cat",
+        "score": 0.5936,
+        "cluster": -1,
+        "timestamp": "2026-11-23T17:26:42Z",
+        "validated": true
     }
 ]

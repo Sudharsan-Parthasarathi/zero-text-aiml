@@ -9,9 +9,9 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(5, 8, 18, 0.75);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(5, 8, 18, 0.82);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   z-index: 10000;
   opacity: 0;
   pointer-events: none;
@@ -23,18 +23,17 @@
   pointer-events: auto;
 }
 
-/* 2. Glowing Cutout Spotlight */
+/* 2. Spotlight Cutout & Glowing Halo */
 .tour-spotlight {
   position: fixed;
-  z-index: 10001;
+  z-index: 10005;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(5, 8, 18, 0.72),
-              0 0 25px rgba(0, 245, 212, 0.6),
-              inset 0 0 15px rgba(0, 245, 212, 0.3);
   border: 2px solid var(--accent-cyan, #00f5d4);
   border-radius: 12px;
   opacity: 0;
-  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 25px rgba(0, 245, 212, 0.7),
+              0 0 45px rgba(247, 37, 133, 0.35);
   animation: tourGlowPulse 2s ease infinite alternate;
 }
 
@@ -44,48 +43,50 @@
 
 @keyframes tourGlowPulse {
   0% {
-    box-shadow: 0 0 0 9999px rgba(5, 8, 18, 0.72),
-                0 0 20px rgba(0, 245, 212, 0.4),
-                inset 0 0 10px rgba(0, 245, 212, 0.2);
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.5),
+                0 0 35px rgba(0, 245, 212, 0.25);
+    border-color: #00f5d4;
   }
   100% {
-    box-shadow: 0 0 0 9999px rgba(5, 8, 18, 0.72),
-                0 0 35px rgba(0, 245, 212, 0.75),
-                0 0 55px rgba(247, 37, 133, 0.35),
-                inset 0 0 20px rgba(0, 245, 212, 0.45);
+    box-shadow: 0 0 35px rgba(0, 245, 212, 0.9),
+                0 0 60px rgba(247, 37, 133, 0.5);
+    border-color: #70e1d1;
   }
 }
 
-/* Target element active pulse highlight */
+/* Target element elevated ABOVE the dark backdrop so it is 100% crystal-clear visible! */
 .tour-highlight-active {
-  position: relative;
+  position: relative !important;
   z-index: 10002 !important;
-  animation: tourTargetPulse 1.5s infinite alternate ease-in-out;
+  pointer-events: auto !important;
+  transition: box-shadow 0.3s ease;
 }
 
-@keyframes tourTargetPulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.02); }
+/* Ensure ancestors don't trap the stacking context */
+body.tour-active .app-header,
+body.tour-active .search-hub,
+body.tour-active .main-viewport {
+  z-index: 10001 !important;
 }
 
 /* 3. Tour Presenter Card */
 .tour-card {
   position: fixed;
-  z-index: 10003;
+  z-index: 10010;
   width: 440px;
   max-width: calc(100vw - 32px);
-  background: linear-gradient(135deg, rgba(13, 20, 38, 0.96) 0%, rgba(20, 15, 35, 0.96) 100%);
-  border: 1px solid rgba(0, 245, 212, 0.45);
+  background: linear-gradient(135deg, rgba(13, 20, 38, 0.98) 0%, rgba(20, 15, 35, 0.98) 100%);
+  border: 1px solid rgba(0, 245, 212, 0.5);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8),
-              0 0 30px rgba(0, 245, 212, 0.25),
-              inset 0 0 20px rgba(0, 245, 212, 0.05);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9),
+              0 0 35px rgba(0, 245, 212, 0.3),
+              inset 0 0 20px rgba(0, 245, 212, 0.08);
   padding: 22px 24px;
   color: #fff;
   font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.3s ease, top 0.35s cubic-bezier(0.16, 1, 0.3, 1), left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tour-card.visible {
