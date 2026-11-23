@@ -862,5 +862,21 @@
         "timestamp": "2026-11-21T14:06:59Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_5abb1692c6",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "red_supercar.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "36c1cae6b2045d80",
+        "text_hint": "",
+        "score": 0.5104,
+        "cluster": -1,
+        "category": "Red Supercar",
+        "timestamp": "2026-11-23T09:34:52Z",
+        "session_id": "",
+        "enriched": true
     }
 ]
