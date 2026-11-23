@@ -211,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Recluster
     btnRecluster: document.getElementById('btn-recluster'),
     toast: document.getElementById('toast'),
+    btnStartTour: document.getElementById('btn-start-tour'),
   };
 
   // -------------------------------------------------------------
@@ -1642,6 +1643,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     reader.readAsDataURL(file);
+  }
+
+  // -------------------------------------------------------------
+  // INTERACTIVE DEMO PRESENTATION TOUR
+  // -------------------------------------------------------------
+  if (el.btnStartTour) {
+    el.btnStartTour.addEventListener('click', () => {
+      if (window.demoTour) {
+        window.demoTour.startTour();
+      }
+    });
   }
 
   // -------------------------------------------------------------

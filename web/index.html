@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v=2.6">
   <link rel="stylesheet" href="/static/css/arcade.css?v=2.6">
+  <link rel="stylesheet" href="/static/css/tour.css?v=1.0">
   <style id="arcade-embedded-styles">
 /* ============================================================
    SHADOWBOX ARCADE & RETRO CYBERPUNK INTEGRATION STYLESHEET
@@ -1302,6 +1303,12 @@
 
     <!-- Actions -->
     <div class="header-actions">
+      <button class="btn btn-tour-pulse" id="btn-start-tour" title="Launch Interactive Presentation Tour">
+        <span>🎓</span> Demo Tour
+      </button>
+      <button class="btn" id="btn-tour-benchmark" title="View Quantized Benchmarks & 100k Scaling Report" onclick="window.open('/api/benchmark', '_blank')">
+        <span>📊</span> Benchmarks
+      </button>
       <button class="btn" id="btn-toggle-search-bar" title="Toggle Search Bar on/off for full-screen 2D/3D visual galaxy exploration">
         <span>🌌</span> Full Galaxy Mode
       </button>
@@ -2022,6 +2029,7 @@
   <script src="/static/js/galaxy3d.js"></script>
   <script src="/static/js/galaxy2d.js"></script>
   <script src="/static/js/sketch.js"></script>
+  <script src="/static/js/tour.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
