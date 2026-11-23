@@ -6,85 +6,134 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 # Paths
-json_path = os.path.join(os.path.dirname(__file__), '..', 'BENCHMARK_REPORT.json')
+json_path = os.path.join(os.path.dirname(__file__), '..', 'detailed_benchmark.json')
 pdf_path = os.path.join(os.path.dirname(__file__), '..', 'BENCHMARK_REPORT.pdf')
 
 # Load benchmark data
 with open(json_path, 'r') as f:
     data = json.load(f)
 
-# Helper to pretty print sections
+# Styles
 styles = getSampleStyleSheet()
-
-
-
+# Ensure custom styles exist only once
+if 'Heading1' not in styles:
+    styles.add(ParagraphStyle(name='Heading1', parent=styles['Heading1'], fontSize=18, spaceAfter=12))
+if 'Heading2' not in styles:
+    styles.add(ParagraphStyle(name='Heading2', parent=styles['Heading2'], fontSize=14, spaceAfter=8))
+if 'NormalBold' not in styles:
+    styles.add(ParagraphStyle(name='NormalBold', parent=styles['Normal'], fontSize=11, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
 
 story = []
 
-# Title
+# Title & intro
 story.append(Paragraph('Benchmark Report', styles['Heading1']))
 story.append(Spacer(1, 12))
-
-# Introduction
 intro = (
     "This document summarizes the performance measurements performed on the ZERO‑TEXT / ZERO‑ARCADE system. "
-    "The benchmarks evaluate three main aspects: "
-    "<b>FAISS indexing/search scalability</b>, <b>model inference latency</b> (FP32 vs INT8 quantized CLIP), and the overall <b>pipeline latency</b>. "
-    "All numbers are median values collected over multiple runs on the same hardware (CPU‑only, no GPU)."
+    "The benchmarks evaluate hardware configuration, FAISS indexing/search scalability, model quantization/inference, "
+    "and the multimodal pipeline latency. All numbers are median values collected over multiple runs on the same hardware (CPU‑only, no GPU)."
 )
 story.append(Paragraph(intro, styles['Normal']))
 story.append(Spacer(1, 12))
 
-# FAISS scaling section
-if 'faiss' in data:
-    story.append(Paragraph('FAISS Scaling', styles['Heading2']))
-    faiss = data['faiss']
-    txt = (
-        f"- Vectors indexed: {faiss.get('vectors', 'N/A'):,}\n"
-        f"- Average search latency: {faiss.get('search_latency_ms', 'N/A')} ms\n"
-        f"- Queries per second (QPS): {faiss.get('qps', 'N/A'):.2f}\n"
+# Hardware configuration
+if 'hardware' in data:
+    story.append(Paragraph('Hardware Configuration', styles['Heading2']))
+    hw = data['hardware']
+    hw_txt = (
+        f"- CPU threads: {hw.get('cpu_threads', 'N/A')}\n"
+        f"- Model: {hw.get('model', 'N/A')} ({hw.get('dimensions', 'N/A')} dimensions)\n"
+        f"- Process RAM (MB): {hw.get('process_ram_mb', 'N/A')}\n"
     )
-    story.append(Paragraph(txt, styles['Normal']))
+    story.append(Paragraph(hw_txt, styles['Normal']))
     story.append(Spacer(1, 8))
 
-# Model latency section
-if 'model' in data:
-    story.append(Paragraph('Model Inference Latency', styles['Heading2']))
-    model = data['model']
-    rows = [
-        ['Precision', 'FP32 Latency (ms)', 'INT8 Latency (ms)', 'Speed‑up']
-    ]
-    rows.append([
-        'CLIP Embedding',
-        f"{model.get('fp32_latency_ms', 'N/A'):.2f}",
-        f"{model.get('int8_latency_ms', 'N/A'):.2f}",
-        f"{model.get('speedup', model.get('speedup', model.get('speedup_factor', 'N/A'))):.2f}x"
-    ])
+# FAISS scaling benchmarks
+if 'faiss_scaling' in data:
+    story.append(Paragraph('FAISS Scaling Benchmarks', styles['Heading2']))
+    scaling = data['faiss_scaling']
+    rows = [[
+        'Corpus Size', 'Build Time (ms)', 'Mean Latency (ms)',
+        'P50 (ms)', 'P95 (ms)', 'P99 (ms)', 'QPS', 'Memory (MB)'
+    ]]
+    for key in sorted(scaling, key=lambda k: int(k)):
+        entry = scaling[key]
+        rows.append([
+            entry.get('corpus_size'),
+            f"{entry.get('build_time_ms'):.2f}",
+            f"{entry.get('mean_latency_ms'):.3f}",
+            f"{entry.get('p50_latency_ms'):.3f}",
+            f"{entry.get('p95_latency_ms'):.3f}",
+            f"{entry.get('p99_latency_ms'):.3f}",
+            f"{entry.get('qps'):.1f}",
+            f"{entry.get('memory_mb'):.2f}"
+        ])
     t = Table(rows, hAlign='LEFT')
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.black),
-        ('ALIGN', (1,1), (-1,-1), 'CENTER'),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold')
     ]))
     story.append(t)
     story.append(Spacer(1, 8))
-    mem = model.get('memory_reduction_percent')
-    if mem:
-        story.append(Paragraph(f"Memory consumption reduced by approximately {mem}% when using INT8 quantisation.", styles['Normal']))
-        story.append(Spacer(1, 8))
 
-# Pipeline timings
-if 'pipeline' in data:
-    story.append(Paragraph('Overall Pipeline Timing', styles['Heading2']))
-    pipe = data['pipeline']
-    txt = (
-        f"- Embedding step: {pipe.get('embedding_ms', 'N/A')} ms\n"
-        f"- Search step: {pipe.get('search_ms', 'N/A')} ms\n"
-        f"- Total end‑to‑end latency: {pipe.get('total_ms', 'N/A')} ms\n"
-    )
-    story.append(Paragraph(txt, styles['Normal']))
+# Quantization & inference
+if 'quantization_and_inference' in data:
+    story.append(Paragraph('Quantization & Inference', styles['Heading2']))
+    qi = data['quantization_and_inference']
+    rows = [[
+        'Metric', 'FP32 (ms)', 'INT8 (ms)', 'Speed‑up', 'Cosine Similarity'
+    ]]
+    rows.append([
+        'Mean Latency',
+        f"{qi.get('fp32_mean_ms'):.2f}",
+        f"{qi.get('int8_mean_ms'):.2f}",
+        f"{qi.get('speedup_factor'):.2f}x",
+        f"{qi.get('cosine_similarity_fidelity'):.4f}"
+    ])
+    rows.append([
+        'P95 Latency',
+        f"{qi.get('fp32_p95_ms'):.2f}",
+        f"{qi.get('int8_p95_ms'):.2f}",
+        '',
+        ''
+    ])
+    t = Table(rows, hAlign='LEFT')
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ALIGN', (1,1), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold')
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 8))
+
+# Multimodal pipeline latency
+if 'multimodal_pipeline_latency' in data:
+    story.append(Paragraph('Multimodal Pipeline Latency', styles['Heading2']))
+    mp = data['multimodal_pipeline_latency']
+    rows = [[
+        'Operation', 'Mean (ms)', 'P95 (ms)'
+    ]]
+    rows.append(['Hybrid Search', f"{mp.get('hybrid_search_ms'):.2f}", f"{mp.get('hybrid_p95_ms'):.2f}"])
+    rows.append(['Sketch Search', f"{mp.get('sketch_search_ms'):.2f}", f"{mp.get('sketch_p95_ms'):.2f}"])
+    rows.append(['Image Probe', f"{mp.get('image_probe_ms'):.2f}", f"{mp.get('image_probe_p95_ms'):.2f}"])
+    t = Table(rows, hAlign='LEFT')
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold')
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 8))
+
+# Overall benchmark duration
+if 'total_benchmark_duration_seconds' in data:
+    story.append(Paragraph('Overall Benchmark Duration', styles['Heading2']))
+    dur = data['total_benchmark_duration_seconds']
+    story.append(Paragraph(f"The complete benchmark suite ran in {dur:.2f} seconds.", styles['Normal']))
     story.append(Spacer(1, 8))
 
 # Conclusion
