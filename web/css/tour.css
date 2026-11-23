@@ -2,20 +2,23 @@
    ZERO-TEXT INTERACTIVE DEMO TOUR STYLESHEET (tour.css)
    ============================================================ */
 
-/* 1. Backdrop Overlay */
+/* 1. Backdrop Overlay with cutout hole
+   The backdrop blurs and darkens EVERYTHING on the screen,
+   while clip-path punches out a crystal clear hole exactly over the target element!
+*/
 .tour-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(5, 8, 18, 0.82);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  z-index: 10000;
+  background: rgba(4, 7, 16, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99998;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, clip-path 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tour-backdrop.visible {
@@ -23,17 +26,18 @@
   pointer-events: auto;
 }
 
-/* 2. Spotlight Cutout & Glowing Halo */
+/* 2. Glowing Halo Frame around the cutout hole */
 .tour-spotlight {
   position: fixed;
-  z-index: 10005;
+  z-index: 99999;
   pointer-events: none;
   border: 2px solid var(--accent-cyan, #00f5d4);
   border-radius: 12px;
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 25px rgba(0, 245, 212, 0.7),
-              0 0 45px rgba(247, 37, 133, 0.35);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 30px rgba(0, 245, 212, 0.8),
+              0 0 60px rgba(247, 37, 133, 0.4),
+              inset 0 0 15px rgba(0, 245, 212, 0.2);
   animation: tourGlowPulse 2s ease infinite alternate;
 }
 
@@ -43,36 +47,26 @@
 
 @keyframes tourGlowPulse {
   0% {
-    box-shadow: 0 0 20px rgba(0, 245, 212, 0.5),
-                0 0 35px rgba(0, 245, 212, 0.25);
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.6),
+                0 0 40px rgba(0, 245, 212, 0.3);
     border-color: #00f5d4;
   }
   100% {
-    box-shadow: 0 0 35px rgba(0, 245, 212, 0.9),
-                0 0 60px rgba(247, 37, 133, 0.5);
+    box-shadow: 0 0 40px rgba(0, 245, 212, 0.95),
+                0 0 70px rgba(247, 37, 133, 0.5);
     border-color: #70e1d1;
   }
 }
 
-/* Target element elevated ABOVE the dark backdrop so it is 100% crystal-clear visible! */
+/* Target element styling when highlighted */
 .tour-highlight-active {
-  position: relative !important;
-  z-index: 10002 !important;
-  pointer-events: auto !important;
-  transition: box-shadow 0.3s ease;
-}
-
-/* Ensure ancestors don't trap the stacking context */
-body.tour-active .app-header,
-body.tour-active .search-hub,
-body.tour-active .main-viewport {
-  z-index: 10001 !important;
+  transition: transform 0.3s ease;
 }
 
 /* 3. Tour Presenter Card */
 .tour-card {
   position: fixed;
-  z-index: 10010;
+  z-index: 100010;
   width: 440px;
   max-width: calc(100vw - 32px);
   background: linear-gradient(135deg, rgba(13, 20, 38, 0.98) 0%, rgba(20, 15, 35, 0.98) 100%);
