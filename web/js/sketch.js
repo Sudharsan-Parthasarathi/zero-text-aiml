@@ -33,11 +33,26 @@ class SketchStudio {
     this.loadSampleSketches();
   }
 
-  initCanvas() {
+  initCanvas(forceClear = false) {
     const rect = this.canvas.parentElement.getBoundingClientRect();
-    this.canvas.width = rect.width || 560;
-    this.canvas.height = rect.height || 340;
-    this.clear();
+    const w = rect.width || 560;
+    const h = rect.height || 340;
+    const isNewSize = this.canvas.width !== w || this.canvas.height !== h;
+    
+    if (isNewSize) {
+      const prevData = this.undoStack.length > 1 ? this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height) : null;
+      this.canvas.width = w;
+      this.canvas.height = h;
+      if (prevData && !forceClear) {
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, w, h);
+        this.ctx.putImageData(prevData, 0, 0);
+      } else {
+        this.clear();
+      }
+    } else if (forceClear || !this.undoStack.length) {
+      this.clear();
+    }
   }
 
   clear() {

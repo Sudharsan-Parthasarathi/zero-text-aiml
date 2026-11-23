@@ -57,7 +57,7 @@
       description:
         'High-dimensional 512-D CLIP embeddings projected into interactive 3D space using <b>stratified UMAP</b>. Images in the same semantic cluster share glowing constellation lines. You can rotate, pan, and zoom freely with your mouse.',
       target: '#view-galaxy3d',
-      placement: 'center',
+      placement: 'overlay-bottom-left',
       action: () => {
         const tab = document.getElementById('tab-galaxy3d');
         if (tab) tab.click();
@@ -70,7 +70,11 @@
       description:
         'Toggle celestial orbit spin, show/hide inter-cluster constellation mesh lines, or reset the camera orientation. When searching, the camera automatically flies right in front of the top semantic matches.',
       target: '.galaxy-hud',
-      placement: 'top'
+      placement: 'top',
+      action: () => {
+        const tab = document.getElementById('tab-galaxy3d');
+        if (tab) tab.click();
+      }
     },
     {
       id: 'galaxy2d',
@@ -78,8 +82,8 @@
       tag: 'PLANAR EMBEDDING',
       description:
         'A continuous planar 2D manifold ideal for spatial cartography of your image library. Clusters form distinct semantic islands with smooth zoom, pan, and hover inspections.',
-      target: '#tab-galaxy2d',
-      placement: 'bottom',
+      target: '#view-galaxy2d',
+      placement: 'overlay-bottom-left',
       action: () => {
         const tab = document.getElementById('tab-galaxy2d');
         if (tab) tab.click();
@@ -139,7 +143,7 @@
       tag: 'FINE-GRAINED TUNING',
       description:
         'Fine-tune the mathematical balance between <b>CLIP semantic similarity</b>, <b>OCR text matching</b>, and <b>Lab-space color distance</b> to tailor results precisely to user needs.',
-      target: '#weights-toggle-btn',
+      target: '#weights-drawer',
       placement: 'bottom',
       action: () => {
         const drawer = document.getElementById('weights-drawer');
@@ -155,12 +159,12 @@
       tag: 'REVERSE IMAGE SEARCH',
       description:
         'Draw a rough sketch with custom brush sizes, color palette, or flood fill. A specialized projection head maps line drawings into CLIP embedding space to find matching real photos!',
-      target: '#btn-open-sketch',
-      placement: 'bottom',
+      target: '#modal-sketch .modal-card',
+      placement: 'overlay-bottom-right',
       action: () => {
         const modal = document.getElementById('modal-sketch');
         const openBtn = document.getElementById('btn-open-sketch');
-        if (modal && modal.style.display !== 'flex' && openBtn) {
+        if (modal && !modal.classList.contains('open') && openBtn) {
           openBtn.click();
         }
       }
@@ -170,9 +174,9 @@
       title: 'Drag-and-Drop Image Probe',
       tag: 'MANIFOLD PROJECTION',
       description:
-        'Drag any image directly into the galaxy viewport! The live test probe projects the image into the 3D space, highlights its nearest semantic neighbors, and outputs live cosine similarity telemetry.',
-      target: '#view-galaxy3d',
-      placement: 'center',
+        'Drag any image directly into the galaxy viewport or click <b>"🛰️ Probe Image"</b>! The live test probe projects the image into 3D space, highlights its nearest semantic neighbors, and outputs live cosine similarity telemetry.',
+      target: '#btn-probe-trigger',
+      placement: 'bottom',
       action: () => {
         const closeSketch = document.getElementById('close-sketch-btn');
         if (closeSketch) closeSketch.click();
@@ -186,11 +190,14 @@
       tag: 'OFFLINE PIPELINE',
       description:
         'Index files locally or browse any directory using the native system folder picker. Zero cloud dependency—all embeddings, OCR, and FAISS indexing occur entirely on your local machine.',
-      target: '#btn-open-add',
-      placement: 'bottom',
+      target: '#modal-add .modal-card',
+      placement: 'overlay-bottom-right',
       action: () => {
+        const modal = document.getElementById('modal-add');
         const openBtn = document.getElementById('btn-open-add');
-        if (openBtn) openBtn.click();
+        if (modal && !modal.classList.contains('open') && openBtn) {
+          openBtn.click();
+        }
       }
     },
     {
@@ -198,17 +205,14 @@
       title: 'System Benchmarks & 100k Scaling',
       tag: 'PERFORMANCE RIG',
       description:
-        'Quantitative latency benchmarks proving <b>sub-15ms FAISS search across 100,000 images</b>, <b>1.79× INT8 Turbo quantization speedup</b>, and complete PDF report generation for mentors and evaluations.',
-      target: '#btn-tour-benchmark',
-      placement: 'bottom',
+        'Quantitative latency benchmarks proving <b>sub-15ms FAISS search across 100,000 images</b>, <b>1.79× INT8 Turbo quantization speedup</b>, and complete performance analysis for mentors and evaluations.',
+      target: '#modal-benchmark .modal-content',
+      placement: 'overlay-bottom-right',
       action: () => {
         const closeAdd = document.getElementById('close-add-btn');
         if (closeAdd) closeAdd.click();
-        const modal = document.getElementById('modal-benchmark');
-        if (modal) {
-          const btn = document.getElementById('btn-tour-benchmark');
-          if (btn) btn.click();
-        }
+        const btn = document.getElementById('btn-tour-benchmark');
+        if (btn) btn.click();
       }
     },
     {
@@ -216,9 +220,13 @@
       title: 'Shadowbox AR Kinetic Arcade',
       tag: 'BONUS AR INNOVATION',
       description:
-        'A zero-controller computer-vision gaming suite powered by 60 FPS BlazePose and Kiai acoustic battle cries (Shadow Boxing AR & Laser Blade Fruit Ninja). Type <b>"SAM"</b> anywhere in the app to unlock the Arcade bay!',
-      target: '.brand-badge',
-      placement: 'bottom'
+        'A zero-controller computer-vision gaming suite powered by 60 FPS BlazePose and Kiai acoustic battle cries (Shadow Boxing AR & Laser Blade Fruit Ninja). Click <b>"🕹️ Arcade"</b> or type <b>"SAM"</b> anywhere in the app to unlock the Arcade bay!',
+      target: '#btn-open-arcade',
+      placement: 'bottom',
+      action: () => {
+        const modalBenchmark = document.getElementById('modal-benchmark');
+        if (modalBenchmark) modalBenchmark.style.display = 'none';
+      }
     },
     {
       id: 'finish',
@@ -432,7 +440,7 @@
     stopTour() {
       this.isOpen = false;
       this.pauseAutoPlay();
-      document.body.classList.remove('tour-active', 'tour-active-header', 'tour-active-search', 'tour-active-modal');
+      document.body.classList.remove('tour-active', 'tour-active-header', 'tour-active-search', 'tour-active-modal', 'tour-view-canvas');
       this.overlay.classList.remove('visible');
       this.overlay.style.clipPath = 'none';
       this.spotlight.classList.remove('visible');
@@ -491,9 +499,12 @@
       });
 
       // Position spotlight and card after DOM adjusts
+      requestAnimationFrame(() => {
+        this.positionTarget();
+      });
       setTimeout(() => {
         this.positionTarget();
-      }, 120);
+      }, 150);
 
       // Reset autoplay countdown if active
       if (this.isPlaying) {
@@ -566,7 +577,16 @@
       let targetEl = null;
 
       // Clean up body classes
-      document.body.classList.remove('tour-active-header', 'tour-active-search', 'tour-active-modal');
+      document.body.classList.remove('tour-active-header', 'tour-active-search', 'tour-active-modal', 'tour-view-canvas');
+
+      // 1. If this step is showcasing full-screen visual canvas (3D Galaxy or 2D Star Map)
+      if (step.id === 'galaxy3d' || step.id === 'galaxy2d') {
+        document.body.classList.add('tour-view-canvas');
+        this.overlay.style.clipPath = 'none';
+        this.spotlight.style.display = 'none';
+        this.positionCardRelative(null, step.placement || 'overlay-bottom-left');
+        return;
+      }
 
       if (step.target) {
         targetEl = document.querySelector(step.target);
@@ -581,21 +601,33 @@
         targetEl.classList.add('tour-highlight-active');
 
         // Check parent context and elevate
-        if (targetEl.closest('.app-header')) {
-          document.body.classList.add('tour-active-header');
-        } else if (targetEl.closest('.search-hub')) {
-          document.body.classList.add('tour-active-search');
-        } else if (targetEl.closest('.modal-content') || targetEl.closest('.modal-overlay')) {
+        if (targetEl.closest('.modal-content') || targetEl.closest('.modal-card') || targetEl.closest('.modal-overlay')) {
           document.body.classList.add('tour-active-modal');
         }
 
         const rect = targetEl.getBoundingClientRect();
 
-        const padding = 6;
+        const padding = 8;
         const top = Math.max(0, rect.top - padding);
         const left = Math.max(0, rect.left - padding);
-        const width = rect.width + padding * 2;
-        const height = rect.height + padding * 2;
+        const right = Math.min(window.innerWidth, rect.right + padding);
+        const bottom = Math.min(window.innerHeight, rect.bottom + padding);
+        const width = right - left;
+        const height = bottom - top;
+
+        // Polygon cutout that keeps ONLY targetEl 100% visible, unblurred and clear!
+        this.overlay.style.clipPath = `polygon(
+          0% 0%, 
+          0% 100%, 
+          ${left}px 100%, 
+          ${left}px ${top}px, 
+          ${right}px ${top}px, 
+          ${right}px ${bottom}px, 
+          ${left}px ${bottom}px, 
+          ${left}px 100%, 
+          100% 100%, 
+          100% 0%
+        )`;
 
         this.spotlight.style.display = 'block';
         this.spotlight.style.top = `${top}px`;
@@ -608,6 +640,7 @@
         this.positionCardRelative(rect, step.placement);
       } else {
         // Center placement or fallback
+        this.overlay.style.clipPath = 'none';
         this.spotlight.style.display = 'none';
         this.card.style.top = '50%';
         this.card.style.left = '50%';
@@ -621,39 +654,50 @@
       this.card.style.transform = 'none';
 
       const gap = 16;
+      const cardHeight = this.card.getBoundingClientRect().height || 300;
       let top = 0;
       let left = 0;
 
-      if (placement === 'bottom') {
-        top = targetRect.bottom + gap;
-        left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
-      } else if (placement === 'top') {
-        top = targetRect.top - this.card.offsetHeight - gap;
-        left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
-      } else if (placement === 'left') {
-        top = targetRect.top;
-        left = targetRect.left - cardWidth - gap;
-      } else if (placement === 'right') {
-        top = targetRect.top;
-        left = targetRect.right + gap;
+      if (placement === 'overlay-bottom-left') {
+        top = window.innerHeight - cardHeight - 24;
+        left = 24;
+      } else if (placement === 'overlay-bottom-right') {
+        top = window.innerHeight - cardHeight - 24;
+        left = window.innerWidth - cardWidth - 24;
+      } else if (targetRect) {
+        if (placement === 'bottom') {
+          top = targetRect.bottom + gap;
+          left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+        } else if (placement === 'top') {
+          top = targetRect.top - cardHeight - gap;
+          left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+        } else if (placement === 'left') {
+          top = targetRect.top;
+          left = targetRect.left - cardWidth - gap;
+        } else if (placement === 'right') {
+          top = targetRect.top;
+          left = targetRect.right + gap;
+        } else {
+          top = targetRect.bottom + gap;
+          left = targetRect.left;
+        }
       } else {
-        top = targetRect.bottom + gap;
-        left = targetRect.left;
+        top = window.innerHeight - cardHeight - 24;
+        left = 24;
       }
 
       // Constrain within viewport bounds
       const maxLeft = window.innerWidth - cardWidth - 16;
       left = Math.max(16, Math.min(left, maxLeft));
 
-      const cardHeight = this.card.offsetHeight || 320;
       const maxTop = window.innerHeight - cardHeight - 16;
-
-      if (top > maxTop) {
+      if (top > maxTop && targetRect) {
         // Flip to above target if it spills off bottom
         top = Math.max(16, targetRect.top - cardHeight - gap);
       }
+      top = Math.max(16, Math.min(top, maxTop));
 
-      this.card.style.top = `${Math.max(16, top)}px`;
+      this.card.style.top = `${top}px`;
       this.card.style.left = `${left}px`;
     }
   }

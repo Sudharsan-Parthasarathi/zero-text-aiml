@@ -1492,7 +1492,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnDismissProbe) {
-    btnDismissProbe.addEventListener('click', dismissTestProbe);
+    btnDismissProbe.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismissTestProbe();
+    });
+  }
+
+  if (dropZone) {
+    dropZone.addEventListener('click', (e) => {
+      const probeInput = document.getElementById('probe-file-input');
+      if (probeInput) probeInput.click();
+    });
   }
 
   // Window drag events to show the high-tech drop zone overlay
