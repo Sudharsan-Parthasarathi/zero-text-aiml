@@ -432,7 +432,7 @@
     stopTour() {
       this.isOpen = false;
       this.pauseAutoPlay();
-      document.body.classList.remove('tour-active');
+      document.body.classList.remove('tour-active', 'tour-active-header', 'tour-active-search', 'tour-active-modal');
       this.overlay.classList.remove('visible');
       this.overlay.style.clipPath = 'none';
       this.spotlight.classList.remove('visible');
@@ -441,6 +441,10 @@
 
       const modalBenchmark = document.getElementById('modal-benchmark');
       if (modalBenchmark) modalBenchmark.style.display = 'none';
+      const modalAdd = document.getElementById('modal-add');
+      if (modalAdd) modalAdd.classList.remove('open');
+      const modalSketch = document.getElementById('modal-sketch');
+      if (modalSketch) modalSketch.classList.remove('open');
 
       // Remove highlight from any active element
       document.querySelectorAll('.tour-highlight-active').forEach((el) => {
@@ -561,6 +565,9 @@
       const step = TOUR_STEPS[this.currentStep];
       let targetEl = null;
 
+      // Clean up body classes
+      document.body.classList.remove('tour-active-header', 'tour-active-search', 'tour-active-modal');
+
       if (step.target) {
         targetEl = document.querySelector(step.target);
       }
@@ -572,31 +579,23 @@
 
       if (targetEl && step.placement !== 'center') {
         targetEl.classList.add('tour-highlight-active');
+
+        // Check parent context and elevate
+        if (targetEl.closest('.app-header')) {
+          document.body.classList.add('tour-active-header');
+        } else if (targetEl.closest('.search-hub')) {
+          document.body.classList.add('tour-active-search');
+        } else if (targetEl.closest('.modal-content') || targetEl.closest('.modal-overlay')) {
+          document.body.classList.add('tour-active-modal');
+        }
+
         const rect = targetEl.getBoundingClientRect();
 
-        const padding = 8;
+        const padding = 6;
         const top = Math.max(0, rect.top - padding);
         const left = Math.max(0, rect.left - padding);
         const width = rect.width + padding * 2;
         const height = rect.height + padding * 2;
-        const right = left + width;
-        const bottom = top + height;
-
-        // Cut out the clear hole in the backdrop so ONLY the target is visible and non-blurred
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.overlay.style.clipPath = `polygon(
-          0px 0px,
-          0px ${h}px,
-          ${left}px ${h}px,
-          ${left}px ${top}px,
-          ${right}px ${top}px,
-          ${right}px ${bottom}px,
-          ${left}px ${bottom}px,
-          ${left}px ${h}px,
-          ${w}px ${h}px,
-          ${w}px 0px
-        )`;
 
         this.spotlight.style.display = 'block';
         this.spotlight.style.top = `${top}px`;
@@ -609,7 +608,6 @@
         this.positionCardRelative(rect, step.placement);
       } else {
         // Center placement or fallback
-        this.overlay.style.clipPath = 'none';
         this.spotlight.style.display = 'none';
         this.card.style.top = '50%';
         this.card.style.left = '50%';

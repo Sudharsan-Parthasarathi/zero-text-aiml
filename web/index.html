@@ -1315,6 +1315,9 @@
       <button class="btn" id="btn-open-sketch" title="Draw a rough sketch to find visually similar images">
         <span>✏️</span> Sketch Search
       </button>
+      <button class="btn" id="btn-probe-trigger" title="Drop or choose an image to probe the 3D galaxy" onclick="document.getElementById('probe-file-input').click()">
+        <span>🛰️</span> Probe Image
+      </button>
       <button class="btn btn-primary" id="btn-open-add" title="Add individual image files or scan entire folders">
         <span>➕</span> Add Images / Folder
       </button>
@@ -1421,6 +1424,8 @@
         </div>
         <h2 class="drop-title">DROP IMAGE TO PROBE GALAXY</h2>
         <p class="drop-desc">Real-time CLIP visual embedding projection • Instant cluster positioning & neighbor spotlight</p>
+        <button class="btn btn-sm btn-primary" id="btn-browse-probe-file" style="margin-top:14px; pointer-events:auto;" onclick="document.getElementById('probe-file-input').click()">📁 Or Click to Choose File</button>
+        <input type="file" id="probe-file-input" accept="image/*" style="display:none;" />
       </div>
     </div>
 

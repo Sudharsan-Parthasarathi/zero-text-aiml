@@ -1736,6 +1736,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Probe file input change listener
+  const probeFileInput = document.getElementById('probe-file-input');
+  if (probeFileInput) {
+    probeFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length) {
+        handleImageFileDrop(e.target.files[0]);
+      }
+    });
+  }
+
   // -------------------------------------------------------------
   // INGESTION & INDEXING PIPELINE MODAL
   // -------------------------------------------------------------

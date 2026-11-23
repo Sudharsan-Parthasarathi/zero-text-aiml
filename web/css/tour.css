@@ -2,9 +2,8 @@
    ZERO-TEXT INTERACTIVE DEMO TOUR STYLESHEET (tour.css)
    ============================================================ */
 
-/* 1. Backdrop Overlay with cutout hole
-   The backdrop blurs and darkens EVERYTHING on the screen,
-   while clip-path punches out a crystal clear hole exactly over the target element!
+/* 1. Backdrop Overlay:
+   Blurs and darkens the entire interface behind the tour.
 */
 .tour-backdrop {
   position: fixed;
@@ -12,13 +11,13 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(4, 7, 16, 0.88);
+  background: rgba(4, 7, 16, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 99998;
+  z-index: 99990;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, clip-path 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease;
 }
 
 .tour-backdrop.visible {
@@ -26,18 +25,20 @@
   pointer-events: auto;
 }
 
-/* 2. Glowing Halo Frame around the cutout hole */
+/* 2. Spotlight Frame:
+   Positioned precisely over the target element with a glowing neon border.
+*/
 .tour-spotlight {
   position: fixed;
-  z-index: 99999;
+  z-index: 99995;
   pointer-events: none;
   border: 2px solid var(--accent-cyan, #00f5d4);
   border-radius: 12px;
   opacity: 0;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 30px rgba(0, 245, 212, 0.8),
-              0 0 60px rgba(247, 37, 133, 0.4),
-              inset 0 0 15px rgba(0, 245, 212, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 25px rgba(0, 245, 212, 0.85),
+              0 0 50px rgba(247, 37, 133, 0.4),
+              inset 0 0 15px rgba(0, 245, 212, 0.25);
   animation: tourGlowPulse 2s ease infinite alternate;
 }
 
@@ -48,32 +49,53 @@
 @keyframes tourGlowPulse {
   0% {
     box-shadow: 0 0 20px rgba(0, 245, 212, 0.6),
-                0 0 40px rgba(0, 245, 212, 0.3);
+                0 0 35px rgba(0, 245, 212, 0.25);
     border-color: #00f5d4;
   }
   100% {
-    box-shadow: 0 0 40px rgba(0, 245, 212, 0.95),
-                0 0 70px rgba(247, 37, 133, 0.5);
+    box-shadow: 0 0 35px rgba(0, 245, 212, 0.95),
+                0 0 65px rgba(247, 37, 133, 0.5);
     border-color: #70e1d1;
   }
 }
 
-/* Target element styling when highlighted */
+/* 3. The Active Target Element:
+   Elevated to z-index 99996 so it sits completely ABOVE the blurred backdrop!
+   It is 100% crisp, brightly lit, and non-blurred.
+*/
 .tour-highlight-active {
-  transition: transform 0.3s ease;
+  position: relative !important;
+  z-index: 99996 !important;
+  pointer-events: auto !important;
+  box-shadow: 0 0 25px rgba(0, 245, 212, 0.6) !important;
+  border-radius: 10px;
 }
 
-/* 3. Tour Presenter Card */
+/* Elevate header and search-hub stacking contexts when their children are highlighted */
+body.tour-active-header .app-header {
+  z-index: 99995 !important;
+}
+
+body.tour-active-search .search-hub {
+  z-index: 99995 !important;
+}
+
+body.tour-active-modal .modal-sketch,
+body.tour-active-modal #modal-sketch {
+  z-index: 100000 !important;
+}
+
+/* 4. Tour Presenter Card */
 .tour-card {
   position: fixed;
   z-index: 100010;
   width: 440px;
   max-width: calc(100vw - 32px);
   background: linear-gradient(135deg, rgba(13, 20, 38, 0.98) 0%, rgba(20, 15, 35, 0.98) 100%);
-  border: 1px solid rgba(0, 245, 212, 0.5);
+  border: 1px solid rgba(0, 245, 212, 0.55);
   border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9),
-              0 0 35px rgba(0, 245, 212, 0.3),
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95),
+              0 0 40px rgba(0, 245, 212, 0.35),
               inset 0 0 20px rgba(0, 245, 212, 0.08);
   padding: 22px 24px;
   color: #fff;
@@ -257,7 +279,7 @@
   font-weight: 800;
 }
 
-/* 4. Jump Menu Drawer */
+/* 5. Jump Menu Drawer */
 .tour-jump-menu {
   position: absolute;
   top: 0;
@@ -351,7 +373,7 @@
   text-transform: uppercase;
 }
 
-/* 5. Header Launch Button Pulse */
+/* 6. Header Launch Button Pulse */
 .btn-tour-pulse {
   background: linear-gradient(135deg, rgba(0, 245, 212, 0.15) 0%, rgba(247, 37, 133, 0.15) 100%) !important;
   border: 1px solid rgba(0, 245, 212, 0.5) !important;
