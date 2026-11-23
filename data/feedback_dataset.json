@@ -894,5 +894,37 @@
         "timestamp": "2026-11-23T17:26:42Z",
         "session_id": "",
         "enriched": true
+    },
+    {
+        "id": "fb_adbdc54b80",
+        "search_type": "text",
+        "feedback": "negative",
+        "filename": "code.jpg",
+        "query": "goat",
+        "query_normalized": "goat",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.0085,
+        "cluster": 0,
+        "category": "Code",
+        "timestamp": "2026-11-23T17:36:36Z",
+        "session_id": "",
+        "enriched": false
+    },
+    {
+        "id": "fb_36ce390523",
+        "search_type": "text",
+        "feedback": "positive",
+        "filename": "WIN_20261016_21_52_16_Pro.jpg",
+        "query": "Greatest of all time",
+        "query_normalized": "greatest of all time",
+        "sketch_hash": "",
+        "text_hint": "",
+        "score": 0.416,
+        "cluster": -1,
+        "category": "Win 20261016 21 52 16 Pro",
+        "timestamp": "2026-11-23T17:37:17Z",
+        "session_id": "",
+        "enriched": false
     }
 ]
