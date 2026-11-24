@@ -457,6 +457,10 @@
       // Remove highlight from any active element
       document.querySelectorAll('.tour-highlight-active').forEach((el) => {
         el.classList.remove('tour-highlight-active');
+        if (el.dataset.tourDynamicPos === 'true') {
+          el.style.position = '';
+          delete el.dataset.tourDynamicPos;
+        }
       });
     }
 
@@ -599,9 +603,18 @@
       // Clear previous active highlight
       document.querySelectorAll('.tour-highlight-active').forEach((el) => {
         el.classList.remove('tour-highlight-active');
+        if (el.dataset.tourDynamicPos === 'true') {
+          el.style.position = '';
+          delete el.dataset.tourDynamicPos;
+        }
       });
 
       if (targetEl && step.placement !== 'center') {
+        const computedPos = window.getComputedStyle(targetEl).position;
+        if (computedPos === 'static') {
+          targetEl.style.position = 'relative';
+          targetEl.dataset.tourDynamicPos = 'true';
+        }
         targetEl.classList.add('tour-highlight-active');
 
         // Check parent context and elevate

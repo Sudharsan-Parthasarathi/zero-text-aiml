@@ -82,11 +82,25 @@ body.tour-view-controls .tour-backdrop {
    Elevated so it sits completely ABOVE the blurred backdrop!
 */
 .tour-highlight-active {
-  position: relative !important;
   z-index: 99996 !important;
   pointer-events: auto !important;
   box-shadow: 0 0 25px rgba(0, 245, 212, 0.6) !important;
   border-radius: 10px;
+}
+
+/* Ensure HUD controls stay in absolute bottom-left position and visible */
+.galaxy-hud.tour-highlight-active,
+body.tour-view-controls .galaxy-hud {
+  position: absolute !important;
+  bottom: 20px !important;
+  left: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 99996 !important;
+  width: auto !important;
+  max-width: fit-content !important;
 }
 
 /* Elevate header, search-hub, viewport, and modals when their children are highlighted */
