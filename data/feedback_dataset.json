@@ -926,5 +926,37 @@
         "timestamp": "2026-11-23T17:37:17Z",
         "session_id": "",
         "enriched": false
+    },
+    {
+        "id": "fb_d42752e9a4",
+        "search_type": "sketch",
+        "feedback": "positive",
+        "filename": "among-us-vicious-smile-512x512.png",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "e72a1764faad4e85",
+        "text_hint": "",
+        "score": 0.4036,
+        "cluster": -1,
+        "category": "Among Us Vicious Smile 512X512",
+        "timestamp": "2026-11-24T06:19:01Z",
+        "session_id": "",
+        "enriched": true
+    },
+    {
+        "id": "fb_1697bc1c06",
+        "search_type": "sketch",
+        "feedback": "negative",
+        "filename": "triangle-with-planet_3840x2160_xtrafondos.com.jpg",
+        "query": "",
+        "query_normalized": "",
+        "sketch_hash": "6c73f8df2c476bb7",
+        "text_hint": "",
+        "score": 0.627,
+        "cluster": 1,
+        "category": "Triangle With Planet 3840X2160 Xtrafondos.Com",
+        "timestamp": "2026-11-24T06:34:42Z",
+        "session_id": "",
+        "enriched": false
     }
 ]

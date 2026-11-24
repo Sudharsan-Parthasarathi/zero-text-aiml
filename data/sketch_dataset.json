@@ -310,5 +310,18 @@
         "cluster": -1,
         "timestamp": "2026-11-23T09:34:52Z",
         "validated": true
+    },
+    {
+        "id": "sketch_e72a1764faad",
+        "sketch_hash": "e72a1764faad4e85",
+        "sketch_file": "user_validated/sketch_e72a1764faad4e85.png",
+        "filename": "among-us-vicious-smile-512x512.png",
+        "path": "E:\\Zero text AIML\\data\\sample_images\\among-us-vicious-smile-512x512.png",
+        "category": "Among Us Vicious Smile 512X512",
+        "text_hint": "",
+        "score": 0.4036,
+        "cluster": -1,
+        "timestamp": "2026-11-24T06:19:01Z",
+        "validated": true
     }
 ]
