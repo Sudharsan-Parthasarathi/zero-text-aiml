@@ -30,10 +30,10 @@
   const TOUR_STEPS = [
     {
       id: 'welcome',
-      title: 'Welcome to ZERO-TEXT 2.0',
+      title: 'Welcome to ZERO-ARCADE 2.0',
       tag: 'ARCHITECTURE & OVERVIEW',
       description:
-        'ZERO-TEXT is an end-to-end multimodal search & visual discovery engine. It unifies <b>OpenCLIP visual embeddings</b>, <b>EasyOCR in-image text detection</b>, <b>K-Means dominant color extraction</b>, and <b>HDBSCAN / UMAP clustering</b> into a 3D celestial galaxy.',
+        'ZERO-ARCADE is an end-to-end multimodal search & visual discovery engine. It unifies <b>OpenCLIP visual embeddings</b>, <b>EasyOCR in-image text detection</b>, <b>K-Means dominant color extraction</b>, and <b>HDBSCAN / UMAP clustering</b> into a 3D celestial galaxy.',
       target: '.brand',
       placement: 'bottom',
       action: () => {

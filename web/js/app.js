@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateAllViews();
     } catch (err) {
       console.error('Failed to load initial data:', err);
-      showToast('Could not connect to ZERO-TEXT backend.');
+      showToast('Could not connect to ZERO-ARCADE backend.');
     }
   }
 

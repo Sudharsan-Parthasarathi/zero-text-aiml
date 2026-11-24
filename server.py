@@ -28,7 +28,7 @@ from pipeline import BASE_DIR, DATA_DIR, SAMPLE_DIR, SKETCHES_DIR, get_engine
 from arcade_manager import arcade_manager
 
 app = FastAPI(
-    title="ZERO-TEXT API",
+    title="ZERO-ARCADE API",
     description="Multimodal Visual Galaxy Explorer & Semantic Search System",
     version="2.5.0",
 )
@@ -147,7 +147,7 @@ def browse_local_folder():
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        selected_dir = filedialog.askdirectory(title="Select Folder to Index in ZERO-TEXT")
+        selected_dir = filedialog.askdirectory(title="Select Folder to Index in ZERO-ARCADE")
         root.destroy()
         if selected_dir:
             return {"status": "ok", "directory": os.path.normpath(selected_dir)}
@@ -483,4 +483,4 @@ def serve_index():
     if index_file.exists():
         with open(index_file, "r", encoding="utf-8") as f:
             return f.read()
-    return "<h1>ZERO-TEXT Frontend Initializing...</h1>"
+    return "<h1>ZERO-ARCADE Frontend Initializing...</h1>"
